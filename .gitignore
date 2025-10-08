@@ -1,5 +1,56 @@
+# Rider / JetBrains
+.idea/
+*.sln.iml
+*.iws
+*.iml
+/.idea/workspace.xml
+/.idea/tasks.xml
+/.idea/dictionaries/
+/.idea/inspectionProfiles/
+# ReSharper
+_ReSharper.Caches/
+/*.DotSettings.user
+# Rider run configs (optional, include if you want shared configs)
+!.idea/runConfigurations/
+
+# Build outputs
 bin/
 obj/
+out/
+
+# NuGet packages
+*.nupkg
 /packages/
-riderModule.iml
-/_ReSharper.Caches/
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# User-specific files
+*.user
+*.userosscache
+*.suo
+*.ntvs*
+*.njsproj.user
+*.sln.docstates
+appsettings.Development.json
+appsettings.*.local.json
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker files (optional, ignore if you build images locally)
+docker-compose.override.yml
+*.env
+
+# Test results
+TestResults/
+*.trx
+
+# Coverage
+*.coverage
+*.coveragexml
+*.pdb
