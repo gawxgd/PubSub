@@ -1,0 +1,7 @@
+﻿services:
+  messagebroker:
+    image: messagebroker
+    build:
+      context: .
+      dockerfile: MessageBroker/Dockerfile
+
