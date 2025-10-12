@@ -9,15 +9,18 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <Content Include="..\.dockerignore">
-        <Link>.dockerignore</Link>
-      </Content>
+        <Content Include="..\.dockerignore">
+            <Link>.dockerignore</Link>
+        </Content>
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="Domain\" />
-      <Folder Include="Inbound\" />
-      <Folder Include="Outbound\" />
+        <Folder Include="Outbound\"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.0-rc.1.25451.107"/>
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0-rc.1.25451.107"/>
     </ItemGroup>
 
 </Project>

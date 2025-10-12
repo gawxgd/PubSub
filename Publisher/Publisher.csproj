@@ -9,7 +9,7 @@
     <ItemGroup>
       <Folder Include="Domain\" />
       <Folder Include="Inbound\" />
-      <Folder Include="Outbound\" />
+      <Folder Include="Outbound\Adapter\" />
     </ItemGroup>
 
 </Project>
