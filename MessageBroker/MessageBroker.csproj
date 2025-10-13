@@ -15,6 +15,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <Folder Include="Inbound\" />
         <Folder Include="Outbound\"/>
     </ItemGroup>
 

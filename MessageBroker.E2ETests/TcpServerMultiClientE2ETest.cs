@@ -69,7 +69,7 @@ public class TcpServerMultiClientE2ETests
             {
                 services.AddSingleton<CreateSocketUseCase>();
                 services.AddHostedService<TcpServerService>();
-                services.Configure<ServerOptions>(configuration);
+                services.Configure<TcpServerOptions>(configuration);
             })
             .Build();
     }

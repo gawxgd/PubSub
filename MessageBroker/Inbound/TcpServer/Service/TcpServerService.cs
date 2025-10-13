@@ -35,13 +35,20 @@ public class TcpServerService(CreateSocketUseCase createSocketUseCase) : Backgro
     private async Task HandleConnectionAsync(Socket acceptedSocket, CancellationToken cancellationToken)
     {
         Console.WriteLine($"Started new thread for handling connection with client: {acceptedSocket.RemoteEndPoint}");
-
-        var handler = new HandleClientConnectionUseCase(acceptedSocket);
-        await handler.StartAsync(cancellationToken);
+        await new HandleClientConnectionUseCase(acceptedSocket).HandleConnection(cancellationToken);
     }
 
     public override void Dispose()
     {
+        try
+        {
+            _socket.Shutdown(SocketShutdown.Both);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Exception caught while shutting down server", ex);
+        }
+
         _socket?.Dispose();
         base.Dispose();
     }

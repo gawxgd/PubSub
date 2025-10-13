@@ -20,6 +20,6 @@ public static class ServiceRegistration
     /// </summary>
     public static void AddBrokerOptions(this IServiceCollection services, IConfiguration configuration)
     {
-        services.Configure<ServerOptions>(configuration);
+        services.Configure<TcpServerOptions>(configuration);
     }
 }

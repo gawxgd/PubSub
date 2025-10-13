@@ -17,14 +17,37 @@ public class HandleClientConnectionUseCase(Socket socket)
 
     private readonly Pipe _pipe = new();
 
-    public async Task StartAsync(CancellationToken cancellationToken)
+    public async Task HandleConnection(CancellationToken cancellationToken)
     {
-        var fillTask = FillPipeAsync(cancellationToken);
-        var parseTask = ProcessPipeAsync(cancellationToken);
-        var consumeTask = ConsumeMessagesAsync(cancellationToken);
-        await Task.WhenAll(fillTask, parseTask, consumeTask);
+        try
+        {
+            var fillTask = FillPipeAsync(cancellationToken);
+            var processTask = ProcessPipeAsync(cancellationToken);
+            var consumeTask = ConsumeMessageChanelAsync(cancellationToken);
 
-        socket.Dispose();
+            await Task.WhenAll(fillTask, processTask, consumeTask);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Client handler exception: {ex.Message}");
+        }
+        finally
+        {
+            try
+            {
+                socket.Shutdown(SocketShutdown.Both);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Socket shutdown exception", ex);
+            }
+
+            socket.Dispose();
+            // this socket does not leave this class it supports only reads
+            await _pipe.Reader.CompleteAsync();
+            await _pipe.Writer.CompleteAsync();
+            _messageChannel.Writer.Complete();
+        }
     }
 
     private async Task FillPipeAsync(CancellationToken cancellationToken)
@@ -34,6 +57,7 @@ public class HandleClientConnectionUseCase(Socket socket)
             while (!cancellationToken.IsCancellationRequested)
             {
                 var memory = _pipe.Writer.GetMemory(4096);
+
                 var bytesRead = await socket.ReceiveAsync(memory, SocketFlags.None, cancellationToken);
 
                 if (bytesRead == 0) break; // client disconnected
@@ -44,9 +68,9 @@ public class HandleClientConnectionUseCase(Socket socket)
                 if (result.IsCompleted) break;
             }
         }
-        catch (SocketException)
+        catch (Exception ex)
         {
-            /* handle error */
+            Console.WriteLine("Exception caught while filling pipe", ex);
         }
         finally
         {
@@ -76,6 +100,10 @@ public class HandleClientConnectionUseCase(Socket socket)
                 if (result.IsCompleted) break;
             }
         }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Exception caught while processing pipe", ex);
+        }
         finally
         {
             _messageChannel.Writer.Complete();
@@ -83,21 +111,25 @@ public class HandleClientConnectionUseCase(Socket socket)
         }
     }
 
-    private async Task ConsumeMessagesAsync(CancellationToken cancellationToken)
+    private async Task ConsumeMessageChanelAsync(CancellationToken cancellationToken)
     {
-        await foreach (var message in _messageChannel.Reader.ReadAllAsync(cancellationToken))
-            try
+        try
+        {
+            await foreach (var message in _messageChannel.Reader.ReadAllAsync(cancellationToken))
             {
-                // Example processing (can be async business logic, parsing, etc.)
                 Console.WriteLine($"[{socket.RemoteEndPoint}] Received {message.Length} bytes");
 
-                // Example echo response
-                await socket.SendAsync(message, SocketFlags.None, cancellationToken);
+                await new ProcessReceivedMessageUseCase()
+                    .ProcessMessageAsync(message,
+                        cancellationToken); // ToDo decide If should be awaited or run on separate thread
+
+                await socket.SendAsync(message, SocketFlags.None,
+                    cancellationToken); // for e2e test ToDo delete after sending to subscirber
             }
-            catch (SocketException ex)
-            {
-                Console.WriteLine($"Socket send error: {ex.Message}");
-                break;
-            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Exception caught while processing message", ex);
+        }
     }
 }

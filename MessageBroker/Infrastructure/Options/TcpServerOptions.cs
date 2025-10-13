@@ -1,6 +1,6 @@
 namespace MessageBroker.TcpServer;
 
-public sealed record ServerOptions
+public sealed record TcpServerOptions
 {
     public int Port { get; init; } = 9096;
     public string Address { get; init; } = "127.0.0.1";

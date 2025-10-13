@@ -4,11 +4,12 @@ using Microsoft.Extensions.Options;
 
 namespace MessageBroker.TcpServer;
 
-public class CreateSocketUseCase(IOptionsMonitor<ServerOptions> monitor)
+public class CreateSocketUseCase(IOptionsMonitor<TcpServerOptions> monitor)
 {
     public Socket CreateSocket()
     {
         var options = monitor.CurrentValue;
+
         var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
         if (options.InlineCompletions)
