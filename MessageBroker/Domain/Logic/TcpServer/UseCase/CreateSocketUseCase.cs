@@ -1,8 +1,9 @@
 using System.Net;
 using System.Net.Sockets;
+using MessageBroker.Infrastructure.Configuration.Options;
 using Microsoft.Extensions.Options;
 
-namespace MessageBroker.TcpServer;
+namespace MessageBroker.Domain.Logic.TcpServer.UseCase;
 
 public class CreateSocketUseCase(IOptionsMonitor<TcpServerOptions> monitor)
 {

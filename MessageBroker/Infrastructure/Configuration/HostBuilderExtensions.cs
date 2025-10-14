@@ -1,7 +1,8 @@
+using MessageBroker.Infrastructure.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 
-namespace MessageBroker.Infrastructure;
+namespace MessageBroker.Infrastructure.Configuration;
 
 public static class HostBuilderExtensions
 {

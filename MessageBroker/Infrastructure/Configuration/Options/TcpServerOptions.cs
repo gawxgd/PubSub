@@ -1,4 +1,4 @@
-namespace MessageBroker.TcpServer;
+namespace MessageBroker.Infrastructure.Configuration.Options;
 
 public sealed record TcpServerOptions
 {

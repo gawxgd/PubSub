@@ -15,7 +15,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <Folder Include="Inbound\" />
+        <Folder Include="Domain\Logic\TcpServer\"/>
         <Folder Include="Outbound\"/>
     </ItemGroup>
 

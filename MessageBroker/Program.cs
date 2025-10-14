@@ -1,4 +1,4 @@
-﻿using MessageBroker.Infrastructure;
+﻿using MessageBroker.Infrastructure.Configuration;
 using Microsoft.Extensions.Hosting;
 
 await Host

@@ -1,23 +1,20 @@
 using System.Net.Sockets;
 using System.Text;
 using FluentAssertions;
-using MessageBroker.TcpServer;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
+using MessageBroker.E2ETests.Infrastructure;
 using Xunit;
 
 namespace MessageBroker.E2ETests;
 
 public class TcpServerMultiClientE2ETests
 {
-    private const int Port = 9096;
     private const string HostAddress = "127.0.0.1";
 
     [Fact]
     public async Task Server_Should_Handle_Multiple_Clients_And_Echo_Back()
     {
-        using var host = CreateTestHost();
+        var port = PortManager.GetNextPort();
+        using var host = TestHostHelper.CreateTestHost(port);
         await host.StartAsync();
 
         // Allow the server time to start listening
@@ -31,7 +28,7 @@ public class TcpServerMultiClientE2ETests
         for (var i = 0; i < clientCount; i++)
         {
             clients[i] = new TcpClient();
-            await clients[i].ConnectAsync(HostAddress, Port);
+            await clients[i].ConnectAsync(HostAddress, port);
 
             var clientId = i;
             sendTasks.Add(Task.Run(() => SendAndReceiveAsync(clients[clientId], $"Hello from client {clientId}")));
@@ -48,30 +45,6 @@ public class TcpServerMultiClientE2ETests
             client.Dispose();
 
         await host.StopAsync();
-    }
-
-    private static IHost CreateTestHost()
-    {
-        var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["Port"] = "9096",
-                ["Address"] = "127.0.0.1",
-                ["MaxRequestSizeInByte"] = "512",
-                ["InlineCompletions"] = "false",
-                ["SocketPolling"] = "false",
-                ["Backlog"] = "100"
-            })
-            .Build();
-
-        return Host.CreateDefaultBuilder()
-            .ConfigureServices(services =>
-            {
-                services.AddSingleton<CreateSocketUseCase>();
-                services.AddHostedService<TcpServerService>();
-                services.Configure<TcpServerOptions>(configuration);
-            })
-            .Build();
     }
 
     private static async Task<string> SendAndReceiveAsync(TcpClient client, string message)

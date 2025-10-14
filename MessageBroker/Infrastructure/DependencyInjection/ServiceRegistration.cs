@@ -1,8 +1,13 @@
-using MessageBroker.TcpServer;
+using MessageBroker.Domain.Logic.TcpServer.UseCase;
+using MessageBroker.Domain.Port;
+using MessageBroker.Domain.Port.Repositories;
+using MessageBroker.Inbound.Adapter;
+using MessageBroker.Inbound.TcpServer.Service;
+using MessageBroker.Infrastructure.Configuration.Options;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace MessageBroker.Infrastructure;
+namespace MessageBroker.Infrastructure.DependencyInjection;
 
 public static class ServiceRegistration
 {
@@ -11,8 +16,12 @@ public static class ServiceRegistration
     /// </summary>
     public static void AddTcpServices(this IServiceCollection services)
     {
+        // Connection management
+        services.AddSingleton<IConnectionRepository, InMemoryConnectionRepository>();
+        services.AddSingleton<IConnectionManager, ConnectionManager>();
+        // TCP server
         services.AddSingleton<CreateSocketUseCase>();
-        services.AddHostedService<TcpServerService>();
+        services.AddHostedService<TcpServer>();
     }
 
     /// <summary>
