@@ -1,0 +1,8 @@
+{
+  "Port": 9096,
+  "Address": "127.0.0.1",
+  "MaxRequestSizeInByte": 512,
+  "InlineCompletions": false,
+  "SocketPolling": false,
+  "Backlog": 4096
+}
