@@ -4,4 +4,15 @@
     build:
       context: .
       dockerfile: MessageBroker/Dockerfile
+    ports:
+      - "9096:9096"  # Expose the TCP server port
+    environment:
+      - Port=9096
+      - Address=0.0.0.0  # Listen on all interfaces in container
+    networks:
+      - pubsub-network
+    restart: unless-stopped
 
+networks:
+  pubsub-network:
+    driver: bridge
