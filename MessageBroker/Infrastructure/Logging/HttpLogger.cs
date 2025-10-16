@@ -23,6 +23,8 @@ internal sealed class HttpLogger : ILogger
 	public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
 	{
 		if (!IsEnabled(logLevel)) return;
+		// Skip noisy HttpClient pipeline categories to avoid self-logging noise
+		if (_category.StartsWith("System.Net.Http.HttpClient", StringComparison.Ordinal)) return;
 		var message = formatter(state, exception);
 		var context = new Dictionary<string, object?>
 		{

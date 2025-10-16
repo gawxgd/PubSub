@@ -19,6 +19,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MessageBroker.UnitTests", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Logger", "Logger\Logger.csproj", "{E1218B50-E2AD-4D38-B293-EF7442E58C15}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FrontendImitatorForLoggerTest", "FrontendImitatorForLoggerTest\FrontendImitatorForLoggerTest.csproj", "{AC1ED73D-01E7-47DA-86F4-EDBBBF3C5D78}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -113,6 +115,18 @@ Global
 		{E1218B50-E2AD-4D38-B293-EF7442E58C15}.Release|x64.Build.0 = Release|Any CPU
 		{E1218B50-E2AD-4D38-B293-EF7442E58C15}.Release|x86.ActiveCfg = Release|Any CPU
 		{E1218B50-E2AD-4D38-B293-EF7442E58C15}.Release|x86.Build.0 = Release|Any CPU
+		{AC1ED73D-01E7-47DA-86F4-EDBBBF3C5D78}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AC1ED73D-01E7-47DA-86F4-EDBBBF3C5D78}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AC1ED73D-01E7-47DA-86F4-EDBBBF3C5D78}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{AC1ED73D-01E7-47DA-86F4-EDBBBF3C5D78}.Debug|x64.Build.0 = Debug|Any CPU
+		{AC1ED73D-01E7-47DA-86F4-EDBBBF3C5D78}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{AC1ED73D-01E7-47DA-86F4-EDBBBF3C5D78}.Debug|x86.Build.0 = Debug|Any CPU
+		{AC1ED73D-01E7-47DA-86F4-EDBBBF3C5D78}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AC1ED73D-01E7-47DA-86F4-EDBBBF3C5D78}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AC1ED73D-01E7-47DA-86F4-EDBBBF3C5D78}.Release|x64.ActiveCfg = Release|Any CPU
+		{AC1ED73D-01E7-47DA-86F4-EDBBBF3C5D78}.Release|x64.Build.0 = Release|Any CPU
+		{AC1ED73D-01E7-47DA-86F4-EDBBBF3C5D78}.Release|x86.ActiveCfg = Release|Any CPU
+		{AC1ED73D-01E7-47DA-86F4-EDBBBF3C5D78}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
