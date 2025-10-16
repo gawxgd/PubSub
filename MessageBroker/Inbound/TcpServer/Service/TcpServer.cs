@@ -2,10 +2,11 @@ using System.Net.Sockets;
 using MessageBroker.Domain.Logic.TcpServer.UseCase;
 using MessageBroker.Domain.Port.Repositories;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace MessageBroker.Inbound.TcpServer.Service;
 
-public class TcpServer(CreateSocketUseCase createSocketUseCase, IConnectionManager connectionManager)
+public class TcpServer(CreateSocketUseCase createSocketUseCase, IConnectionManager connectionManager, ILogger<TcpServer> logger)
     : BackgroundService
 {
     private readonly Socket _socket = createSocketUseCase.CreateSocket();
@@ -17,14 +18,14 @@ public class TcpServer(CreateSocketUseCase createSocketUseCase, IConnectionManag
             try
             {
                 var acceptedSocket = await _socket.AcceptAsync(cancellationToken);
-                Console.WriteLine($"Accepted client: {acceptedSocket.RemoteEndPoint}");
+                logger.LogInformation("Accepted client: {Endpoint}", acceptedSocket.RemoteEndPoint);
 
                 var linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 connectionManager.RegisterConnection(acceptedSocket, linkedTokenSource);
             }
             catch (SocketException ex)
             {
-                Console.WriteLine($"Socket error: {ex.Message}");
+                logger.LogError(ex, "Socket error: {Message}", ex.Message);
             }
             catch (OperationCanceledException)
             {
@@ -43,11 +44,11 @@ public class TcpServer(CreateSocketUseCase createSocketUseCase, IConnectionManag
         try
         {
             await connectionManager.UnregisterAllConnectionsAsync();
-            Console.WriteLine("Server stopped unregistered all connections");
+            logger.LogInformation("Server stopped unregistered all connections");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Exception during connection cleanup: {ex.Message}");
+            logger.LogError(ex, "Exception during connection cleanup: {Message}", ex.Message);
         }
     }
 

@@ -2,6 +2,7 @@ using System.Buffers;
 using System.IO.Pipelines;
 using System.Net.Sockets;
 using System.Threading.Channels;
+using Microsoft.Extensions.Logging;
 
 namespace MessageBroker.Domain.Logic.TcpServer.UseCase;
 

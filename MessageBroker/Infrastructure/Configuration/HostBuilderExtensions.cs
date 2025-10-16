@@ -1,6 +1,8 @@
 using MessageBroker.Infrastructure.DependencyInjection;
+using MessageBroker.Infrastructure.Logging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace MessageBroker.Infrastructure.Configuration;
 
@@ -24,6 +26,16 @@ public static class HostBuilderExtensions
             {
                 services.AddBrokerOptions(context.Configuration);
                 services.AddTcpServices();
+                // logging forwarder
+                services.AddHttpClient(HttpLogDispatcher.HttpClientName);
+                services.AddSingleton(System.Threading.Channels.Channel.CreateUnbounded<HttpLogEvent>());
+                services.AddHostedService<HttpLogDispatcher>();
+                services.Configure<LoggerOptions>(context.Configuration.GetSection("Logger"));
+                services.AddSingleton<ILoggerProvider, HttpLoggerProvider>();
+            })
+            .ConfigureLogging((context, logging) =>
+            {
+                // keep defaults; provider added via DI
             });
 
         return builder;
