@@ -1,6 +1,7 @@
 using MessageBroker.Infrastructure.DependencyInjection;
 using MessageBroker.Infrastructure.Logging;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
