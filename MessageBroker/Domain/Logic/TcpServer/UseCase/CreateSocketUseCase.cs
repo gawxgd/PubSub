@@ -1,11 +1,12 @@
 using System.Net;
 using System.Net.Sockets;
 using MessageBroker.Infrastructure.Configuration.Options;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace MessageBroker.Domain.Logic.TcpServer.UseCase;
 
-public class CreateSocketUseCase(IOptionsMonitor<TcpServerOptions> monitor)
+public class CreateSocketUseCase(IOptionsMonitor<TcpServerOptions> monitor, ILogger<CreateSocketUseCase> logger)
 {
     public Socket CreateSocket()
     {
@@ -19,7 +20,7 @@ public class CreateSocketUseCase(IOptionsMonitor<TcpServerOptions> monitor)
         socket.Bind(new IPEndPoint(IPAddress.Any, options.Port));
         socket.Listen(options.Backlog);
 
-        Console.WriteLine($"Created socket with options: {options}");
+        logger.LogInformation("Created socket with options: {@Options}", options);
 
         return socket;
     }

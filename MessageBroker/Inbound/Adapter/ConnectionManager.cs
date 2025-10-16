@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 
 namespace MessageBroker.Inbound.Adapter;
 
-public class ConnectionManager(IConnectionRepository connectionRepository, ILogger<ConnectionManager> logger) : IConnectionManager
+public class ConnectionManager(IConnectionRepository connectionRepository, ILogger<ConnectionManager> logger, ILoggerFactory loggerFactory) : IConnectionManager
 {
     public void RegisterConnection(Socket acceptedSocket, CancellationTokenSource cancellationTokenSource)
     {
@@ -15,13 +15,17 @@ public class ConnectionManager(IConnectionRepository connectionRepository, ILogg
         var handlerTask = Task.Run(() =>
         {
             logger.LogInformation("Started new thread for client: {Endpoint}", acceptedSocket.RemoteEndPoint);
+            var connectionLogger = loggerFactory.CreateLogger<HandleClientConnectionUseCase>();
+            var processLogger = loggerFactory.CreateLogger<ProcessReceivedMessageUseCase>();
             return new HandleClientConnectionUseCase(acceptedSocket,
-                    () => UnregisterConnectionAfterThreadFinish(connectionId))
+                    () => UnregisterConnectionAfterThreadFinish(connectionId),
+                    connectionLogger,
+                    processLogger)
                 .HandleConnection(cancellationTokenSource.Token);
         }, cancellationTokenSource.Token);
 
         var connection = new Connection(connectionId, acceptedSocket.RemoteEndPoint?.ToString() ?? "Unknown",
-            cancellationTokenSource, handlerTask);
+            cancellationTokenSource, handlerTask, loggerFactory.CreateLogger<Connection>());
         connectionRepository.Add(connection);
 
         logger.LogInformation("Registered new connection with ID: {ConnectionId}", connectionId);
