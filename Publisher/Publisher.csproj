@@ -7,9 +7,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <Folder Include="Domain\" />
-      <Folder Include="Inbound\" />
-      <Folder Include="Outbound\Adapter\" />
+        <Folder Include="Inbound\"/>
     </ItemGroup>
 
 </Project>
