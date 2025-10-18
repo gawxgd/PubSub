@@ -9,8 +9,36 @@
     environment:
       - Port=9096
       - Address=0.0.0.0  # Listen on all interfaces in container
+      # - MessageBrokerEnv_Logger__BaseUrl=http://logger:8080
     networks:
       - pubsub-network
+    restart: unless-stopped
+
+  # logger:
+  #   build:
+  #     context: .
+  #     dockerfile: Logger/Dockerfile
+  #   environment:
+  #     - ASPNETCORE_URLS=http://+:8080
+  #   ports:
+  #     - "5022:8080"
+  #   networks: 
+  #     - pubsub-network
+  #   restart: unless-stopped
+
+  pubsubdemo:
+    image: pubsubdemo
+    build:
+      context: .
+      dockerfile: PubSubDemo/Dockerfile
+    environment:
+      - PUBSUB_Broker__Host=messagebroker
+      - PUBSUB_Broker__Port=9096
+      - PUBSUB_Demo__MessageInterval=1000
+    networks:
+      - pubsub-network
+    depends_on:
+      - messagebroker
     restart: unless-stopped
 
 networks:

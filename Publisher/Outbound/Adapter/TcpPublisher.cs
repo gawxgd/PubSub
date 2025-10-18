@@ -99,6 +99,7 @@ public sealed class TcpPublisher(string host, int port, uint maxQueueSize) : IPu
         {
             _client?.Dispose();
             _client = new TcpClient();
+            retryCount++;
 
             try
             {
@@ -109,7 +110,6 @@ public sealed class TcpPublisher(string host, int port, uint maxQueueSize) : IPu
             }
             catch (SocketException ex) when (CanRetrySocketException(ex))
             {
-                retryCount++;
                 var delay = TimeSpan.FromSeconds(BaseRetryDelay.TotalSeconds *
                                                  Math.Min(retryCount, MaxRetryAttemptsBeforeBackoff));
 
@@ -129,7 +129,7 @@ public sealed class TcpPublisher(string host, int port, uint maxQueueSize) : IPu
             catch (Exception ex)
             {
                 Console.WriteLine($"Unrecoverable connection error: {ex.Message}");
-                break;
+                throw new PublisherException($"Unrecoverable connection error {ex.Message}", ex);
             }
         }
     }
