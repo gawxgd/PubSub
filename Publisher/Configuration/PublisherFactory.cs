@@ -14,12 +14,13 @@ public class PublisherFactory
 
     public static IPublisher CreateTcpPublisher(PublisherOptions options)
     {
-        var (host, port, maxQueueSize) = ValidateOptions(options);
+        var (host, port, maxQueueSize, maxSendAttempts, maxRetryAttempts) = ValidateOptions(options);
 
-        return new TcpPublisher(host, port, maxQueueSize);
+        return new TcpPublisher(host, port, maxQueueSize, maxSendAttempts, maxRetryAttempts);
     }
 
-    private static (string host, int port, uint maxQueueSize ) ValidateOptions(PublisherOptions options)
+    private static (string host, int port, uint maxQueueSize, uint maxSendAttempts, uint maxRetryAttempts)
+        ValidateOptions(PublisherOptions options)
     {
         var connectionUri = options.MessageBrokerConnectionUri;
 
@@ -41,12 +42,13 @@ public class PublisherFactory
                 "Port must be between 1 and 65535.");
         }
 
-        if (options.maxPublisherQueueSize > MaxPublisherQueueSize)
+        if (options.MaxPublisherQueueSize > MaxPublisherQueueSize)
         {
-            throw new ArgumentOutOfRangeException(nameof(options.maxPublisherQueueSize),
+            throw new ArgumentOutOfRangeException(nameof(options.MaxPublisherQueueSize),
                 "Max publisher queue size must be less than or equal to 65535.");
         }
 
-        return (connectionUri.Host, connectionUri.Port, options.maxPublisherQueueSize);
+        return (connectionUri.Host, connectionUri.Port, options.MaxPublisherQueueSize, options.MaxSendAttempts,
+            options.MaxRetryAttempts);
     }
 }

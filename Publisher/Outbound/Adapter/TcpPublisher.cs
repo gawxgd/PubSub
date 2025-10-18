@@ -6,12 +6,9 @@ using Publisher.Outbound.Exceptions;
 
 namespace Publisher.Outbound.Adapter;
 
-public sealed class TcpPublisher(string host, int port, uint maxQueueSize) : IPublisher, IAsyncDisposable
+public sealed class TcpPublisher(string host, int port, uint maxQueueSize, uint maxSendAttempts, uint maxRetryAttempts)
+    : IPublisher, IAsyncDisposable
 {
-    private const int MaxRetryAttemptsBeforeBackoff = 5;
-
-    private const int MaxSendAttempts = 5;
-
     // ToDo add a dead letter queue
     private static readonly TimeSpan BaseRetryDelay = TimeSpan.FromSeconds(1);
 
@@ -111,7 +108,7 @@ public sealed class TcpPublisher(string host, int port, uint maxQueueSize) : IPu
             catch (SocketException ex) when (CanRetrySocketException(ex))
             {
                 var delay = TimeSpan.FromSeconds(BaseRetryDelay.TotalSeconds *
-                                                 Math.Min(retryCount, MaxRetryAttemptsBeforeBackoff));
+                                                 Math.Min(retryCount, maxRetryAttempts));
 
                 try
                 {
@@ -141,7 +138,7 @@ public sealed class TcpPublisher(string host, int port, uint maxQueueSize) : IPu
             var attempts = 0;
             var sent = false;
 
-            while (!sent && attempts < MaxSendAttempts && !cancellationToken.IsCancellationRequested)
+            while (!sent && attempts < maxSendAttempts && !cancellationToken.IsCancellationRequested)
             {
                 attempts++;
 
