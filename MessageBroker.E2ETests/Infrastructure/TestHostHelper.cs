@@ -39,4 +39,11 @@ public static class TestHostHelper
             })
             .Build();
     }
+
+    public static async Task<IHost> CreateAndStartTestHostAsync(int? port = null, string address = "127.0.0.1")
+    {
+        var host = CreateTestHost(port, address);
+        await host.StartAsync();
+        return host;
+    }
 }

@@ -1,11 +1,37 @@
+using System.Net.NetworkInformation;
+
 namespace MessageBroker.E2ETests.Infrastructure;
 
 public static class PortManager
 {
-    private static int _currentPort = 9100;
+    private static int _currentPort = 15000; // Start from higher port range to avoid conflicts
 
     public static int GetNextPort()
     {
-        return Interlocked.Increment(ref _currentPort);
+        var port = Interlocked.Increment(ref _currentPort);
+        
+        // Ensure port is available
+        while (!IsPortAvailable(port))
+        {
+            port = Interlocked.Increment(ref _currentPort);
+        }
+        
+        return port;
+    }
+
+    private static bool IsPortAvailable(int port)
+    {
+        try
+        {
+            var ipGlobalProperties = IPGlobalProperties.GetIPGlobalProperties();
+            var tcpConnInfoArray = ipGlobalProperties.GetActiveTcpListeners();
+            
+            return !tcpConnInfoArray.Any(tcpi => tcpi.Port == port);
+        }
+        catch
+        {
+            // If we can't check, assume it's available
+            return true;
+        }
     }
 }
