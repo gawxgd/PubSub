@@ -1,10 +1,13 @@
+using LoggerLib;
+
 namespace MessageBroker.Domain.Entities;
 
 public class Connection(
     long id,
     string clientEndpoint,
     CancellationTokenSource cancellationTokenSource,
-    Task handlerTask) : IDisposable
+    Task handlerTask,
+    ILogger logger) : IDisposable
 {
     private bool _disposed;
     public long Id { get; } = id;

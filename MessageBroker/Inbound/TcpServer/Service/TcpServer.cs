@@ -1,11 +1,12 @@
 using System.Net.Sockets;
+using LoggerLib;
 using MessageBroker.Domain.Logic.TcpServer.UseCase;
 using MessageBroker.Domain.Port.Repositories;
 using Microsoft.Extensions.Hosting;
 
 namespace MessageBroker.Inbound.TcpServer.Service;
 
-public class TcpServer(CreateSocketUseCase createSocketUseCase, IConnectionManager connectionManager)
+public class TcpServer(CreateSocketUseCase createSocketUseCase, IConnectionManager connectionManager, ILogger logger)
     : BackgroundService
 {
     private readonly Socket _socket = createSocketUseCase.CreateSocket();

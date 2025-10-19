@@ -1,6 +1,7 @@
 ﻿using LoggerLib;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using ILogger = LoggerLib.ILogger;
 
 namespace MessageBroker.Infrastructure.DependencyInjection;
 

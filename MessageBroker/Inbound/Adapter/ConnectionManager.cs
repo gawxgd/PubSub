@@ -1,4 +1,5 @@
 using System.Net.Sockets;
+using LoggerLib;
 using MessageBroker.Domain.Entities;
 using MessageBroker.Domain.Logic.TcpServer.UseCase;
 using MessageBroker.Domain.Port;
@@ -6,7 +7,7 @@ using MessageBroker.Domain.Port.Repositories;
 
 namespace MessageBroker.Inbound.Adapter;
 
-public class ConnectionManager(IConnectionRepository connectionRepository) : IConnectionManager
+public class ConnectionManager(IConnectionRepository connectionRepository, ILogger logger) : IConnectionManager
 {
     public void RegisterConnection(Socket acceptedSocket, CancellationTokenSource cancellationTokenSource)
     {
@@ -21,7 +22,7 @@ public class ConnectionManager(IConnectionRepository connectionRepository) : ICo
         }, cancellationTokenSource.Token);
 
         var connection = new Connection(connectionId, acceptedSocket.RemoteEndPoint?.ToString() ?? "Unknown",
-            cancellationTokenSource, handlerTask);
+            cancellationTokenSource, handlerTask, logger);
         connectionRepository.Add(connection);
 
         Console.WriteLine($"Registered new connection with ID: {connectionId}");

@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using FluentAssertions;
 using MessageBroker.Domain.Entities;
 using MessageBroker.Inbound.Adapter;
+using NSubstitute;
 using Xunit;
 
 namespace MessageBroker.UnitTests.Inbound.Adapter.Repositories;
@@ -80,9 +81,10 @@ public class InMemoryConnectionRepositoryTests
     public void Remove_Should_Remove_Connection()
     {
         // Arrange
+        var logger = Substitute.For<LoggerLib.ILogger>();
         var repository = new InMemoryConnectionRepository();
         var cts = new CancellationTokenSource();
-        var connection = new Connection(1, "test", cts, Task.CompletedTask);
+        var connection = new Connection(1, "test", cts, Task.CompletedTask, logger);
         repository.Add(connection);
 
         // Act
@@ -176,6 +178,7 @@ public class InMemoryConnectionRepositoryTests
 
     private static Connection CreateTestConnection(long id)
     {
-        return new Connection(id, $"test-{id}", new CancellationTokenSource(), Task.CompletedTask);
+        var logger = Substitute.For<LoggerLib.ILogger>();
+        return new Connection(id, $"test-{id}", new CancellationTokenSource(), Task.CompletedTask, logger);
     }
 }
