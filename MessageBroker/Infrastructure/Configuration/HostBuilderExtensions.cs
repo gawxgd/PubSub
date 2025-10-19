@@ -24,6 +24,7 @@ public static class HostBuilderExtensions
             {
                 services.AddBrokerOptions(context.Configuration);
                 services.AddTcpServices();
+                services.AddLoggerServices();
             });
 
         return builder;
