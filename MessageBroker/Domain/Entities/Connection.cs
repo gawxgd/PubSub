@@ -1,4 +1,5 @@
 using LoggerLib;
+using ILogger = LoggerLib.ILogger;
 
 namespace MessageBroker.Domain.Entities;
 
@@ -7,7 +8,7 @@ public class Connection(
     string clientEndpoint,
     CancellationTokenSource cancellationTokenSource,
     Task handlerTask,
-    ILogger logger) : IDisposable
+    LoggerLib.ILogger logger) : IDisposable
 {
     private bool _disposed;
     public long Id { get; } = id;
@@ -27,14 +28,14 @@ public class Connection(
         CancellationTokenSource.Dispose();
         _disposed = true;
         GC.SuppressFinalize(this);
-        Console.WriteLine($"Connection with id {Id} has been disposed.");
+        logger.LogWarning(LogSource.MessageBroker,$"Connection with id {Id} has been disposed.");
     }
 
     public async Task DisconnectAsync()
     {
         if (_disposed || CancellationTokenSource.IsCancellationRequested)
         {
-            Console.WriteLine($"Connection with id {Id} has been already disconnected / disposed.");
+            logger.LogWarning(LogSource.MessageBroker,$"Connection with id {Id} has been already disconnected / disposed.");
             return;
         }
 
@@ -44,12 +45,12 @@ public class Connection(
         try
         {
             await HandlerTask.WaitAsync(timeoutCts.Token);
-            Console.WriteLine($"Connection with id {Id} has been disconnected.");
+            logger.LogInfo(LogSource.MessageBroker,$"Connection with id {Id} has been disconnected.");
         }
         catch (OperationCanceledException)
         {
             // Timeout - handler didn't complete in time
-            Console.WriteLine($"Connection {Id} handler did not complete within timeout");
+            logger.LogWarning(LogSource.MessageBroker,$"Connection with id {Id} has disconnected.");
         }
     }
 }

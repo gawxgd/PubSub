@@ -1,4 +1,3 @@
-using API.Infrastructure.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 

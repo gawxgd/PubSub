@@ -8,6 +8,7 @@
         Api,
         Storage,
         System,
-        Other
+        Other,
+        TcpServer
     }
 }
