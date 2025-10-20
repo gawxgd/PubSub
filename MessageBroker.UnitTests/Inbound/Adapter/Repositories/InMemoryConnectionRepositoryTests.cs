@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using FluentAssertions;
+using LoggerLib.Domain.Port;
 using MessageBroker.Domain.Entities;
 using MessageBroker.Inbound.Adapter;
 using NSubstitute;
@@ -81,7 +82,7 @@ public class InMemoryConnectionRepositoryTests
     public void Remove_Should_Remove_Connection()
     {
         // Arrange
-        var logger = Substitute.For<LoggerLib.ILogger>();
+        var logger = Substitute.For<ILogger>();
         var repository = new InMemoryConnectionRepository();
         var cts = new CancellationTokenSource();
         var connection = new Connection(1, "test", cts, Task.CompletedTask, logger);
@@ -178,7 +179,7 @@ public class InMemoryConnectionRepositoryTests
 
     private static Connection CreateTestConnection(long id)
     {
-        var logger = Substitute.For<LoggerLib.ILogger>();
+        var logger = Substitute.For<ILogger>();
         return new Connection(id, $"test-{id}", new CancellationTokenSource(), Task.CompletedTask, logger);
     }
 }

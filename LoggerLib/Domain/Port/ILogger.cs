@@ -1,4 +1,6 @@
-﻿namespace LoggerLib;
+﻿using LoggerLib.Domain.Enums;
+
+namespace LoggerLib.Domain.Port;
 
 public interface ILogger
 {

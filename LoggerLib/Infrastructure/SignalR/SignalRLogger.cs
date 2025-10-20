@@ -1,36 +1,52 @@
-﻿using Microsoft.AspNetCore.SignalR;
+﻿using LoggerLib.Domain.Enums;
+using LoggerLib.Domain.Port;
+using Microsoft.AspNetCore.SignalR;
 
-namespace LoggerLib
+namespace LoggerLib.Infrastructure.SignalR
 {
-    public class SignalRLogger : ILogger
+    /// <summary>
+    /// A logger implementation that broadcasts log messages to all connected SignalR clients.
+    /// </summary>
+    public class SignalRLogger(IHubContext<LogHub> hubContext) : ILogger
     {
-        private readonly IHubContext<LogHub> _hubContext;
-        
-        public SignalRLogger(IHubContext<LogHub> hubContext)
-        {
-            _hubContext = hubContext;
-        }
-
+        /// <summary>
+        /// Sends an informational log message to all clients.
+        /// </summary>
+        /// <param name="source">The source of the log (e.g., TcpServer, MessageBroker).</param>
+        /// <param name="message">The log message content.</param>
         public void LogInfo(LogSource source, string message)
         {
-            _hubContext.Clients.All.SendAsync("ReceiveLog", "INFO", source.ToString(), message);
+            hubContext.Clients.All.SendAsync("ReceiveLog", "INFO", source.ToString(), message);
         }
 
+        /// <summary>
+        /// Sends an error log message to all clients.
+        /// </summary>
+        /// <param name="source">The source of the log.</param>
+        /// <param name="message">The error message content.</param>
         public void LogError(LogSource source, string message)
         {
-            _hubContext.Clients.All.SendAsync("ReceiveLog", "ERROR", source.ToString(), message);
+            hubContext.Clients.All.SendAsync("ReceiveLog", "ERROR", source.ToString(), message);
         }
 
+        /// <summary>
+        /// Sends a debug log message to all clients.
+        /// </summary>
+        /// <param name="source">The source of the log.</param>
+        /// <param name="message">The debug message content.</param>
         public void LogDebug(LogSource source, string message)
         {
-            _hubContext.Clients.All.SendAsync("ReceiveLog", "DEBUG", source.ToString(), message);
+            hubContext.Clients.All.SendAsync("ReceiveLog", "DEBUG", source.ToString(), message);
         }
 
+        /// <summary>
+        /// Sends a warning log message to all clients.
+        /// </summary>
+        /// <param name="source">The source of the log.</param>
+        /// <param name="message">The warning message content.</param>
         public void LogWarning(LogSource source, string message)
         {
-            _hubContext.Clients.All.SendAsync("ReceiveLog", "WARNING", source.ToString(), message);
+            hubContext.Clients.All.SendAsync("ReceiveLog", "WARNING", source.ToString(), message);
         }
     }
-    
-    
 }

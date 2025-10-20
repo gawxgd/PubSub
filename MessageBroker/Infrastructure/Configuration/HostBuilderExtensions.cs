@@ -1,5 +1,6 @@
-using Logger.Infrastructure.DependencyInjection;
 using LoggerLib;
+using LoggerLib.Infrastructure.DependencyInjection;
+using LoggerLib.Infrastructure.SignalR;
 using MessageBroker.Infrastructure.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;

@@ -1,5 +1,6 @@
 using LoggerLib;
-using ILogger = LoggerLib.ILogger;
+using LoggerLib.Domain.Enums;
+using ILogger = LoggerLib.Domain.Port.ILogger;
 
 namespace MessageBroker.Domain.Entities;
 
@@ -8,7 +9,7 @@ public class Connection(
     string clientEndpoint,
     CancellationTokenSource cancellationTokenSource,
     Task handlerTask,
-    LoggerLib.ILogger logger) : IDisposable
+    ILogger logger) : IDisposable
 {
     private bool _disposed;
     public long Id { get; } = id;

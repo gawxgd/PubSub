@@ -1,9 +1,10 @@
 using System.Net;
 using System.Net.Sockets;
 using LoggerLib;
+using LoggerLib.Domain.Enums;
 using MessageBroker.Infrastructure.Configuration.Options;
 using Microsoft.Extensions.Options;
-using ILogger = LoggerLib.ILogger;
+using ILogger = LoggerLib.Domain.Port.ILogger;
 
 namespace MessageBroker.Domain.Logic.TcpServer.UseCase;
 

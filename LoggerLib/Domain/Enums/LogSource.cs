@@ -1,4 +1,4 @@
-﻿namespace LoggerLib
+﻿namespace LoggerLib.Domain.Enums
 {
     public enum LogSource
     {

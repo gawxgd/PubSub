@@ -1,9 +1,8 @@
-﻿using LoggerLib;
+﻿using LoggerLib.Infrastructure.SignalR;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.AspNetCore.Routing;
-using ILogger = LoggerLib.ILogger;
+using ILogger = LoggerLib.Domain.Port.ILogger;
 
-namespace Logger.Infrastructure.DependencyInjection;
+namespace LoggerLib.Infrastructure.DependencyInjection;
 
 public static class LoggerServiceRegistration
 {

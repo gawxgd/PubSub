@@ -1,5 +1,6 @@
 using LoggerLib;
-using ILogger = LoggerLib.ILogger;
+using LoggerLib.Domain.Enums;
+using ILogger = LoggerLib.Domain.Port.ILogger;
 
 namespace MessageBroker.Domain.Logic.TcpServer.UseCase;
 
