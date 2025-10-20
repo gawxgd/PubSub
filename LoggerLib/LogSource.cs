@@ -2,7 +2,7 @@
 {
     public enum LogSource
     {
-        Tcp,
+        MessageBroker,
         Publisher,
         Subscriber,
         Api,

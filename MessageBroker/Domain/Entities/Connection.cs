@@ -20,7 +20,7 @@ public class Connection(
     {
         if (_disposed)
         {
-            Console.WriteLine($"Connection with id {Id} has bean already disposed.");
+            logger.LogWarning(LogSource.MessageBroker,$"Connection with id {Id} has been already disposed.");
             return;
         }
 
