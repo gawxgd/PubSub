@@ -49,6 +49,26 @@ public class TcpServer(CreateSocketUseCase createSocketUseCase, IConnectionManag
         {
             Console.WriteLine($"Exception during connection cleanup: {ex.Message}");
         }
+
+        try
+        {
+            _socket.Shutdown(SocketShutdown.Receive);
+            Console.WriteLine("Socket shutdown initiated - stopped accepting new connections");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Exception during socket shutdown: {ex.Message}");
+        }
+
+        try
+        {
+            _socket.Close();
+            Console.WriteLine("Socket closed and port released");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Exception during socket cleanup: {ex.Message}");
+        }
     }
 
     public override void Dispose()

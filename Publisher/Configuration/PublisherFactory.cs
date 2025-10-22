@@ -5,7 +5,7 @@ using Publisher.Outbound.Adapter;
 
 namespace Publisher.Configuration;
 
-public class PublisherFactory
+public sealed class PublisherFactory : IPublisherFactory
 {
     private const int MinPort = 1;
     private const int MaxPort = 65535;
@@ -13,7 +13,7 @@ public class PublisherFactory
     private const string AllowedUriScheme = "messageBroker";
 
 
-    public static IPublisher CreatePublisher(PublisherOptions options)
+    public IPublisher CreatePublisher(PublisherOptions options)
     {
         var (host, port, maxQueueSize, maxSendAttempts, maxRetryAttempts) = ValidateOptions(options);
 

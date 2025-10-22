@@ -16,6 +16,8 @@ public class CreateSocketUseCase(IOptionsMonitor<TcpServerOptions> monitor)
         if (options.InlineCompletions)
             Environment.SetEnvironmentVariable("DOTNET_SYSTEM_NET_SOCKETS_INLINE_COMPLETIONS", "1");
 
+        socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+
         var address = IPAddress.Parse(options.Address);
         socket.Bind(new IPEndPoint(address, options.Port));
         socket.Listen(options.Backlog);
