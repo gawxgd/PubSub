@@ -1,17 +1,10 @@
-using System.IO.Pipelines;
-using System.Net.Sockets;
 using System.Threading.Channels;
 using Publisher.Domain.Port;
-using Publisher.Outbound.Exceptions;
 
 namespace Publisher.Outbound.Adapter;
 
-public sealed class TcpPublisher(string host, int port, uint maxQueueSize, uint maxSendAttempts, uint maxRetryAttempts)
-    : IPublisher, IAsyncDisposable
+public sealed class TcpPublisher(string host, int port, uint maxSendAttempts, uint maxQueueSize, uint maxRetryAttempts) : IPublisher, IAsyncDisposable
 {
-    // ToDo add a dead letter queue
-    private static readonly TimeSpan BaseRetryDelay = TimeSpan.FromSeconds(1);
-
     private readonly Channel<byte[]> _channel = Channel.CreateBounded<byte[]>(
         new BoundedChannelOptions((int)maxQueueSize)
         {
@@ -19,216 +12,93 @@ public sealed class TcpPublisher(string host, int port, uint maxQueueSize, uint 
             SingleReader = true,
             SingleWriter = false
         });
-
-    private readonly CancellationTokenSource _cts = new();
-
+    
     private readonly Channel<byte[]> _deadLetterChannel = Channel.CreateBounded<byte[]>(
         new BoundedChannelOptions((int)maxQueueSize)
         {
             FullMode = BoundedChannelFullMode.DropNewest
         });
+    
+    private readonly CancellationTokenSource _cancellationTokenSource = new();
+    
+    private IPublisherConnection? _currentPublisherConnection;
+    
+    private static readonly TimeSpan BaseRetryDelay = TimeSpan.FromSeconds(1);
 
-    private TcpClient? _client;
-    private PipeWriter? _pipeWriter;
-    private Task? _processChannelTask;
-
-    public async ValueTask DisposeAsync()
-    {
-        await _cts.CancelAsync();
-
-        _channel.Writer.TryComplete();
-
-        if (_processChannelTask != null)
-        {
-            try
-            {
-                await _processChannelTask;
-            }
-            catch
-            {
-                Console.WriteLine("Error while awaiting sender task");
-            }
-        }
-
-        if (_pipeWriter != null)
-        {
-            try
-            {
-                await _pipeWriter.FlushAsync();
-                await _pipeWriter.CompleteAsync();
-            }
-            catch
-            {
-                Console.WriteLine("Error when disposing publishers pipe writer");
-            }
-        }
-
-        _client?.Dispose();
-        _cts.Dispose();
-    }
-
-    public async Task ConnectAsync(CancellationToken cancellationToken)
-    {
-        await HandleConnectionToBroker(cancellationToken);
-        _processChannelTask = Task.Run(() => ProcessChannelAsync(_cts.Token), _cts.Token);
-    }
-
-    public async Task PublishAsync(byte[] message, CancellationToken cancellationToken = default)
-    {
-        if (_client is null)
-        {
-            throw new PublisherException("Client is not created");
-        }
-
-        if (!_client.Connected)
-        {
-            throw new PublisherException("Publisher is not connected");
-        }
-
-        await _channel.Writer.WriteAsync(message, cancellationToken);
-    }
-
-    private async Task HandleConnectionToBroker(CancellationToken cancellationToken)
+    public async Task CreateConnection()
     {
         var retryCount = 0;
-
-        while (!cancellationToken.IsCancellationRequested)
+        
+        while (retryCount < maxRetryAttempts && !_cancellationTokenSource.Token.IsCancellationRequested)
         {
-            _client?.Dispose();
-            _client = new TcpClient();
             retryCount++;
-
+            
             try
             {
-                await _client.ConnectAsync(host, port, cancellationToken);
-                _pipeWriter = PipeWriter.Create(_client.GetStream());
-                Console.WriteLine($"Connected to broker on {_client.Client.RemoteEndPoint}");
+                _currentPublisherConnection = new TcpPublisherConnection(host, port, maxSendAttempts, _channel.Reader, _deadLetterChannel);
+                await _currentPublisherConnection.ConnectAsync();
                 break;
             }
-            catch (SocketException ex) when (CanRetrySocketException(ex))
+            catch (PublisherConnectionException ex)
             {
                 var delay = TimeSpan.FromSeconds(BaseRetryDelay.TotalSeconds *
                                                  Math.Min(retryCount, maxRetryAttempts));
+                
+                Console.WriteLine($"Caught retriable exception {ex.Message}, retrying connection after {delay} delay");
 
-                try
-                {
-                    await Task.Delay(delay, cancellationToken);
-                }
-                catch (OperationCanceledException)
-                {
-                    break;
-                }
+                await SafeDisconnectPublisher();
+                
+                await Task.Delay(delay, _cancellationTokenSource.Token);
             }
             catch (OperationCanceledException)
             {
+                Console.WriteLine("Operation cancelled");
                 break;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Unrecoverable connection error: {ex.Message}");
-                throw new PublisherException($"Unrecoverable connection error {ex.Message}", ex);
+                Console.WriteLine($"Unrecoverable connection: {ex.Message}");
+                
+                await SafeDisconnectPublisher();
+                throw;
             }
         }
     }
 
-    private async Task ProcessChannelAsync(CancellationToken cancellationToken)
+    public async Task PublishAsync(byte[] message)
     {
-        await foreach (var msg in _channel.Reader.ReadAllAsync(cancellationToken))
+        await _channel.Writer.WriteAsync(message, _cancellationTokenSource.Token);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
         {
-            var attempts = 0;
-            var sent = false;
+            await _cancellationTokenSource.CancelAsync();
+            
+            _channel.Writer.TryComplete();
+            
+            await _channel.Reader.Completion;
 
-            while (!sent && attempts < maxSendAttempts && !cancellationToken.IsCancellationRequested)
-            {
-                attempts++;
+            await SafeDisconnectPublisher();
+            
+            _deadLetterChannel.Writer.TryComplete();
+            
+            await _deadLetterChannel.Reader.Completion;
 
-                try
-                {
-                    if (_pipeWriter == null)
-                    {
-                        await HandleReconnectAsync(cancellationToken);
-                        continue;
-                    }
-
-                    var buffer = _pipeWriter.GetMemory(msg.Length);
-                    msg.CopyTo(buffer);
-                    _pipeWriter.Advance(msg.Length);
-
-                    var result = await _pipeWriter.FlushAsync(cancellationToken);
-                    if (result.IsCompleted || result.IsCanceled)
-                    {
-                        await HandleReconnectAsync(cancellationToken);
-                        continue;
-                    }
-
-                    sent = true;
-                }
-                catch (IOException ex)
-                {
-                    Console.WriteLine($"IO exception: {ex.Message} retrying connection");
-                    await HandleReconnectAsync(cancellationToken);
-                }
-                catch (SocketException ex) when (CanRetrySocketException(ex))
-                {
-                    Console.WriteLine($"Retriable socket exception: {ex.Message} retrying connection");
-                    await HandleReconnectAsync(cancellationToken);
-                }
-                catch (OperationCanceledException)
-                {
-                    return;
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Unexpected error while sending message: {ex.Message}");
-                    break;
-                }
-            }
-
-            if (!sent)
-            {
-                SendToDeadLetterNoBlocking(msg);
-            }
+            _cancellationTokenSource.Dispose();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Exception while disposing " + ex);
         }
     }
 
-    private async Task HandleReconnectAsync(CancellationToken cancellationToken)
+    private async Task SafeDisconnectPublisher()
     {
-        if (_pipeWriter != null)
+        if (_currentPublisherConnection != null)
         {
-            await _pipeWriter.CompleteAsync();
-
-            _pipeWriter = null;
+            await _currentPublisherConnection.DisconnectAsync();
         }
-
-        await HandleConnectionToBroker(cancellationToken);
-    }
-
-    private void SendToDeadLetterNoBlocking(byte[] msg)
-    {
-        if (!_deadLetterChannel.Writer.TryWrite(msg))
-        {
-            Console.WriteLine("Dead-letter queue full, newest message dropped.");
-            return;
-        }
-
-        Console.WriteLine($"Send {msg} to dead letter queue");
-    }
-
-    private static bool CanRetrySocketException(SocketException ex)
-    {
-        return ex.SocketErrorCode switch
-        {
-            SocketError.TimedOut or
-                SocketError.NetworkDown or
-                SocketError.NetworkUnreachable or
-                SocketError.HostUnreachable or
-                SocketError.Interrupted or
-                SocketError.ConnectionAborted or
-                SocketError.ConnectionReset or
-                SocketError.ProcessLimit or
-                SocketError.SystemNotReady or
-                SocketError.TryAgain => true,
-            _ => false
-        };
     }
 }

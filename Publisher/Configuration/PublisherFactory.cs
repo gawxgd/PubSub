@@ -1,3 +1,4 @@
+using Publisher.Configuration.Exceptions;
 using Publisher.Configuration.Options;
 using Publisher.Domain.Port;
 using Publisher.Outbound.Adapter;
@@ -12,7 +13,7 @@ public class PublisherFactory
     private const string AllowedUriScheme = "messageBroker";
 
 
-    public static IPublisher CreateTcpPublisher(PublisherOptions options)
+    public static IPublisher CreatePublisher(PublisherOptions options)
     {
         var (host, port, maxQueueSize, maxSendAttempts, maxRetryAttempts) = ValidateOptions(options);
 
@@ -26,26 +27,30 @@ public class PublisherFactory
 
         if (!connectionUri.IsAbsoluteUri)
         {
-            throw new ArgumentException("Broker URI must be absolute.", nameof(connectionUri));
+            throw new PublisherFactoryException(
+                $"Broker URI '{connectionUri}' must be absolute.",
+                PublisherFactoryErrorCode.InvalidUri);
         }
 
         if (!string.Equals(AllowedUriScheme, connectionUri.Scheme.ToLowerInvariant()))
         {
-            throw new ArgumentException(
-                $"Unsupported URI scheme '{connectionUri.Scheme}'. Allowed: {string.Join(", ", AllowedUriScheme)}.",
-                nameof(connectionUri));
+            throw new PublisherFactoryException(
+                $"Unsupported URI scheme '{connectionUri.Scheme}'. Allowed: '{AllowedUriScheme}'.",
+                PublisherFactoryErrorCode.UnsupportedScheme);
         }
 
         if (connectionUri.Port is < MinPort or > MaxPort)
         {
-            throw new ArgumentOutOfRangeException(nameof(connectionUri),
-                "Port must be between 1 and 65535.");
+            throw new PublisherFactoryException(
+                $"Port '{connectionUri.Port}' must be between {MinPort} and {MaxPort}.",
+                PublisherFactoryErrorCode.InvalidPort);
         }
 
         if (options.MaxPublisherQueueSize > MaxPublisherQueueSize)
         {
-            throw new ArgumentOutOfRangeException(nameof(options.MaxPublisherQueueSize),
-                "Max publisher queue size must be less than or equal to 65535.");
+            throw new PublisherFactoryException(
+                $"Max publisher queue size '{options.MaxPublisherQueueSize}' exceeds limit of {MaxPublisherQueueSize}.",
+                PublisherFactoryErrorCode.QueueSizeExceeded);
         }
 
         return (connectionUri.Host, connectionUri.Port, options.MaxPublisherQueueSize, options.MaxSendAttempts,

@@ -115,7 +115,7 @@ public class TcpServerChaosTests
                 try
                 {
                     var publisher = new TcpPublisher(hostAddress, port, 1000, 3, 5);
-                    await publisher.ConnectAsync(CancellationToken.None);
+                    await publisher.CreateConnection();
                     publishers.Add(publisher);
 
                     var behavior = random.Next(6);
@@ -170,7 +170,7 @@ public class TcpServerChaosTests
 
             // Server should survive chaos
             await using var testPublisher = new TcpPublisher(hostAddress, port, 1000, 3, 5);
-            await testPublisher.ConnectAsync(CancellationToken.None);
+            await testPublisher.CreateConnection();
             await testPublisher.PublishAsync(Encoding.UTF8.GetBytes("Test after chaos"));
             await Task.Delay(100);
         }
@@ -215,7 +215,7 @@ public class TcpServerChaosTests
                     try
                     {
                         var publisher = new TcpPublisher(hostAddress, port, 1000, 3, 5);
-                        await publisher.ConnectAsync(CancellationToken.None);
+                        await publisher.CreateConnection();
                         publishers.Add(publisher);
 
                         // Send some messages
@@ -243,7 +243,7 @@ public class TcpServerChaosTests
 
             // Server should still be functional
             await using var testPublisher = new TcpPublisher(hostAddress, port, 1000, 3, 5);
-            await testPublisher.ConnectAsync(CancellationToken.None);
+            await testPublisher.CreateConnection();
             await testPublisher.PublishAsync(Encoding.UTF8.GetBytes("Test after storm"));
             await Task.Delay(100);
         }
@@ -283,7 +283,7 @@ public class TcpServerChaosTests
             for (var i = 0; i < 10; i++)
             {
                 var publisher = new TcpPublisher(hostAddress, port, 10000, 3, 5);
-                await publisher.ConnectAsync(CancellationToken.None);
+                await publisher.CreateConnection();
                 publishers.Add(publisher);
 
                 var publisherId = i;
@@ -309,7 +309,7 @@ public class TcpServerChaosTests
 
             // Server should still be functional
             await using var testPublisher = new TcpPublisher(hostAddress, port, 1000, 3, 5);
-            await testPublisher.ConnectAsync(CancellationToken.None);
+            await testPublisher.CreateConnection();
             await testPublisher.PublishAsync(Encoding.UTF8.GetBytes("Test after flood"));
             await Task.Delay(100);
         }

@@ -79,3 +79,4 @@ catch (Exception ex)
 
 Console.WriteLine("\n👋 PubSub Demo finished.");
 return 0;
+

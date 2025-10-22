@@ -32,7 +32,7 @@ public sealed class MessagePublisherService : IAsyncDisposable
         Console.WriteLine("Starting Message Publisher Service...");
         
         // Connect to the broker
-        await _publisher.ConnectAsync(cancellationToken);
+        await _publisher.CreateConnection();
         Console.WriteLine("Connected to message broker successfully!");
 
         // Start publishing messages
@@ -86,7 +86,7 @@ public sealed class MessagePublisherService : IAsyncDisposable
                 var bytes = Encoding.UTF8.GetBytes(json);
 
                 // Publish to broker
-                await _publisher.PublishAsync(bytes, cancellationToken);
+                await _publisher.PublishAsync(bytes);
                 
                 Interlocked.Increment(ref _messagesSent);
 
@@ -138,7 +138,7 @@ public sealed class MessagePublisherService : IAsyncDisposable
                 var json = JsonSerializer.Serialize(message);
                 var bytes = Encoding.UTF8.GetBytes(json);
 
-                await _publisher.PublishAsync(bytes, cancellationToken);
+                await _publisher.PublishAsync(bytes);
                 Interlocked.Increment(ref _messagesSent);
             }
             catch (Exception ex)
@@ -180,4 +180,6 @@ public sealed class DemoMessage
     public string Source { get; set; } = string.Empty;
     public string MessageType { get; set; } = string.Empty;
 }
+
+
 

@@ -387,7 +387,7 @@ public class TcpServerEdgeCasesE2ETests
         await Task.Delay(500);
 
         var publisher = new TcpPublisher(HostAddress, port, 1000, 3, 5);
-        await publisher.ConnectAsync(CancellationToken.None);
+        await publisher.CreateConnection();
 
         // Send some messages
         await publisher.PublishAsync(Encoding.UTF8.GetBytes("Test message 1"));
@@ -402,7 +402,7 @@ public class TcpServerEdgeCasesE2ETests
 
         // Server should still be running and accept new connections
         await using var newPublisher = new TcpPublisher(HostAddress, port, 1000, 3, 5);
-        await newPublisher.ConnectAsync(CancellationToken.None);
+        await newPublisher.CreateConnection();
         await newPublisher.PublishAsync(Encoding.UTF8.GetBytes("New publisher message"));
         await Task.Delay(100);
 
@@ -418,7 +418,7 @@ public class TcpServerEdgeCasesE2ETests
         await Task.Delay(500);
 
         await using var publisher = new TcpPublisher(HostAddress, port, 10000, 3, 5);
-        await publisher.ConnectAsync(CancellationToken.None);
+        await publisher.CreateConnection();
 
         // Send large message (1MB)
         var largeData = new byte[1024 * 1024];
@@ -443,7 +443,7 @@ public class TcpServerEdgeCasesE2ETests
         await Task.Delay(500);
 
         await using var publisher = new TcpPublisher(HostAddress, port, 10000, 3, 5);
-        await publisher.ConnectAsync(CancellationToken.None);
+        await publisher.CreateConnection();
 
         var messageCount = 200;
 
@@ -478,7 +478,7 @@ public class TcpServerEdgeCasesE2ETests
         var exception = await Record.ExceptionAsync(async () =>
         {
             await using var publisher = new TcpPublisher(HostAddress, port, 1000, 3, 5);
-            await publisher.ConnectAsync(CancellationToken.None);
+            await publisher.CreateConnection();
         });
 
         // Either connects and works, or fails gracefully (no crash)
@@ -500,7 +500,7 @@ public class TcpServerEdgeCasesE2ETests
         await Task.Delay(500);
 
         await using var publisher = new TcpPublisher(HostAddress, port, 1000, 3, 5);
-        await publisher.ConnectAsync(CancellationToken.None);
+        await publisher.CreateConnection();
 
         // Binary data with nulls
         var binaryData = new byte[] { 0x00, 0xFF, 0x00, 0x01, 0x00, 0x7F };
@@ -526,7 +526,7 @@ public class TcpServerEdgeCasesE2ETests
         await Task.Delay(500);
 
         await using var publisher = new TcpPublisher(HostAddress, port, 1000, 3, 5);
-        await publisher.ConnectAsync(CancellationToken.None);
+        await publisher.CreateConnection();
         await publisher.PublishAsync(Encoding.UTF8.GetBytes("Before restart"));
         await Task.Delay(100);
 
