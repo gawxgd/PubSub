@@ -16,7 +16,7 @@ namespace LoggerLib.Infrastructure.SignalR
         /// <param name="message">The log message content.</param>
         public void LogInfo(LogSource source, string message)
         {
-            hubContext.Clients.All.SendAsync("ReceiveLog", "INFO", source.ToString(), message);
+            hubContext.Clients.All.SendAsync("ReceiveLog", LogType.INFO, source.ToString(), message);
         }
 
         /// <summary>
@@ -26,7 +26,7 @@ namespace LoggerLib.Infrastructure.SignalR
         /// <param name="message">The error message content.</param>
         public void LogError(LogSource source, string message)
         {
-            hubContext.Clients.All.SendAsync("ReceiveLog", "ERROR", source.ToString(), message);
+            hubContext.Clients.All.SendAsync("ReceiveLog", LogType.ERROR, source.ToString(), message);
         }
 
         /// <summary>
@@ -36,7 +36,7 @@ namespace LoggerLib.Infrastructure.SignalR
         /// <param name="message">The debug message content.</param>
         public void LogDebug(LogSource source, string message)
         {
-            hubContext.Clients.All.SendAsync("ReceiveLog", "DEBUG", source.ToString(), message);
+            hubContext.Clients.All.SendAsync("ReceiveLog", LogType.DEBUG, source.ToString(), message);
         }
 
         /// <summary>
@@ -46,7 +46,7 @@ namespace LoggerLib.Infrastructure.SignalR
         /// <param name="message">The warning message content.</param>
         public void LogWarning(LogSource source, string message)
         {
-            hubContext.Clients.All.SendAsync("ReceiveLog", "WARNING", source.ToString(), message);
+            hubContext.Clients.All.SendAsync("ReceiveLog", LogType.WARNING, source.ToString(), message);
         }
     }
 }
