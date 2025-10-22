@@ -27,6 +27,11 @@ public sealed class TcpPublisher(string host, int port, uint maxSendAttempts, ui
 
     public async Task CreateConnection()
     {
+        if (_currentPublisherConnection != null)
+        {
+            throw new InvalidOperationException("Publisher is already connected");
+        }
+        
         var retryCount = 0;
         
         while (retryCount < maxRetryAttempts && !_cancellationTokenSource.Token.IsCancellationRequested)

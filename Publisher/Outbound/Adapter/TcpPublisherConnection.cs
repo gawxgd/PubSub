@@ -163,7 +163,7 @@ public sealed class TcpPublisherConnection(
     {
         return ex.SocketErrorCode switch
         {
-            SocketError.TimedOut or
+                SocketError.TimedOut or
                 SocketError.NetworkDown or
                 SocketError.NetworkUnreachable or
                 SocketError.HostUnreachable or
