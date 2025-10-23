@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Sockets;
 using FluentAssertions;
+using LoggerLib.Domain.Port;
 using MessageBroker.Domain.Entities;
 using MessageBroker.Domain.Port;
 using MessageBroker.Inbound.Adapter;
@@ -15,9 +16,10 @@ public class ConnectionManagerTests
     public void RegisterConnection_Should_Generate_Id_And_Add_Connection()
     {
         // Arrange
+        var logger = Substitute.For<ILogger>();
         var repository = Substitute.For<IConnectionRepository>();
         repository.GenerateConnectionId().Returns(42L);
-        var manager = new ConnectionManager(repository);
+        var manager = new ConnectionManager(repository, logger);
         var socket = CreateMockSocket();
         var cts = new CancellationTokenSource();
 
@@ -36,12 +38,13 @@ public class ConnectionManagerTests
     public async Task UnregisterConnectionAsync_Should_Disconnect_And_Remove()
     {
         // Arrange
+        var logger = Substitute.For<ILogger>();
         var repository = Substitute.For<IConnectionRepository>();
         var tcs = new TaskCompletionSource();
         var cts = new CancellationTokenSource();
-        var connection = new Connection(1, "test", cts, tcs.Task);
+        var connection = new Connection(1, "test", cts, tcs.Task, logger);
         repository.Get(1).Returns(connection);
-        var manager = new ConnectionManager(repository);
+        var manager = new ConnectionManager(repository, logger);
 
         // Act
         var unregisterTask = manager.UnregisterConnectionAsync(1);
@@ -57,9 +60,10 @@ public class ConnectionManagerTests
     public async Task UnregisterConnectionAsync_Should_Handle_NonExistent_Connection()
     {
         // Arrange
+        var logger = Substitute.For<ILogger>();
         var repository = Substitute.For<IConnectionRepository>();
         repository.Get(999).Returns((Connection?)null);
-        var manager = new ConnectionManager(repository);
+        var manager = new ConnectionManager(repository, logger);
 
         // Act
         var act = async () => await manager.UnregisterConnectionAsync(999);
@@ -73,17 +77,18 @@ public class ConnectionManagerTests
     public async Task UnregisterAllConnectionsAsync_Should_Disconnect_And_Clear_All()
     {
         // Arrange
+        var logger = Substitute.For<ILogger>();
         var repository = Substitute.For<IConnectionRepository>();
         var tcs1 = new TaskCompletionSource();
         var tcs2 = new TaskCompletionSource();
         var cts1 = new CancellationTokenSource();
         var cts2 = new CancellationTokenSource();
         
-        var conn1 = new Connection(1, "test1", cts1, tcs1.Task);
-        var conn2 = new Connection(2, "test2", cts2, tcs2.Task);
+        var conn1 = new Connection(1, "test1", cts1, tcs1.Task, logger);
+        var conn2 = new Connection(2, "test2", cts2, tcs2.Task, logger);
         
         repository.GetAll().Returns(new List<Connection> { conn1, conn2 });
-        var manager = new ConnectionManager(repository);
+        var manager = new ConnectionManager(repository, logger);
 
         // Act
         var unregisterTask = manager.UnregisterAllConnectionsAsync();
