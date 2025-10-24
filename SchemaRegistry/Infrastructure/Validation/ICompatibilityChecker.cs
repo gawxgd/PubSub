@@ -4,8 +4,8 @@ namespace SchemaRegistry.Infrastructure.Validation
 {
     public interface ICompatibilityChecker
     {
-        bool IsBackwardCompatible(RecordSchema newSchemaJson, RecordSchema oldSchemaJson);
+        bool IsBackwardCompatible(RecordSchema newSchema, RecordSchema oldSchema);
         
-        bool IsForwardCompatible(RecordSchema newSchemaJson, RecordSchema oldSchemaJson);
+        bool IsForwardCompatible(RecordSchema newSchema, RecordSchema oldSchema);
     }
 }

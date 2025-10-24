@@ -34,7 +34,7 @@ else
 }
 
 // core services
-builder.Services.AddSingleton<ICompatibilityChecker, AlwaysTrueCompatibilityChecker>();
+builder.Services.AddSingleton<ICompatibilityChecker, CompatibilityChecker>();
 builder.Services.AddScoped<ISchemaRegistryService, SchemaRegistryService>();
 
 var app = builder.Build();

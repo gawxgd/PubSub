@@ -4,12 +4,12 @@ namespace SchemaRegistry.Infrastructure.Validation;
 
 public class AlwaysTrueCompatibilityChecker : ICompatibilityChecker
 {
-    public bool IsBackwardCompatible(RecordSchema newSchemaJson, RecordSchema oldSchemaJson)
+    public bool IsBackwardCompatible(RecordSchema newSchema, RecordSchema oldSchema)
     {
         return true;
     }
 
-    public bool IsForwardCompatible(RecordSchema newSchemaJson, RecordSchema oldSchemaJson)
+    public bool IsForwardCompatible(RecordSchema newSchema, RecordSchema oldSchema)
     {
         return true;
     }
