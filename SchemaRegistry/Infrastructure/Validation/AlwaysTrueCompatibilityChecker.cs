@@ -1,15 +1,15 @@
-namespace SchemaRegistry.Infrastructure.Validation;
+using Chr.Avro.Abstract;
 
-// TODO: implement a real compatibility checker
+namespace SchemaRegistry.Infrastructure.Validation;
 
 public class AlwaysTrueCompatibilityChecker : ICompatibilityChecker
 {
-    public bool IsBackwardCompatible(string newWriterSchemaJson, string oldReaderSchemaJson)
+    public bool IsBackwardCompatible(RecordSchema newSchemaJson, RecordSchema oldSchemaJson)
     {
         return true;
     }
 
-    public bool IsForwardCompatible(string newWriterSchemaJson, string oldReaderSchemaJson)
+    public bool IsForwardCompatible(RecordSchema newSchemaJson, RecordSchema oldSchemaJson)
     {
         return true;
     }

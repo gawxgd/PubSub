@@ -1,9 +1,11 @@
+using Chr.Avro.Abstract;
+
 namespace SchemaRegistry.Infrastructure.Validation
 {
     public interface ICompatibilityChecker
     {
-        bool IsBackwardCompatible(string newWriterSchemaJson, string oldReaderSchemaJson);
+        bool IsBackwardCompatible(RecordSchema newSchemaJson, RecordSchema oldSchemaJson);
         
-        bool IsForwardCompatible(string newWriterSchemaJson, string oldReaderSchemaJson);
+        bool IsForwardCompatible(RecordSchema newSchemaJson, RecordSchema oldSchemaJson);
     }
 }

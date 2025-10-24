@@ -7,6 +7,8 @@ using SchemaRegistry.Domain.Models;
 using SchemaRegistry.Infrastructure.Storage;
 using SchemaRegistry.Infrastructure.Validation;
 using System.Collections.Generic;
+using Chr.Avro.Abstract;
+using Chr.Avro.Representation;
 
 namespace SchemaRegistry.Domain.Services.Implementations
 {
@@ -75,27 +77,36 @@ namespace SchemaRegistry.Domain.Services.Implementations
             return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
         }
 
-        private bool IsCompatible(string writerSchemaJson, string newWriterSchemaJson)
+        /// <summary>
+        /// Interpret compatibility of two Avro schemas based on configuration in _compatMode
+        /// </summary>
+        private bool IsCompatible(string oldSchemaJson, string newSchemaJson)
         {
-            // Interpret compatibility based on global _compatMode
             if (_compatMode.Equals("NONE", StringComparison.OrdinalIgnoreCase)) return true;
+            
+            var jsonReader = new JsonSchemaReader();
 
-            // Depending on requested mode, call checker with writer/reader in proper order:
-            // For BACKWARD: newWriter (writer) must be readable by old readers -> check new vs old (writer=new, reader=old)
-            if (_compatMode.Equals("BACKWARD", StringComparison.OrdinalIgnoreCase))
+            // parse a schema string (Avro JSON)
+            Schema newSchema = jsonReader.Read(newSchemaJson);
+            Schema oldSchema = jsonReader.Read(oldSchemaJson);
+            
+            if (newSchema is RecordSchema newRecordSchema && oldSchema is RecordSchema oldRecordSchema)
             {
-                return _checker.IsBackwardCompatible(newWriterSchemaJson, writerSchemaJson);
+                if (_compatMode.Equals("BACKWARD", StringComparison.OrdinalIgnoreCase))
+                {
+                    return _checker.IsBackwardCompatible(newRecordSchema, oldRecordSchema);
+                }
+                if (_compatMode.Equals("FORWARD", StringComparison.OrdinalIgnoreCase))
+                {
+                    return _checker.IsForwardCompatible(newRecordSchema, oldRecordSchema);
+                }
+                if (_compatMode.Equals("FULL", StringComparison.OrdinalIgnoreCase))
+                {
+                    return _checker.IsBackwardCompatible(newRecordSchema, oldRecordSchema)
+                           && _checker.IsForwardCompatible(newRecordSchema, oldRecordSchema);
+                }
             }
-            if (_compatMode.Equals("FORWARD", StringComparison.OrdinalIgnoreCase))
-            {
-                return _checker.IsForwardCompatible(newWriterSchemaJson, writerSchemaJson);
-            }
-            if (_compatMode.Equals("FULL", StringComparison.OrdinalIgnoreCase))
-            {
-                return _checker.IsBackwardCompatible(newWriterSchemaJson, writerSchemaJson)
-                    && _checker.IsForwardCompatible(newWriterSchemaJson, writerSchemaJson);
-            }
-            // default conservative
+            
             return false;
         }
     }
