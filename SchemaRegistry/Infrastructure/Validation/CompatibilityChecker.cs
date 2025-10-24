@@ -20,7 +20,7 @@ public class CompatibilityChecker : ICompatibilityChecker
             // check if a field of the same name exists in the oldSchema
             if (oldFields.TryGetValue(field.Name, out var oldCounterpart))
             {
-                if (field.Type != oldCounterpart.Type)
+                if (!SchemaEquals(field.Type, oldCounterpart.Type))
                     return false; // the field type has been changed - illegal TODO: is it?
                 
                 continue; // the field hasn't been touched
@@ -46,7 +46,7 @@ public class CompatibilityChecker : ICompatibilityChecker
             // check if a field of the same name exists in the newSchema
             if (newFields.TryGetValue(field.Name, out var newCounterpart))
             {
-                if (field.Type != newCounterpart.Type)
+                if (!SchemaEquals(field.Type, newCounterpart.Type))
                     return false; // the field type has been changed - illegal TODO: is it?
                 
                 continue; // the field hasn't been touched
