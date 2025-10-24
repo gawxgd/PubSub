@@ -20,12 +20,13 @@
     </ItemGroup>
 
     <ItemGroup>
+        <PackageReference Include="Crc32.NET" Version="1.2.0"/>
         <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.0-rc.1.25451.107"/>
         <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0-rc.1.25451.107"/>
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\LoggerLib\LoggerLib.csproj" />
+        <ProjectReference Include="..\LoggerLib\LoggerLib.csproj"/>
     </ItemGroup>
 
 </Project>
