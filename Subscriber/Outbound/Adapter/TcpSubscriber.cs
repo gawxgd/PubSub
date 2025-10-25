@@ -1,8 +1,10 @@
 ﻿using System.Text;
 using System.Threading.Channels;
+using LoggerLib.Domain.Enums;
+using LoggerLib.Domain.Port;
 using Subscriber.Domain;
 
-namespace Subscriber.Inbound.Adapter;
+namespace Subscriber.Outbound.Adapter;
 
 public sealed class TcpSubscriber(
     string topic,
@@ -11,12 +13,14 @@ public sealed class TcpSubscriber(
     TimeSpan pollInterval,
     uint maxRetryAttempts,
     ISubscriberConnection connection,
-    Func<string, Task> messageHandler,
+    ILogger logger,
+    Func<string, Task>? messageHandler,
     Func<Exception, Task>? errorHandler = null)
     : ISubscriber, IAsyncDisposable
 {
     private readonly Channel<byte[]> _inboundChannel = Channel.CreateUnbounded<byte[]>();
     private readonly CancellationTokenSource _cancellationTokenSource = new();
+    private readonly ILogger _logger = logger;
 
     public async Task CreateConnection(CancellationToken cancellationToken)
     {
@@ -33,7 +37,7 @@ public sealed class TcpSubscriber(
             {
                 retryCount++;
                 var delay = TimeSpan.FromSeconds(Math.Min(retryCount, maxRetryAttempts));
-                Console.WriteLine($"[Subscriber] Retry {retryCount}: {ex.Message}. Waiting {delay}...");
+                _logger.LogDebug(LogSource.Subscriber, $" Retry {retryCount}: {ex.Message}. Waiting {delay}...");
                 await Task.Delay(delay, cancellationToken);
             }
         }
@@ -43,17 +47,19 @@ public sealed class TcpSubscriber(
 
     public async Task ReceiveAsync(byte[] message, CancellationToken cancellationToken)
     {
+        //TODO: change topic checking and reading message to avro
+        
         var text = Encoding.UTF8.GetString(message);
 
         if (text.Length < minMessageLength || text.Length > maxMessageLength)
         {
-            Console.WriteLine($"[Subscriber] Invalid message length: {text.Length}");
+            _logger.LogError(LogSource.Subscriber, $"Invalid message length: {text.Length}");
             return;
         }
 
         if (!text.StartsWith($"{topic}:"))
         {
-            Console.WriteLine($"[Subscriber] Ignored message (wrong topic): {text}");
+            _logger.LogError(LogSource.Subscriber, $"Ignored message (wrong topic): {text}");
             return;
         }
 
@@ -61,14 +67,15 @@ public sealed class TcpSubscriber(
 
         try
         {
-            await messageHandler(payload);
+            if (messageHandler != null)
+            {
+                await messageHandler(payload);    
+            }
+            _logger.LogInfo(LogSource.Subscriber, $"Received message: {payload}");
         }
         catch (Exception ex)
-        {
-            if (errorHandler != null)
-                await errorHandler(ex);
-            else
-                Console.WriteLine($"[Subscriber] Handler error: {ex.Message}");
+        { 
+            _logger.LogError(LogSource.Subscriber, ex.Message);
         }
     }
 
@@ -90,10 +97,7 @@ public sealed class TcpSubscriber(
             }
             catch (Exception ex)
             {
-                if (errorHandler != null)
-                    await errorHandler(ex);
-                else
-                    Console.WriteLine($"[Subscriber] Error: {ex.Message}");
+                _logger.LogError(LogSource.Subscriber, ex.Message);
             }
 
             await Task.Delay(pollInterval, cancellationToken);
@@ -101,8 +105,6 @@ public sealed class TcpSubscriber(
 
         await connection.DisconnectAsync(_cancellationTokenSource.Token);
     }
-
-    public ChannelWriter<byte[]> GetChannelWriter() => _inboundChannel.Writer;
 
     public async ValueTask DisposeAsync()
     {

@@ -1,4 +1,6 @@
-﻿public enum SubscriberFactoryErrorCode
+﻿namespace Subscriber.Configuration.Exceptions;
+
+public enum SubscriberFactoryErrorCode
 {
     InvalidUri,
     UnsupportedScheme,
