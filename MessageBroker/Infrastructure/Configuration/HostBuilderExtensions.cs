@@ -1,6 +1,11 @@
+using LoggerLib;
+using LoggerLib.Infrastructure.DependencyInjection;
+using LoggerLib.Infrastructure.SignalR;
 using MessageBroker.Infrastructure.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
+using LoggerLib.Infrastructure.SignalR;
+
 
 namespace MessageBroker.Infrastructure.Configuration;
 
@@ -24,8 +29,27 @@ public static class HostBuilderExtensions
             {
                 services.AddBrokerOptions(context.Configuration);
                 services.AddTcpServices();
-            });
+                services.AddSignalRLogger();
+                services.AddCors(options =>
+                {
+                    options.AddDefaultPolicy(builder =>
+                    {
+                        builder.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+                    });
+                });
 
+            })
+            .ConfigureWebHostDefaults(webBuilder =>
+            {
+                webBuilder.UseUrls("http://0.0.0.0:5000");
+                webBuilder.Configure(app =>
+                {
+                    app.UseCors();
+                    app.UseRouting();
+                    app.MapLogger(); 
+                });
+            });
+        
         return builder;
     }
 }
