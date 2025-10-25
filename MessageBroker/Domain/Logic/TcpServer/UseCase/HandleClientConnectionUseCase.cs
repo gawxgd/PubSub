@@ -37,16 +37,15 @@ public class HandleClientConnectionUseCase(Socket socket, Action onConnectionClo
         }
         catch (OperationCanceledException)
         {
-            _logger.LogInfo( $"Connection cancelled for {_connectedClientEndpoint}");
+            _logger.LogInfo($"Connection cancelled for {_connectedClientEndpoint}");
         }
         catch (SocketException ex)
         {
-            _logger.LogError($"Socket error for {_connectedClientEndpoint}: {ex.Message}");
+            _logger.LogError($"Socket error for {_connectedClientEndpoint}: {ex.Message}", ex);
         }
         catch (Exception ex)
         {
-            _logger.LogError(
-                $"Client handler exception for {_connectedClientEndpoint}: {ex.Message}");
+            _logger.LogError($"Client handler exception for {_connectedClientEndpoint}: {ex.Message}", ex);
         }
         finally
         {
@@ -126,9 +125,9 @@ public class HandleClientConnectionUseCase(Socket socket, Action onConnectionClo
 
         await foreach (var message in _messageChannel.Reader.ReadAllAsync(cancellationToken))
         {
-            _logger.LogInfo( $"[{_connectedClientEndpoint}] Received {message.Length} bytes");
+            _logger.LogInfo($"[{_connectedClientEndpoint}] Received {message.Length} bytes");
 
-            await new ProcessReceivedMessageUseCase(_logger)
+            await new ProcessReceivedMessageUseCase()
                 .ProcessMessageAsync(message, cancellationToken);
 
             await socket.SendAsync(message, SocketFlags.None, cancellationToken);
@@ -145,8 +144,7 @@ public class HandleClientConnectionUseCase(Socket socket, Action onConnectionClo
         }
         catch (Exception ex)
         {
-            _logger.LogError(
-                $"Socket shutdown exception for {_connectedClientEndpoint}: {ex.Message}");
+            _logger.LogError($"Socket shutdown exception for {_connectedClientEndpoint}: {ex.Message}", ex);
         }
 
         socket.Dispose();

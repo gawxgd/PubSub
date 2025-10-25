@@ -8,20 +8,23 @@ public interface IAutoLogger
         [CallerLineNumber] int lineNumber = 0,
         [CallerMemberName] string methodName = "");
 
-    void LogError(string message, Exception ex = null,
+    void LogError(string message, Exception? ex = null,
         [CallerFilePath] string filePath = "",
         [CallerLineNumber] int lineNumber = 0,
         [CallerMemberName] string methodName = "");
 
-    void LogWarning(string message, [CallerFilePath] string filePath = "",
+    void LogWarning(string message, Exception? ex = null,
+        [CallerFilePath] string filePath = "",
         [CallerLineNumber] int lineNumber = 0,
         [CallerMemberName] string methodName = "");
 
-    void LogDebug(string message, [CallerFilePath] string filePath = "",
+    void LogDebug(string message, Exception? ex = null,
+        [CallerFilePath] string filePath = "",
         [CallerLineNumber] int lineNumber = 0,
         [CallerMemberName] string methodName = "");
 
-    void LogTrace(string message, [CallerFilePath] string filePath = "",
+    void LogTrace(string message, Exception? ex = null,
+        [CallerFilePath] string filePath = "",
         [CallerLineNumber] int lineNumber = 0,
         [CallerMemberName] string methodName = "");
 }

@@ -21,7 +21,7 @@ public class SignalRAutoLogger(
         logger.LogInfo(logSource, formattedMessage);
     }
 
-    public void LogError(string message, Exception ex = null,
+    public void LogError(string message, Exception? ex = null,
         [CallerFilePath] string filePath = "",
         [CallerLineNumber] int lineNumber = 0,
         [CallerMemberName] string methodName = "")
@@ -30,27 +30,30 @@ public class SignalRAutoLogger(
         logger.LogError(logSource, formattedMessage);
     }
 
-    public void LogWarning(string message, [CallerFilePath] string filePath = "",
+    public void LogWarning(string message, Exception? ex = null,
+        [CallerFilePath] string filePath = "",
         [CallerLineNumber] int lineNumber = 0,
         [CallerMemberName] string methodName = "")
     {
-        var formattedMessage = FormatMessage(message, filePath, lineNumber, methodName);
+        var formattedMessage = FormatMessage(message, filePath, lineNumber, methodName, ex);
         logger.LogWarning(logSource, formattedMessage);
     }
 
-    public void LogDebug(string message, [CallerFilePath] string filePath = "",
+    public void LogDebug(string message, Exception? ex = null,
+        [CallerFilePath] string filePath = "",
         [CallerLineNumber] int lineNumber = 0,
         [CallerMemberName] string methodName = "")
     {
-        var formattedMessage = FormatMessage(message, filePath, lineNumber, methodName);
+        var formattedMessage = FormatMessage(message, filePath, lineNumber, methodName, ex);
         logger.LogDebug(logSource, formattedMessage);
     }
 
-    public void LogTrace(string message, [CallerFilePath] string filePath = "",
+    public void LogTrace(string message, Exception? ex = null,
+        [CallerFilePath] string filePath = "",
         [CallerLineNumber] int lineNumber = 0,
         [CallerMemberName] string methodName = "")
     {
-        var formattedMessage = FormatMessage(message, filePath, lineNumber, methodName);
+        var formattedMessage = FormatMessage(message, filePath, lineNumber, methodName, ex);
         logger.LogTrace(logSource, formattedMessage);
     }
 

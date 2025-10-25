@@ -49,10 +49,10 @@ public class Connection(
             await HandlerTask.WaitAsync(timeoutCts.Token);
             _logger.LogInfo($"Connection with id {Id} has been disconnected.");
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException ex)
         {
             // Timeout - handler didn't complete in time
-            _logger.LogWarning($"Connection with id {Id} has disconnected.");
+            _logger.LogWarning($"Connection with id {Id} disconnection timed out", ex);
         }
     }
 }
