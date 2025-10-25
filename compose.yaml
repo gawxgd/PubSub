@@ -18,17 +18,15 @@
       - pubsub-network
     restart: unless-stopped
 
-  # logger:
-  #   build:
-  #     context: .
-  #     dockerfile: Logger/Dockerfile
-  #   environment:
-  #     - ASPNETCORE_URLS=http://+:8080
-  #   ports:
-  #     - "5022:8080"
-  #   networks: 
-  #     - pubsub-network
-  #   restart: unless-stopped
+  logger-frontend:
+    image: nginx:alpine
+    volumes:
+      - ./LoggerFrontend:/usr/share/nginx/html:ro
+    ports:
+      - "8088:80"
+    networks:
+      - pubsub-network
+    restart: unless-stopped
 
   pubsubdemo:
     image: pubsubdemo
