@@ -1,8 +1,10 @@
 using System.IO.Pipelines;
 using System.Net.Sockets;
 using System.Threading.Channels;
+using LoggerLib.Domain.Enums;
 using Publisher.Domain.Port;
 using Publisher.Outbound.Exceptions;
+using ILogger = LoggerLib.Domain.Port.ILogger;
 
 namespace Publisher.Outbound.Adapter;
 
@@ -12,19 +14,22 @@ public sealed class TcpPublisherConnection(
     int port,
     uint maxSendAttempts,
     ChannelReader<byte[]> channelReader,
-    Channel<byte[]> deadLetterChannel)
+    Channel<byte[]> deadLetterChannel,
+    ILogger logger)
     : IPublisherConnection, IAsyncDisposable
 {
     private readonly CancellationTokenSource _cancellationSource = new();
     private readonly TcpClient _client = new();
-    
+
     private PipeWriter? _pipeWriter;
-    private PipeWriter PipeWriter => 
-    _pipeWriter ?? throw new InvalidOperationException("PipeWriter has not been initialized.");
 
     private Task? _processChannelTask;
+
+    private PipeWriter PipeWriter =>
+        _pipeWriter ?? throw new InvalidOperationException("PipeWriter has not been initialized.");
+
     private Task ProcessChannelTask =>
-    _processChannelTask ?? throw new InvalidOperationException("Process channel task has not been initialized.");
+        _processChannelTask ?? throw new InvalidOperationException("Process channel task has not been initialized.");
 
     public async ValueTask DisposeAsync()
     {
@@ -59,7 +64,7 @@ public sealed class TcpPublisherConnection(
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex);
+            logger.LogError(LogSource.MessageBroker);
         }
     }
 
@@ -104,7 +109,7 @@ public sealed class TcpPublisherConnection(
                     PipeWriter.Advance(msg.Length);
 
                     var result = await PipeWriter.FlushAsync(_cancellationSource.Token);
-                    
+
                     if (result.IsCompleted)
                     {
                         throw new PublisherConnectionException("Connection to broker failed");
@@ -112,7 +117,8 @@ public sealed class TcpPublisherConnection(
 
                     if (result.IsCanceled)
                     {
-                        Console.WriteLine($"The cancellation was requested. Message, was not send, moving to dead letter queue");
+                        Console.WriteLine(
+                            "The cancellation was requested. Message, was not send, moving to dead letter queue");
                         break;
                     }
 
@@ -144,7 +150,7 @@ public sealed class TcpPublisherConnection(
                 SendToDeadLetterNoBlocking(msg);
             }
         }
-        
+
         Console.WriteLine("Finished processing channel");
     }
 
@@ -163,7 +169,7 @@ public sealed class TcpPublisherConnection(
     {
         return ex.SocketErrorCode switch
         {
-                SocketError.TimedOut or
+            SocketError.TimedOut or
                 SocketError.NetworkDown or
                 SocketError.NetworkUnreachable or
                 SocketError.HostUnreachable or

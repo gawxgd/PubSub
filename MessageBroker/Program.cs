@@ -1,8 +1,13 @@
-﻿using MessageBroker.Infrastructure.Configuration;
-using Microsoft.Extensions.Hosting;
+﻿using LoggerLib.Outbound.Adapter;
+using MessageBroker.Infrastructure.Configuration;
+using ILogger = LoggerLib.Domain.Port.ILogger;
 
-await Host
+var host = Host
     .CreateDefaultBuilder(args)
     .ConfigureMessageBroker(args)
-    .Build()
-    .RunAsync();
+    .Build();
+
+var logger = host.Services.GetRequiredService<ILogger>();
+AutoLoggerFactory.Initialize(logger);
+
+await host.RunAsync();

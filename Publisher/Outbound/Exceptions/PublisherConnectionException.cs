@@ -1,4 +1,4 @@
-using Publisher.Outbound.Exceptions;
+namespace Publisher.Outbound.Exceptions;
 
 public class PublisherConnectionException : PublisherException
 {

@@ -10,4 +10,8 @@
         <Folder Include="Inbound\"/>
     </ItemGroup>
 
+    <ItemGroup>
+        <ProjectReference Include="..\LoggerLib\LoggerLib.csproj"/>
+    </ItemGroup>
+
 </Project>
