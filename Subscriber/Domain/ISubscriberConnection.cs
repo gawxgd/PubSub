@@ -2,6 +2,6 @@
 
 public interface ISubscriberConnection
 {
-    Task ConnectAsync();
-    Task DisconnectAsync();
+    Task ConnectAsync(CancellationToken cancellationToken = default);
+    Task DisconnectAsync(CancellationToken cancellationToken = default);
 }
