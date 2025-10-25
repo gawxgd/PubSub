@@ -3,7 +3,6 @@ using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using Subscriber.Configuration.Exceptions;
 using Subscriber.Domain;
-using Subscriber.Inbound.Adapter;
 using Subscriber.Outbound.Adapter;
 
 namespace Subscriber.Configuration;
