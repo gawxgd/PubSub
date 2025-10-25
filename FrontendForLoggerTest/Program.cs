@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.SignalR.Client;
 
-var url = "http://localhost:5000/loggerhub"; // adjust if needed
+var url = "http://localhost:5000/loggerhub";
 var connection = new HubConnectionBuilder()
     .WithUrl(url)
     .WithAutomaticReconnect()
@@ -12,5 +12,5 @@ connection.On<string, string, string>("ReceiveLog", (level, source, message) =>
 });
 
 await connection.StartAsync();
-Console.WriteLine("Connected. Listening for logs. Press Ctrl+C to exit.");
+Console.WriteLine("Connected to SignalR hub at " + url);
 await Task.Delay(-1);
