@@ -17,7 +17,7 @@ public class SignalRLogger(IHubContext<LogHub> hubContext) : ILogger
     /// <param name="message">The log message content.</param>
     public void LogInfo(LogSource source, string message)
     {
-        hubContext.Clients.All.SendAsync("ReceiveLog", LogType.Info, source.ToString(), message);
+        hubContext.Clients.All.SendAsync("ReceiveLog", nameof(LogType.Info), source.ToString(), message);
     }
 
     /// <summary>
@@ -27,7 +27,7 @@ public class SignalRLogger(IHubContext<LogHub> hubContext) : ILogger
     /// <param name="message">The error message content.</param>
     public void LogError(LogSource source, string message)
     {
-        hubContext.Clients.All.SendAsync("ReceiveLog", LogType.Error, source.ToString(), message);
+        hubContext.Clients.All.SendAsync("ReceiveLog", nameof(LogType.Error), source.ToString(), message);
     }
 
     /// <summary>
@@ -37,7 +37,7 @@ public class SignalRLogger(IHubContext<LogHub> hubContext) : ILogger
     /// <param name="message">The debug message content.</param>
     public void LogDebug(LogSource source, string message)
     {
-        hubContext.Clients.All.SendAsync("ReceiveLog", LogType.Debug, source.ToString(), message);
+        hubContext.Clients.All.SendAsync("ReceiveLog", nameof(LogType.Debug), source.ToString(), message);
     }
 
     /// <summary>
@@ -47,11 +47,11 @@ public class SignalRLogger(IHubContext<LogHub> hubContext) : ILogger
     /// <param name="message">The warning message content.</param>
     public void LogWarning(LogSource source, string message)
     {
-        hubContext.Clients.All.SendAsync("ReceiveLog", LogType.Warning, source.ToString(), message);
+        hubContext.Clients.All.SendAsync("ReceiveLog", nameof(LogType.Warning), source.ToString(), message);
     }
 
     public void LogTrace(LogSource source, string message)
     {
-        hubContext.Clients.All.SendAsync("ReceiveLog", LogType.Trace, source.ToString(), message);
+        hubContext.Clients.All.SendAsync("ReceiveLog", nameof(LogType.Trace), source.ToString(), message);
     }
 }
