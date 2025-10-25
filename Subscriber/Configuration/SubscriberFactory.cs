@@ -2,6 +2,7 @@
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using Subscriber.Configuration.Exceptions;
+using Subscriber.Configuration.Options;
 using Subscriber.Domain;
 using Subscriber.Outbound.Adapter;
 

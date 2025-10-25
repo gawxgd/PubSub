@@ -1,4 +1,5 @@
 ﻿using Subscriber.Configuration;
+using Subscriber.Configuration.Options;
 
 namespace Subscriber.Domain;
 

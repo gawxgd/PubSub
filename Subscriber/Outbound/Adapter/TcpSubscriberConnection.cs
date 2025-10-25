@@ -5,6 +5,7 @@ using System.Threading.Channels;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using Subscriber.Domain;
+using Subscriber.Outbound.Exceptions;
 
 namespace Subscriber.Outbound.Adapter;
 

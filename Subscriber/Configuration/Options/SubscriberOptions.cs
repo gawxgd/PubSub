@@ -1,4 +1,4 @@
-﻿namespace Subscriber.Configuration;
+﻿namespace Subscriber.Configuration.Options;
 
 public class SubscriberOptions
 {
@@ -10,5 +10,6 @@ public class SubscriberOptions
     public TimeSpan PollInterval { get; set; }
     public uint MaxRetryAttempts { get; set; }
 
-    public Uri MessageBrokerConnectionUri;
+    public required Uri MessageBrokerConnectionUri;
+    
 }

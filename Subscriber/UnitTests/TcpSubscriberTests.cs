@@ -5,6 +5,7 @@ using LoggerLib.Domain.Port;
 using Moq;
 using Subscriber.Domain;
 using Subscriber.Outbound.Adapter;
+using Subscriber.Outbound.Exceptions;
 using Xunit;
 
 namespace Subscriber.UnitTests;
