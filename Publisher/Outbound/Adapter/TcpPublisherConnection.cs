@@ -6,7 +6,6 @@ using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
 using Publisher.Domain.Port;
 using Publisher.Outbound.Exceptions;
-using ILogger = LoggerLib.Domain.Port.ILogger;
 
 namespace Publisher.Outbound.Adapter;
 
@@ -19,7 +18,7 @@ public sealed class TcpPublisherConnection(
     Channel<byte[]> deadLetterChannel)
     : IPublisherConnection, IAsyncDisposable
 {
-    private static readonly IAutoLogger _logger = AutoLoggerFactory.CreateLogger<TcpPublisherConnection>(LogSource.Publisher);
+    private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<TcpPublisherConnection>(LogSource.Publisher);
     private readonly CancellationTokenSource _cancellationSource = new();
     private readonly TcpClient _client = new();
     private PipeWriter? _pipeWriter;
@@ -62,7 +61,7 @@ public sealed class TcpPublisherConnection(
         }
         catch (Exception ex)
         {
-            _logger.LogError("Exception while disconnecting",ex);
+            Logger.LogError("Exception while disconnecting", ex);
         }
     }
 
@@ -72,7 +71,7 @@ public sealed class TcpPublisherConnection(
         {
             await _client.ConnectAsync(host, port, _cancellationSource.Token);
             _pipeWriter = PipeWriter.Create(_client.GetStream());
-            Console.WriteLine($"Connected to broker on {_client.Client.RemoteEndPoint}");
+            Logger.LogInfo($"Connected to broker on {_client.Client.RemoteEndPoint}");
         }
         catch (SocketException ex) when (CanRetrySocketException(ex))
         {
@@ -84,7 +83,7 @@ public sealed class TcpPublisherConnection(
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Unrecoverable connection error: {ex.Message}");
+            Logger.LogError($"Unrecoverable connection error: {ex.Message}", ex);
             throw new PublisherException($"Unrecoverable connection error {ex.Message}", ex);
         }
     }
@@ -115,8 +114,7 @@ public sealed class TcpPublisherConnection(
 
                     if (result.IsCanceled)
                     {
-                        Console.WriteLine(
-                            "The cancellation was requested. Message, was not send, moving to dead letter queue");
+                        Logger.LogWarning("The cancellation was requested. Message, was not send, moving to dead letter queue");
                         break;
                     }
 
@@ -124,12 +122,12 @@ public sealed class TcpPublisherConnection(
                 }
                 catch (IOException ex)
                 {
-                    Console.WriteLine($"IO exception: {ex.Message} retrying connection");
+                    Logger.LogWarning($"IO exception: {ex.Message} retrying connection", ex);
                     throw new PublisherConnectionException("Connection to broker failed");
                 }
                 catch (SocketException ex) when (CanRetrySocketException(ex))
                 {
-                    Console.WriteLine($"Retriable socket exception: {ex.Message} retrying connection");
+                    Logger.LogWarning($"Retriable socket exception: {ex.Message} retrying connection", ex);
                     throw new PublisherConnectionException("Connection to broker failed");
                 }
                 catch (OperationCanceledException)
@@ -138,7 +136,7 @@ public sealed class TcpPublisherConnection(
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Unexpected error while sending message: {ex.Message}");
+                    Logger.LogError($"Unexpected error while sending message: {ex.Message}", ex);
                     break;
                 }
             }
@@ -149,18 +147,18 @@ public sealed class TcpPublisherConnection(
             }
         }
 
-        Console.WriteLine("Finished processing channel");
+        Logger.LogInfo("Finished processing channel");
     }
 
     private void SendToDeadLetterNoBlocking(byte[] msg)
     {
         if (!deadLetterChannel.Writer.TryWrite(msg))
         {
-            Console.WriteLine("Dead-letter queue full, newest message dropped.");
+            Logger.LogWarning("Dead-letter queue full, newest message dropped.");
             return;
         }
 
-        Console.WriteLine($"Send {msg} to dead letter queue");
+        Logger.LogInfo($"Send {msg} to dead letter queue");
     }
 
     private static bool CanRetrySocketException(SocketException ex)

@@ -79,7 +79,7 @@ public sealed class TcpPublisher(string host, int port, uint maxSendAttempts, ui
                 var delay = TimeSpan.FromSeconds(BaseRetryDelay.TotalSeconds *
                                                  Math.Min(retryCount, maxRetryAttempts));
 
-                Console.WriteLine($"Caught retriable exception {ex.Message}, retrying connection after {delay} delay");
+                Logger.LogWarning($"Caught retriable exception {ex.Message}, retrying connection after {delay} delay", ex);
 
                 await SafeDisconnectPublisher();
 
@@ -87,12 +87,12 @@ public sealed class TcpPublisher(string host, int port, uint maxSendAttempts, ui
             }
             catch (OperationCanceledException)
             {
-                Console.WriteLine("Operation cancelled");
+                Logger.LogInfo("Operation cancelled");
                 break;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Unrecoverable connection: {ex.Message}");
+                Logger.LogError($"Unrecoverable connection: {ex.Message}", ex);
 
                 await SafeDisconnectPublisher();
                 throw;
