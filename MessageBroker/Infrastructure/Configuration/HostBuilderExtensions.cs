@@ -4,7 +4,6 @@ using LoggerLib.Infrastructure.SignalR;
 using MessageBroker.Infrastructure.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
-using LoggerLib.Infrastructure.SignalR;
 
 
 namespace MessageBroker.Infrastructure.Configuration;
@@ -46,7 +45,10 @@ public static class HostBuilderExtensions
                 {
                     app.UseCors();
                     app.UseRouting();
-                    app.MapLogger(); 
+                    app.UseEndpoints(endpoints =>
+                    {
+                        endpoints.MapLogger();
+                    });
                 });
             });
         

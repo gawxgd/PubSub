@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using FluentAssertions;
 using LoggerLib.Domain.Port;
+using LoggerLib.Outbound.Adapter;
 using MessageBroker.Domain.Entities;
 using MessageBroker.Inbound.Adapter;
 using NSubstitute;
@@ -10,6 +11,12 @@ namespace MessageBroker.UnitTests.Inbound.Adapter.Repositories;
 
 public class InMemoryConnectionRepositoryTests
 {
+    public InMemoryConnectionRepositoryTests()
+    {
+        var logger = Substitute.For<ILogger>();
+        AutoLoggerFactory.Initialize(logger);
+    }
+
     [Fact]
     public void GenerateConnectionId_Should_Return_Sequential_Ids()
     {
@@ -82,10 +89,9 @@ public class InMemoryConnectionRepositoryTests
     public void Remove_Should_Remove_Connection()
     {
         // Arrange
-        var logger = Substitute.For<ILogger>();
         var repository = new InMemoryConnectionRepository();
         var cts = new CancellationTokenSource();
-        var connection = new Connection(1, "test", cts, Task.CompletedTask, logger);
+        var connection = new Connection(1, "test", cts, Task.CompletedTask);
         repository.Add(connection);
 
         // Act
@@ -179,7 +185,6 @@ public class InMemoryConnectionRepositoryTests
 
     private static Connection CreateTestConnection(long id)
     {
-        var logger = Substitute.For<ILogger>();
-        return new Connection(id, $"test-{id}", new CancellationTokenSource(), Task.CompletedTask, logger);
+        return new Connection(id, $"test-{id}", new CancellationTokenSource(), Task.CompletedTask);
     }
 }

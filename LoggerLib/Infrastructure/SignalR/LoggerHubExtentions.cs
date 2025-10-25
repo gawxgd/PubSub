@@ -6,13 +6,9 @@ namespace LoggerLib.Infrastructure.SignalR;
 
 public static class LoggerEndpointExtensions
 {
-    public static IApplicationBuilder MapLogger(this IApplicationBuilder app)
+    public static IEndpointRouteBuilder MapLogger(this IEndpointRouteBuilder endpoints)
     {
-        app.UseEndpoints(endpoints =>
-        {
-            endpoints.MapHub<LogHub>("/loggerhub");
-        });
-
-        return app;
+        endpoints.MapHub<LogHub>("/loggerhub");
+        return endpoints;
     }
 }

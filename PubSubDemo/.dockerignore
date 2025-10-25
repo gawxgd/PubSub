@@ -1,0 +1,14 @@
+**/.dockerignore
+**/.git
+**/.gitignore
+**/.vs
+**/.vscode
+**/.idea
+**/*.md
+**/bin
+**/obj
+**/TestResults
+**/*.Development.json
+
+
+
