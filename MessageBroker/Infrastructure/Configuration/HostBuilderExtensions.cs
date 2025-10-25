@@ -45,7 +45,10 @@ public static class HostBuilderExtensions
                 {
                     app.UseCors();
                     app.UseRouting();
-                    app.MapLogger(); 
+                    app.UseEndpoints(endpoints =>
+                    {
+                        endpoints.MapLogger();
+                    });
                 });
             });
         
