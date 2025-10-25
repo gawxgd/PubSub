@@ -82,10 +82,9 @@ public class InMemoryConnectionRepositoryTests
     public void Remove_Should_Remove_Connection()
     {
         // Arrange
-        var logger = Substitute.For<ILogger>();
         var repository = new InMemoryConnectionRepository();
         var cts = new CancellationTokenSource();
-        var connection = new Connection(1, "test", cts, Task.CompletedTask, logger);
+        var connection = new Connection(1, "test", cts, Task.CompletedTask);
         repository.Add(connection);
 
         // Act
@@ -179,7 +178,6 @@ public class InMemoryConnectionRepositoryTests
 
     private static Connection CreateTestConnection(long id)
     {
-        var logger = Substitute.For<ILogger>();
-        return new Connection(id, $"test-{id}", new CancellationTokenSource(), Task.CompletedTask, logger);
+        return new Connection(id, $"test-{id}", new CancellationTokenSource(), Task.CompletedTask);
     }
 }

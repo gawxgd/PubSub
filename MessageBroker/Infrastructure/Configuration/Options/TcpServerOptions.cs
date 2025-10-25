@@ -7,7 +7,6 @@ public sealed record TcpServerOptions
     public int MaxRequestSizeInByte { get; init; } = 512;
     public bool InlineCompletions { get; init; } = false;
     public bool SocketPolling { get; init; } = false;
-
     public int Backlog { get; init; } = 4096;
 
     public override string ToString()

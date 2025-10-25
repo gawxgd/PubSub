@@ -2,6 +2,8 @@ using System.IO.Pipelines;
 using System.Net.Sockets;
 using System.Threading.Channels;
 using LoggerLib.Domain.Enums;
+using LoggerLib.Domain.Port;
+using LoggerLib.Outbound.Adapter;
 using Publisher.Domain.Port;
 using Publisher.Outbound.Exceptions;
 using ILogger = LoggerLib.Domain.Port.ILogger;
@@ -14,20 +16,16 @@ public sealed class TcpPublisherConnection(
     int port,
     uint maxSendAttempts,
     ChannelReader<byte[]> channelReader,
-    Channel<byte[]> deadLetterChannel,
-    ILogger logger)
+    Channel<byte[]> deadLetterChannel)
     : IPublisherConnection, IAsyncDisposable
 {
+    private static readonly IAutoLogger _logger = AutoLoggerFactory.CreateLogger<TcpPublisherConnection>(LogSource.Publisher);
     private readonly CancellationTokenSource _cancellationSource = new();
     private readonly TcpClient _client = new();
-
     private PipeWriter? _pipeWriter;
-
     private Task? _processChannelTask;
-
     private PipeWriter PipeWriter =>
         _pipeWriter ?? throw new InvalidOperationException("PipeWriter has not been initialized.");
-
     private Task ProcessChannelTask =>
         _processChannelTask ?? throw new InvalidOperationException("Process channel task has not been initialized.");
 
@@ -64,7 +62,7 @@ public sealed class TcpPublisherConnection(
         }
         catch (Exception ex)
         {
-            logger.LogError(LogSource.MessageBroker);
+            _logger.LogError("Exception while disconnecting",ex);
         }
     }
 

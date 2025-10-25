@@ -13,7 +13,8 @@ public class SignalRAutoLogger(
 {
     private readonly string _className = type.Name;
 
-    public void LogInfo(string message, [CallerFilePath] string filePath = "",
+    public void LogInfo(string message, 
+        [CallerFilePath] string filePath = "",
         [CallerLineNumber] int lineNumber = 0,
         [CallerMemberName] string methodName = "")
     {

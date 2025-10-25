@@ -3,20 +3,20 @@ using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
 using MessageBroker.Domain.Logic.TcpServer.UseCase;
-using MessageBroker.Domain.Port.Repositories;
+using MessageBroker.Domain.Port;
 
 namespace MessageBroker.Inbound.TcpServer.Service;
 
 public class TcpServer(CreateSocketUseCase createSocketUseCase, IConnectionManager connectionManager)
     : BackgroundService
 {
-    private readonly IAutoLogger _logger = AutoLoggerFactory.CreateLogger<TcpServer>(LogSource.MessageBroker);
     private readonly Socket _socket = createSocketUseCase.CreateSocket();
+    private readonly IAutoLogger _logger = AutoLoggerFactory.CreateLogger<TcpServer>(LogSource.MessageBroker);
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
         _logger.LogInfo("TCP Server started listening");
-
+        
         while (!cancellationToken.IsCancellationRequested)
         {
             try
@@ -41,14 +41,14 @@ public class TcpServer(CreateSocketUseCase createSocketUseCase, IConnectionManag
                 _logger.LogError($"Unexpected error in ExecuteAsync: {ex.Message}", ex);
             }
         }
-
+        
         _logger.LogInfo("TCP Server execution completed");
     }
 
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
         _logger.LogInfo("Stopping TCP Server");
-
+        
         await base.StopAsync(cancellationToken);
         await Task.Delay(100);
 

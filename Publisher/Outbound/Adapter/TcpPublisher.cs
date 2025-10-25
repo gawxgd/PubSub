@@ -1,4 +1,7 @@
 using System.Threading.Channels;
+using LoggerLib.Domain.Enums;
+using LoggerLib.Domain.Port;
+using LoggerLib.Outbound.Adapter;
 using Publisher.Domain.Port;
 using Publisher.Outbound.Exceptions;
 
@@ -7,8 +10,8 @@ namespace Publisher.Outbound.Adapter;
 public sealed class TcpPublisher(string host, int port, uint maxSendAttempts, uint maxQueueSize, uint maxRetryAttempts)
     : IPublisher, IAsyncDisposable
 {
+    private static readonly IAutoLogger Logger =  AutoLoggerFactory.CreateLogger<TcpPublisher>(LogSource.Publisher);
     private static readonly TimeSpan BaseRetryDelay = TimeSpan.FromSeconds(1);
-
     private readonly CancellationTokenSource _cancellationTokenSource = new();
 
     private readonly Channel<byte[]> _channel = Channel.CreateBounded<byte[]>(
@@ -47,7 +50,7 @@ public sealed class TcpPublisher(string host, int port, uint maxSendAttempts, ui
         }
         catch (Exception ex)
         {
-            Console.WriteLine("Exception while disposing " + ex);
+            Logger.LogError("Exception while disposing",ex);
         }
     }
 

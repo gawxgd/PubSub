@@ -1,11 +1,8 @@
 using MessageBroker.Domain.Logic.TcpServer.UseCase;
 using MessageBroker.Domain.Port;
-using MessageBroker.Domain.Port.Repositories;
 using MessageBroker.Inbound.Adapter;
 using MessageBroker.Inbound.TcpServer.Service;
 using MessageBroker.Infrastructure.Configuration.Options;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace MessageBroker.Infrastructure.DependencyInjection;
 

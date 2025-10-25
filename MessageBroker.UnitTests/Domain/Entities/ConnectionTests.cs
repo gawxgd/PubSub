@@ -13,14 +13,13 @@ public class ConnectionTests
     public void Constructor_Should_Set_All_Properties()
     {
         // Arrange
-        var logger = Substitute.For<ILogger>();
         var id = 1L;
         var endpoint = "127.0.0.1:5000";
         var cts = new CancellationTokenSource();
         var task = Task.CompletedTask;
 
         // Act
-        var connection = new Connection(id, endpoint, cts, task, logger);
+        var connection = new Connection(id, endpoint, cts, task);
 
         // Assert
         connection.Id.Should().Be(id);
@@ -33,10 +32,9 @@ public class ConnectionTests
     public async Task DisconnectAsync_Should_Cancel_Token()
     {
         // Arrange
-        var logger = Substitute.For<ILogger>();
         var cts = new CancellationTokenSource();
         var tcs = new TaskCompletionSource();
-        var connection = new Connection(1, "test", cts, tcs.Task, logger);
+        var connection = new Connection(1, "test", cts, tcs.Task);
 
         // Act
         var disconnectTask = connection.DisconnectAsync();
@@ -51,10 +49,9 @@ public class ConnectionTests
     public async Task DisconnectAsync_Should_Wait_For_Task_To_Complete()
     {
         // Arrange
-        var logger = Substitute.For<ILogger>();
         var cts = new CancellationTokenSource();
         var tcs = new TaskCompletionSource();
-        var connection = new Connection(1, "test", cts, tcs.Task, logger);
+        var connection = new Connection(1, "test", cts, tcs.Task);
         var completed = false;
 
         // Act
@@ -78,10 +75,9 @@ public class ConnectionTests
     public async Task DisconnectAsync_Should_Timeout_After_5_Seconds()
     {
         // Arrange
-        var logger = Substitute.For<ILogger>();
         var cts = new CancellationTokenSource();
         var tcs = new TaskCompletionSource();
-        var connection = new Connection(1, "test", cts, tcs.Task, logger);
+        var connection = new Connection(1, "test", cts, tcs.Task);
 
         // Act
         var stopwatch = Stopwatch.StartNew();
@@ -96,9 +92,8 @@ public class ConnectionTests
     public async Task DisconnectAsync_Should_Be_Idempotent()
     {
         // Arrange
-        var logger = Substitute.For<ILogger>();
         var cts = new CancellationTokenSource();
-        var connection = new Connection(1, "test", cts, Task.CompletedTask, logger);
+        var connection = new Connection(1, "test", cts, Task.CompletedTask);
 
         // Act
         await connection.DisconnectAsync();
@@ -112,9 +107,8 @@ public class ConnectionTests
     public void Dispose_Should_Dispose_CancellationTokenSource()
     {
         // Arrange
-        var logger = Substitute.For<ILogger>();
         var cts = new CancellationTokenSource();
-        var connection = new Connection(1, "test", cts, Task.CompletedTask, logger);
+        var connection = new Connection(1, "test", cts, Task.CompletedTask);
 
         // Act
         connection.Dispose();
@@ -128,9 +122,8 @@ public class ConnectionTests
     public void Dispose_Should_Be_Idempotent()
     {
         // Arrange
-        var logger = Substitute.For<ILogger>();
         var cts = new CancellationTokenSource();
-        var connection = new Connection(1, "test", cts, Task.CompletedTask, logger);
+        var connection = new Connection(1, "test", cts, Task.CompletedTask);
 
         // Act
         connection.Dispose();

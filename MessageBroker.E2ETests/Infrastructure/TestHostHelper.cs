@@ -1,12 +1,14 @@
+using LoggerLib.Infrastructure.DependencyInjection;
+using LoggerLib.Outbound.Adapter;
 using MessageBroker.Domain.Logic.TcpServer.UseCase;
 using MessageBroker.Domain.Port;
-using MessageBroker.Domain.Port.Repositories;
 using MessageBroker.Inbound.Adapter;
 using MessageBroker.Inbound.TcpServer.Service;
 using MessageBroker.Infrastructure.Configuration.Options;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using ILogger = LoggerLib.Domain.Port.ILogger;
 
 namespace MessageBroker.E2ETests.Infrastructure;
 
@@ -28,7 +30,7 @@ public static class TestHostHelper
             })
             .Build();
 
-        return Host.CreateDefaultBuilder()
+        var host = Host.CreateDefaultBuilder()
             .ConfigureServices(services =>
             {
                 services.AddSingleton<IConnectionRepository, InMemoryConnectionRepository>();
@@ -36,8 +38,15 @@ public static class TestHostHelper
                 services.AddSingleton<CreateSocketUseCase>();
                 services.AddHostedService<TcpServer>();
                 services.Configure<TcpServerOptions>(configuration);
+                services.AddSignalRLogger();
             })
             .Build();
+
+        // Initialize AutoLoggerFactory with the registered logger
+        var logger = host.Services.GetRequiredService<ILogger>();
+        AutoLoggerFactory.Initialize(logger);
+
+        return host;
     }
 
     public static async Task<IHost> CreateAndStartTestHostAsync(int? port = null, string address = "127.0.0.1")

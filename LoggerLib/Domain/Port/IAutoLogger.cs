@@ -4,7 +4,8 @@ namespace LoggerLib.Domain.Port;
 
 public interface IAutoLogger
 {
-    void LogInfo(string message, [CallerFilePath] string filePath = "",
+    void LogInfo(string message,
+        [CallerFilePath] string filePath = "",
         [CallerLineNumber] int lineNumber = 0,
         [CallerMemberName] string methodName = "");
 

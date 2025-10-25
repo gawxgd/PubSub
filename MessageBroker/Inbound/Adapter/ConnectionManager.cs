@@ -5,7 +5,6 @@ using LoggerLib.Outbound.Adapter;
 using MessageBroker.Domain.Entities;
 using MessageBroker.Domain.Logic.TcpServer.UseCase;
 using MessageBroker.Domain.Port;
-using MessageBroker.Domain.Port.Repositories;
 
 namespace MessageBroker.Inbound.Adapter;
 
