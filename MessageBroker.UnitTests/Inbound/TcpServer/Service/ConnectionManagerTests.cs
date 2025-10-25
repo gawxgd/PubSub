@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Sockets;
 using FluentAssertions;
 using LoggerLib.Domain.Port;
+using LoggerLib.Outbound.Adapter;
 using MessageBroker.Domain.Entities;
 using MessageBroker.Domain.Port;
 using MessageBroker.Inbound.Adapter;
@@ -12,6 +13,12 @@ namespace MessageBroker.UnitTests.Inbound.TcpServer.Service;
 
 public class ConnectionManagerTests
 {
+    public ConnectionManagerTests()
+    {
+        var logger = Substitute.For<ILogger>();
+        AutoLoggerFactory.Initialize(logger);
+    }
+
     [Fact]
     public void RegisterConnection_Should_Generate_Id_And_Add_Connection()
     {

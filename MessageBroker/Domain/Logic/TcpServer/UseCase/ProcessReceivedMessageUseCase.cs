@@ -6,11 +6,11 @@ namespace MessageBroker.Domain.Logic.TcpServer.UseCase;
 
 public class ProcessReceivedMessageUseCase
 {
-    private readonly IAutoLogger _logger = AutoLoggerFactory.CreateLogger<ProcessReceivedMessageUseCase>(LogSource.MessageBroker);
+    private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<ProcessReceivedMessageUseCase>(LogSource.MessageBroker);
     
     public async Task ProcessMessageAsync(ReadOnlyMemory<byte> message, CancellationToken cancellationToken)
     {
-        _logger.LogDebug($"Processing message {message.Length} bytes");
+        Logger.LogDebug($"Processing message {message.Length} bytes");
         await Task.CompletedTask;
     }
 }

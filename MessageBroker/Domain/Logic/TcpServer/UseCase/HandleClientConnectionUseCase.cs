@@ -12,7 +12,7 @@ public class HandleClientConnectionUseCase(Socket socket, Action onConnectionClo
 {
     private readonly string _connectedClientEndpoint = socket.RemoteEndPoint?.ToString() ?? "Unknown";
 
-    private readonly IAutoLogger _logger =
+    private static readonly IAutoLogger Logger =
         AutoLoggerFactory.CreateLogger<HandleClientConnectionUseCase>(LogSource.MessageBroker);
 
     private readonly Channel<ReadOnlyMemory<byte>> _messageChannel =
@@ -37,15 +37,15 @@ public class HandleClientConnectionUseCase(Socket socket, Action onConnectionClo
         }
         catch (OperationCanceledException)
         {
-            _logger.LogInfo($"Connection cancelled for {_connectedClientEndpoint}");
+            Logger.LogInfo($"Connection cancelled for {_connectedClientEndpoint}");
         }
         catch (SocketException ex)
         {
-            _logger.LogError($"Socket error for {_connectedClientEndpoint}: {ex.Message}", ex);
+            Logger.LogError($"Socket error for {_connectedClientEndpoint}: {ex.Message}", ex);
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Client handler exception for {_connectedClientEndpoint}: {ex.Message}", ex);
+            Logger.LogError($"Client handler exception for {_connectedClientEndpoint}: {ex.Message}", ex);
         }
         finally
         {
@@ -55,7 +55,7 @@ public class HandleClientConnectionUseCase(Socket socket, Action onConnectionClo
 
     private async Task FillPipeAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInfo($"Filling pipe, connected to client {_connectedClientEndpoint}");
+        Logger.LogInfo($"Filling pipe, connected to client {_connectedClientEndpoint}");
         try
         {
             while (!cancellationToken.IsCancellationRequested)
@@ -65,7 +65,7 @@ public class HandleClientConnectionUseCase(Socket socket, Action onConnectionClo
 
                 if (bytesRead == 0)
                 {
-                    _logger.LogInfo($"Client {_connectedClientEndpoint} disconnected");
+                    Logger.LogInfo($"Client {_connectedClientEndpoint} disconnected");
                     break;
                 }
 
@@ -81,13 +81,13 @@ public class HandleClientConnectionUseCase(Socket socket, Action onConnectionClo
         finally
         {
             await _pipe.Writer.CompleteAsync();
-            _logger.LogInfo($"FillPipe completed for {_connectedClientEndpoint}");
+            Logger.LogInfo($"FillPipe completed for {_connectedClientEndpoint}");
         }
     }
 
     private async Task ProcessPipeAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInfo($"Processing pipe, connected to client {_connectedClientEndpoint}");
+        Logger.LogInfo($"Processing pipe, connected to client {_connectedClientEndpoint}");
         var reader = _pipe.Reader;
         try
         {
@@ -106,7 +106,7 @@ public class HandleClientConnectionUseCase(Socket socket, Action onConnectionClo
 
                 if (result.IsCompleted)
                 {
-                    _logger.LogInfo($"ProcessPipe completed for {_connectedClientEndpoint}");
+                    Logger.LogInfo($"ProcessPipe completed for {_connectedClientEndpoint}");
                     break;
                 }
             }
@@ -114,18 +114,18 @@ public class HandleClientConnectionUseCase(Socket socket, Action onConnectionClo
         finally
         {
             _messageChannel.Writer.Complete();
-            _logger.LogInfo($"ProcessPipe completed for {_connectedClientEndpoint}");
+            Logger.LogInfo($"ProcessPipe completed for {_connectedClientEndpoint}");
         }
     }
 
     private async Task ConsumeMessageChannelAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInfo(
+        Logger.LogInfo(
             $"Consuming message channel, connected to client {_connectedClientEndpoint}");
 
         await foreach (var message in _messageChannel.Reader.ReadAllAsync(cancellationToken))
         {
-            _logger.LogInfo($"[{_connectedClientEndpoint}] Received {message.Length} bytes");
+            Logger.LogInfo($"[{_connectedClientEndpoint}] Received {message.Length} bytes");
 
             await new ProcessReceivedMessageUseCase()
                 .ProcessMessageAsync(message, cancellationToken);
@@ -133,7 +133,7 @@ public class HandleClientConnectionUseCase(Socket socket, Action onConnectionClo
             await socket.SendAsync(message, SocketFlags.None, cancellationToken);
         }
 
-        _logger.LogInfo($"ConsumeMessageChannel completed for {_connectedClientEndpoint}");
+        Logger.LogInfo($"ConsumeMessageChannel completed for {_connectedClientEndpoint}");
     }
 
     private async Task CleanupAsync(CancellationToken cancellationToken)
@@ -144,7 +144,7 @@ public class HandleClientConnectionUseCase(Socket socket, Action onConnectionClo
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Socket shutdown exception for {_connectedClientEndpoint}: {ex.Message}", ex);
+            Logger.LogError($"Socket shutdown exception for {_connectedClientEndpoint}: {ex.Message}", ex);
         }
 
         socket.Dispose();
@@ -155,10 +155,10 @@ public class HandleClientConnectionUseCase(Socket socket, Action onConnectionClo
 
         if (!cancellationToken.IsCancellationRequested)
         {
-            _logger.LogInfo($"Calling onConnectionClosed for {_connectedClientEndpoint}");
+            Logger.LogInfo($"Calling onConnectionClosed for {_connectedClientEndpoint}");
             onConnectionClosed();
         }
 
-        _logger.LogInfo($"End of handling connection with client: {_connectedClientEndpoint}");
+        Logger.LogInfo($"End of handling connection with client: {_connectedClientEndpoint}");
     }
 }

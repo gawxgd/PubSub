@@ -11,43 +11,43 @@ public class TcpServer(CreateSocketUseCase createSocketUseCase, IConnectionManag
     : BackgroundService
 {
     private readonly Socket _socket = createSocketUseCase.CreateSocket();
-    private readonly IAutoLogger _logger = AutoLoggerFactory.CreateLogger<TcpServer>(LogSource.MessageBroker);
+    private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<TcpServer>(LogSource.MessageBroker);
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInfo("TCP Server started listening");
+        Logger.LogInfo("TCP Server started listening");
         
         while (!cancellationToken.IsCancellationRequested)
         {
             try
             {
                 var acceptedSocket = await _socket.AcceptAsync(cancellationToken);
-                _logger.LogInfo($"Accepted client: {acceptedSocket.RemoteEndPoint}");
+                Logger.LogInfo($"Accepted client: {acceptedSocket.RemoteEndPoint}");
 
                 var linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 connectionManager.RegisterConnection(acceptedSocket, linkedTokenSource);
             }
             catch (SocketException ex)
             {
-                _logger.LogError($"Socket error: {ex.Message}", ex);
+                Logger.LogError($"Socket error: {ex.Message}", ex);
             }
             catch (OperationCanceledException)
             {
-                _logger.LogInfo("Server shutdown requested");
+                Logger.LogInfo("Server shutdown requested");
                 break;
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Unexpected error in ExecuteAsync: {ex.Message}", ex);
+                Logger.LogError($"Unexpected error in ExecuteAsync: {ex.Message}", ex);
             }
         }
         
-        _logger.LogInfo("TCP Server execution completed");
+        Logger.LogInfo("TCP Server execution completed");
     }
 
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInfo("Stopping TCP Server");
+        Logger.LogInfo("Stopping TCP Server");
         
         await base.StopAsync(cancellationToken);
         await Task.Delay(100);
@@ -55,31 +55,31 @@ public class TcpServer(CreateSocketUseCase createSocketUseCase, IConnectionManag
         try
         {
             await connectionManager.UnregisterAllConnectionsAsync();
-            _logger.LogInfo("All connections unregistered");
+            Logger.LogInfo("All connections unregistered");
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Exception during connection cleanup: {ex.Message}", ex);
+            Logger.LogError($"Exception during connection cleanup: {ex.Message}", ex);
         }
 
         try
         {
             _socket.Shutdown(SocketShutdown.Receive);
-            _logger.LogInfo("Socket shutdown initiated - stopped accepting new connections");
+            Logger.LogInfo("Socket shutdown initiated - stopped accepting new connections");
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Exception during socket shutdown: {ex.Message}", ex);
+            Logger.LogError($"Exception during socket shutdown: {ex.Message}", ex);
         }
 
         try
         {
             _socket.Close();
-            _logger.LogInfo("Socket closed and port released");
+            Logger.LogInfo("Socket closed and port released");
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Exception during socket cleanup: {ex.Message}", ex);
+            Logger.LogError($"Exception during socket cleanup: {ex.Message}", ex);
         }
     }
 

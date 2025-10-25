@@ -10,7 +10,7 @@ public class Connection(
     CancellationTokenSource cancellationTokenSource,
     Task handlerTask) : IDisposable
 {
-    private readonly IAutoLogger _logger = AutoLoggerFactory.CreateLogger<Connection>(LogSource.MessageBroker);
+    private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<Connection>(LogSource.MessageBroker);
 
     private bool _disposed;
     public long Id { get; } = id;
@@ -23,21 +23,21 @@ public class Connection(
     {
         if (_disposed)
         {
-            _logger.LogWarning($"Connection with id {Id} has been already disposed.");
+            Logger.LogWarning($"Connection with id {Id} has been already disposed.");
             return;
         }
 
         CancellationTokenSource.Dispose();
         _disposed = true;
         GC.SuppressFinalize(this);
-        _logger.LogWarning($"Connection with id {Id} has been disposed.");
+        Logger.LogWarning($"Connection with id {Id} has been disposed.");
     }
 
     public async Task DisconnectAsync()
     {
         if (_disposed || CancellationTokenSource.IsCancellationRequested)
         {
-            _logger.LogWarning($"Connection with id {Id} has been already disconnected / disposed.");
+            Logger.LogWarning($"Connection with id {Id} has been already disconnected / disposed.");
             return;
         }
 
@@ -47,12 +47,12 @@ public class Connection(
         try
         {
             await HandlerTask.WaitAsync(timeoutCts.Token);
-            _logger.LogInfo($"Connection with id {Id} has been disconnected.");
+            Logger.LogInfo($"Connection with id {Id} has been disconnected.");
         }
         catch (OperationCanceledException ex)
         {
             // Timeout - handler didn't complete in time
-            _logger.LogWarning($"Connection with id {Id} disconnection timed out", ex);
+            Logger.LogWarning($"Connection with id {Id} disconnection timed out", ex);
         }
     }
 }

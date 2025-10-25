@@ -10,7 +10,7 @@ namespace MessageBroker.Domain.Logic.TcpServer.UseCase;
 
 public class CreateSocketUseCase(IOptionsMonitor<TcpServerOptions> monitor)
 {
-    private readonly IAutoLogger _logger = AutoLoggerFactory.CreateLogger<CreateSocketUseCase>(LogSource.MessageBroker);
+    private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<CreateSocketUseCase>(LogSource.MessageBroker);
 
     public Socket CreateSocket()
     {
@@ -29,7 +29,7 @@ public class CreateSocketUseCase(IOptionsMonitor<TcpServerOptions> monitor)
         socket.Bind(new IPEndPoint(address, options.Port));
         socket.Listen(options.Backlog);
 
-        _logger.LogInfo($"Created socket with options: {options}");
+        Logger.LogInfo($"Created socket with options: {options}");
 
         return socket;
     }
