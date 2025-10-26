@@ -1,6 +1,6 @@
+using LoggerLib;
 using LoggerLib.Domain.Enums;
-using LoggerLib.Domain.Port;
-using LoggerLib.Outbound.Adapter;
+using ILogger = LoggerLib.Domain.Port.ILogger;
 
 namespace MessageBroker.Domain.Entities;
 
@@ -8,10 +8,9 @@ public class Connection(
     long id,
     string clientEndpoint,
     CancellationTokenSource cancellationTokenSource,
-    Task handlerTask) : IDisposable
+    Task handlerTask,
+    ILogger logger) : IDisposable
 {
-    private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<Connection>(LogSource.MessageBroker);
-
     private bool _disposed;
     public long Id { get; } = id;
     public string ClientEndpoint { get; } = clientEndpoint;
@@ -23,21 +22,21 @@ public class Connection(
     {
         if (_disposed)
         {
-            Logger.LogWarning($"Connection with id {Id} has been already disposed.");
+            logger.LogWarning(LogSource.MessageBroker,$"Connection with id {Id} has been already disposed.");
             return;
         }
 
         CancellationTokenSource.Dispose();
         _disposed = true;
         GC.SuppressFinalize(this);
-        Logger.LogWarning($"Connection with id {Id} has been disposed.");
+        logger.LogWarning(LogSource.MessageBroker,$"Connection with id {Id} has been disposed.");
     }
 
     public async Task DisconnectAsync()
     {
         if (_disposed || CancellationTokenSource.IsCancellationRequested)
         {
-            Logger.LogWarning($"Connection with id {Id} has been already disconnected / disposed.");
+            logger.LogWarning(LogSource.MessageBroker,$"Connection with id {Id} has been already disconnected / disposed.");
             return;
         }
 
@@ -47,12 +46,12 @@ public class Connection(
         try
         {
             await HandlerTask.WaitAsync(timeoutCts.Token);
-            Logger.LogInfo($"Connection with id {Id} has been disconnected.");
+            logger.LogInfo(LogSource.MessageBroker,$"Connection with id {Id} has been disconnected.");
         }
-        catch (OperationCanceledException ex)
+        catch (OperationCanceledException)
         {
             // Timeout - handler didn't complete in time
-            Logger.LogWarning($"Connection with id {Id} disconnection timed out", ex);
+            logger.LogWarning(LogSource.MessageBroker,$"Connection with id {Id} has disconnected.");
         }
     }
 }

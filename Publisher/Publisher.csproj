@@ -7,11 +7,19 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <Folder Include="Configuration\Exceptions\" />
         <Folder Include="Inbound\"/>
+        <Folder Include="Outbound\Adapter\" />
     </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\LoggerLib\LoggerLib.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Compile Remove="Outbound\Exceptions\PublisherConnectionException.cs" />
+      <Compile Remove="Outbound\Adapter\TcpPublisherConnection.cs" />
+      <Compile Remove="Configuration\PublisherFactory.cs" />
     </ItemGroup>
 
 </Project>

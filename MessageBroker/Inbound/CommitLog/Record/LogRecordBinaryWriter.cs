@@ -13,6 +13,6 @@ public class LogRecordBinaryWriter : ILogRecordWriter
 
         bw.WriteVarULong(record.Timestamp - batchBaseTimestamp);
         bw.WriteVarUInt((uint)record.Payload.Length);
-        bw.Write(record.Payload);
+        bw.Write(record.Payload.Span);
     }
 }

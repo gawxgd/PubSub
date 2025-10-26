@@ -1,37 +1,32 @@
 using System.Net.Sockets;
 using LoggerLib.Domain.Enums;
-using LoggerLib.Domain.Port;
-using LoggerLib.Outbound.Adapter;
 using MessageBroker.Domain.Entities;
 using MessageBroker.Domain.Logic.TcpServer.UseCase;
 using MessageBroker.Domain.Port;
+using ILogger = LoggerLib.Domain.Port.ILogger;
 
 namespace MessageBroker.Inbound.Adapter;
 
-public class ConnectionManager(IConnectionRepository connectionRepository) : IConnectionManager
+public class ConnectionManager(IConnectionRepository connectionRepository, ILogger logger) : IConnectionManager
 {
-    private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<ConnectionManager>(LogSource.MessageBroker);
-
     public void RegisterConnection(Socket acceptedSocket, CancellationTokenSource cancellationTokenSource)
     {
         var connectionId = connectionRepository.GenerateConnectionId();
-
-        Logger.LogInfo($"Registering connection from {acceptedSocket.RemoteEndPoint}");
-
         var handlerTask = Task.Run(() =>
         {
-            Logger.LogDebug(
-                $"Started handler thread for connection {connectionId} with client: {acceptedSocket.RemoteEndPoint}");
+            Console.WriteLine(
+                $"Started new thread for handling connection with client: {acceptedSocket.RemoteEndPoint}");
             return new HandleClientConnectionUseCase(acceptedSocket,
-                    () => UnregisterConnectionAfterThreadFinish(connectionId))
+                    () => UnregisterConnectionAfterThreadFinish(connectionId),
+                    logger)
                 .HandleConnection(cancellationTokenSource.Token);
         }, cancellationTokenSource.Token);
 
         var connection = new Connection(connectionId, acceptedSocket.RemoteEndPoint?.ToString() ?? "Unknown",
-            cancellationTokenSource, handlerTask);
+            cancellationTokenSource, handlerTask, logger);
         connectionRepository.Add(connection);
 
-        Logger.LogInfo($"Connection registered with ID: {connectionId}");
+        logger.LogInfo(LogSource.MessageBroker, $"New connection with ID: {connectionId}");
     }
 
     public async Task UnregisterConnectionAsync(long connectionId)
@@ -39,20 +34,20 @@ public class ConnectionManager(IConnectionRepository connectionRepository) : ICo
         var connection = connectionRepository.Get(connectionId);
         if (connection == null)
         {
-            Logger.LogWarning($"Connection with id {connectionId} was not found");
+            logger.LogWarning(LogSource.MessageBroker, $"Connection with id {connectionId} was not found");
             return;
         }
 
         await connection.DisconnectAsync();
         connection.Dispose();
         connectionRepository.Remove(connectionId);
-        Logger.LogInfo($"Unregistered connection with ID: {connectionId}");
+
+        logger.LogInfo(LogSource.MessageBroker, $"Unregistered connection with ID: {connectionId}");
     }
 
     public async Task UnregisterAllConnectionsAsync()
     {
         var connections = connectionRepository.GetAll();
-        Logger.LogInfo($"Unregistering {connections.Count} connections");
 
         foreach (var connection in connections)
         {
@@ -61,7 +56,7 @@ public class ConnectionManager(IConnectionRepository connectionRepository) : ICo
         }
 
         connectionRepository.RemoveAll();
-        Logger.LogInfo("All connections unregistered");
+        logger.LogInfo(LogSource.MessageBroker, "Unregistered all connections");
     }
 
     private void UnregisterConnectionAfterThreadFinish(long connectionId)
@@ -69,13 +64,14 @@ public class ConnectionManager(IConnectionRepository connectionRepository) : ICo
         var connection = connectionRepository.Get(connectionId);
         if (connection == null)
         {
-            Logger.LogWarning($"Connection with id {connectionId} was not found");
+            logger.LogWarning(LogSource.MessageBroker, $"Connection with id {connectionId} was not found");
             return;
         }
 
-
         connection.Dispose();
         connectionRepository.Remove(connectionId);
-        Logger.LogInfo($"Unregistered connection with ID {connectionId} after thread finished");
+
+        logger.LogInfo(LogSource.MessageBroker,
+            $"Unregistered connection with ID after thread finished: {connectionId}");
     }
 }
