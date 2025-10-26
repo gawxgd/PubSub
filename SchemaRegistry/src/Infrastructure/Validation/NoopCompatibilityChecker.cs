@@ -2,7 +2,7 @@ using Chr.Avro.Abstract;
 
 namespace SchemaRegistry.Infrastructure.Validation;
 
-public class AlwaysTrueCompatibilityChecker : ICompatibilityChecker
+public class NoopCompatibilityChecker : ICompatibilityChecker
 {
     public bool IsBackwardCompatible(RecordSchema newSchema, RecordSchema oldSchema)
     {
