@@ -62,9 +62,11 @@ public sealed class BinaryLogSegmentWriter
         _timeIndex.Seek(0, SeekOrigin.End);
     }
 
-    public bool ShouldRoll(ulong nextAppendBytes)
+    public bool ShouldRoll()
     {
-        return (ulong)_log.Length + nextAppendBytes >= _maxSegmentBytes;
+        return
+            (ulong)_log.Length >=
+            _maxSegmentBytes; //ToDo we risk that the segment will be bigger because we dont accomodate the size of next batch
     }
 
     public async ValueTask AppendAsync(LogRecordBatch batch, CancellationToken ct = default)
@@ -92,15 +94,16 @@ public sealed class BinaryLogSegmentWriter
         _segment = _segment with { NextOffset = batch.BaseOffset + (ulong)batch.Records.Count };
     }
 
-    public async ValueTask FlushAsync(CancellationToken ct = default)
-    {
-        await _log.FlushAsync(ct).ConfigureAwait(false);
-        await _index.FlushAsync(ct).ConfigureAwait(false);
-    }
+    // public async ValueTask FlushAsync(CancellationToken ct = default)
+    // {
+    //     await _log.FlushAsync(ct).ConfigureAwait(false);
+    //     await _index.FlushAsync(ct).ConfigureAwait(false);
+    // }
 
     public async ValueTask DisposeAsync()
     {
         await _log.DisposeAsync().ConfigureAwait(false);
         await _index.DisposeAsync().ConfigureAwait(false);
+        await _timeIndex.DisposeAsync().ConfigureAwait(false);
     }
 }
