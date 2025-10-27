@@ -53,6 +53,7 @@ public sealed class BinaryCommitLogAppender : ICommitLogAppender
 
     public async ValueTask AppendAsync(ReadOnlyMemory<byte> payload)
     {
+        // ToDo do a hybrid batching by channel count and batch size
         if (!_batchChannel.Writer.TryWrite(payload))
         {
             await FlushChannelToLogSegmentAsync();

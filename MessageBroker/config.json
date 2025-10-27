@@ -10,10 +10,10 @@
   },
   "CommitLog": {
     "Directory": "logs",
-    "MaxSegmentBytes": 134217728,
-    "IndexIntervalBytes": 4096,
-    "TimeIndexIntervalMs": 60000,
-    "FileBufferSize": 65536
+    "MaxSegmentBytes": 1024,
+    "IndexIntervalBytes": 128,
+    "TimeIndexIntervalMs": 1000,
+    "FileBufferSize": 4096
   },
   "CommitLogTopics": [
     {
