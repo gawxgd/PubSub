@@ -1,13 +1,16 @@
-using LoggerLib;
 using LoggerLib.Domain.Enums;
-using ILogger = LoggerLib.Domain.Port.ILogger;
+using LoggerLib.Domain.Port;
+using LoggerLib.Outbound.Adapter;
 
 namespace MessageBroker.Domain.Logic.TcpServer.UseCase;
 
-public class ProcessReceivedMessageUseCase(ILogger logger)
+public class ProcessReceivedMessageUseCase
 {
+    private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<ProcessReceivedMessageUseCase>(LogSource.MessageBroker);
+    
     public async Task ProcessMessageAsync(ReadOnlyMemory<byte> message, CancellationToken cancellationToken)
     {
-        logger.LogInfo(LogSource.TcpServer, $"Processing message {message.Length} bytes");
+        Logger.LogDebug($"Processing message {message.Length} bytes");
+        await Task.CompletedTask;
     }
 }
