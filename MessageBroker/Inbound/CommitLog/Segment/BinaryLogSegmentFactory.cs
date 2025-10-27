@@ -2,6 +2,7 @@ using MessageBroker.Domain.Entities.CommitLog;
 using MessageBroker.Domain.Port.CommitLog.RecordBatch;
 using MessageBroker.Domain.Port.CommitLog.Segment;
 using MessageBroker.Infrastructure.Configuration.Options;
+using MessageBroker.Infrastructure.Configuration.Options.CommitLog;
 using Microsoft.Extensions.Options;
 
 namespace MessageBroker.Inbound.CommitLog.Segment;
@@ -21,6 +22,7 @@ public sealed class BinaryLogSegmentFactory(
             opt.Directory,
             opt.MaxSegmentBytes,
             opt.IndexIntervalBytes,
+            opt.TimeIndexIntervalMs,
             opt.FileBufferSize);
     }
 

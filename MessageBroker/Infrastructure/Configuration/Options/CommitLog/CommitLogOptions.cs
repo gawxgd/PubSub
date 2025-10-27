@@ -1,6 +1,4 @@
-using System;
-
-namespace MessageBroker.Infrastructure.Configuration.Options;
+namespace MessageBroker.Infrastructure.Configuration.Options.CommitLog;
 
 public sealed class CommitLogOptions
 {
@@ -25,7 +23,9 @@ public sealed class CommitLogOptions
     public uint FileBufferSize { get; set; } = 64 * 1024; // 64 KB default
 
     /// <summary>
-    /// Optional: Time index interval in bytes (if you want time-based indexing).
+    /// Optional: Time index interval in Ms (if you want time-based indexing).
     /// </summary>
-    public uint TimeIndexIntervalBytes { get; set; } = 4096;
+    public uint TimeIndexIntervalMs { get; set; } = 4096;
+
+    public uint FlushIntervalMs { get; set; } = 100;
 }

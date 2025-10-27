@@ -5,12 +5,15 @@ using LoggerLib.Outbound.Adapter;
 using MessageBroker.Domain.Entities;
 using MessageBroker.Domain.Logic.TcpServer.UseCase;
 using MessageBroker.Domain.Port;
+using MessageBroker.Domain.Port.CommitLog;
 
 namespace MessageBroker.Inbound.Adapter;
 
-public class ConnectionManager(IConnectionRepository connectionRepository) : IConnectionManager
+public class ConnectionManager(IConnectionRepository connectionRepository, ICommitLogFactory commitLogFactory)
+    : IConnectionManager
 {
-    private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<ConnectionManager>(LogSource.MessageBroker);
+    private static readonly IAutoLogger Logger =
+        AutoLoggerFactory.CreateLogger<ConnectionManager>(LogSource.MessageBroker);
 
     public void RegisterConnection(Socket acceptedSocket, CancellationTokenSource cancellationTokenSource)
     {
@@ -23,7 +26,7 @@ public class ConnectionManager(IConnectionRepository connectionRepository) : ICo
             Logger.LogDebug(
                 $"Started handler thread for connection {connectionId} with client: {acceptedSocket.RemoteEndPoint}");
             return new HandleClientConnectionUseCase(acceptedSocket,
-                    () => UnregisterConnectionAfterThreadFinish(connectionId))
+                    () => UnregisterConnectionAfterThreadFinish(connectionId), commitLogFactory)
                 .HandleConnection(cancellationTokenSource.Token);
         }, cancellationTokenSource.Token);
 

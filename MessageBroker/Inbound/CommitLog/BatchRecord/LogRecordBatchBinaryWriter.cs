@@ -7,7 +7,7 @@ using MessageBroker.Domain.Port.CommitLog.RecordBatch;
 using MessageBroker.Domain.Util;
 using static MessageBroker.Domain.Util.VarEncodingSize;
 
-namespace MessageBroker.Inbound.CommitLog;
+namespace MessageBroker.Inbound.CommitLog.BatchRecord;
 
 public class LogRecordBatchBinaryWriter(ILogRecordWriter recordIo, ICompressor compressor, Encoding encoding)
     : ILogRecordBatchWriter

@@ -29,6 +29,7 @@ public static class HostBuilderExtensions
                 services.AddBrokerOptions(context.Configuration);
                 services.AddTcpServices();
                 services.AddSignalRLogger();
+                services.AddCommitLogServices();
                 services.AddCors(options =>
                 {
                     options.AddDefaultPolicy(builder =>
@@ -36,7 +37,6 @@ public static class HostBuilderExtensions
                         builder.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
                     });
                 });
-
             })
             .ConfigureWebHostDefaults(webBuilder =>
             {
@@ -45,13 +45,10 @@ public static class HostBuilderExtensions
                 {
                     app.UseCors();
                     app.UseRouting();
-                    app.UseEndpoints(endpoints =>
-                    {
-                        endpoints.MapLogger();
-                    });
+                    app.UseEndpoints(endpoints => { endpoints.MapLogger(); });
                 });
             });
-        
+
         return builder;
     }
 }

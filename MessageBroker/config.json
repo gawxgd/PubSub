@@ -1,8 +1,37 @@
 {
-  "Port": 9096,
-  "Address": "127.0.0.1",
-  "MaxRequestSizeInByte": 512,
-  "InlineCompletions": false,
-  "SocketPolling": false,
-  "Backlog": 4096
+  "Server": {
+    "Port": 9096,
+    "Address": "127.0.0.1",
+    "MaxRequestSizeBytes": 512,
+    "InlineCompletions": false,
+    "SocketPolling": false,
+    "Backlog": 4096
+  },
+  "CommitLog": {
+    "Directory": "logs",
+    "MaxSegmentBytes": 134217728,
+    "IndexIntervalBytes": 4096,
+    "TimeIndexIntervalMs": 60000,
+    "FileBufferSize": 65536
+  },
+  "CommitLogTopics": [
+    {
+      "Name": "default",
+      "BaseOffset": 0,
+      "FlushIntervalMs": 100,
+      "Directory": null
+    },
+    {
+      "Name": "metrics",
+      "BaseOffset": 0,
+      "FlushIntervalMs": 250,
+      "Directory": null
+    },
+    {
+      "Name": "audit",
+      "BaseOffset": 0,
+      "FlushIntervalMs": 500,
+      "Directory": "logs/audit"
+    }
+  ]
 }

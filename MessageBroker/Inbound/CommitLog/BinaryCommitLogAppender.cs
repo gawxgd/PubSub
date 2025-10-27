@@ -11,8 +11,8 @@ namespace MessageBroker.Inbound.CommitLog;
 
 public sealed class BinaryCommitLogAppender : ICommitLogAppender
 {
-    //ToDo background flush
-    // and rolling segments
+//ToDo writers per topic
+// ToDo implement dispose
     private LogSegment _activeSegment;
     private ILogSegmentWriter _activeSegmentWriter;
     private ulong _currentOffset;
@@ -20,11 +20,13 @@ public sealed class BinaryCommitLogAppender : ICommitLogAppender
     private readonly TimeSpan _flushInterval;
     private readonly ILogSegmentFactory _segmentFactory;
     private readonly string _directory;
+    private readonly string _topic;
+    // instance of this cllass should be created per topic
 
     private readonly Channel<ReadOnlyMemory<byte>> _batchChannel =
         Channel.CreateBounded<ReadOnlyMemory<byte>>(new BoundedChannelOptions(10) //ToDo get from options
         {
-            SingleWriter = true,
+            SingleWriter = false,
             SingleReader = true,
             FullMode = BoundedChannelFullMode.Wait
         });
@@ -36,7 +38,7 @@ public sealed class BinaryCommitLogAppender : ICommitLogAppender
         Logger = AutoLoggerFactory.CreateLogger<BinaryCommitLogAppender>(LogSource.MessageBroker);
 
     public BinaryCommitLogAppender(ILogSegmentFactory segmentFactory, string directory, ulong baseOffset,
-        TimeSpan flushInterval)
+        TimeSpan flushInterval, string topic)
     {
         _directory = directory;
         _segmentFactory = segmentFactory;
@@ -46,6 +48,7 @@ public sealed class BinaryCommitLogAppender : ICommitLogAppender
         _flushInterval = flushInterval;
         _cancellationTokenSource = new CancellationTokenSource();
         _backgroundFlushTask = StartBackgroundFlushAsync();
+        _topic = topic;
     }
 
     public async ValueTask AppendAsync(ReadOnlyMemory<byte> payload)
@@ -60,33 +63,41 @@ public sealed class BinaryCommitLogAppender : ICommitLogAppender
 
     private async Task FlushChannelToLogSegmentAsync()
     {
-        var batchBaseOffset = _currentOffset;
-        var records = new List<LogRecord>();
-
-        while (_batchChannel.Reader.TryRead(out var message))
+        await _flushLock.WaitAsync();
+        try
         {
-            records.Add(new LogRecord(
-                _currentOffset++,
-                (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), // TODO: extract timestamp from message
-                message
-            ));
+            var batchBaseOffset = _currentOffset;
+            var records = new List<LogRecord>();
+
+            while (_batchChannel.Reader.TryRead(out var message))
+            {
+                records.Add(new LogRecord(
+                    _currentOffset++,
+                    (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), // TODO: extract timestamp from message
+                    message
+                ));
+            }
+
+            if (records.Count == 0) return;
+
+            var recordBatch = new LogRecordBatch(
+                CommitLogMagicNumbers.LogRecordBatchMagicNumber,
+                (ulong)batchBaseOffset,
+                records,
+                false
+            );
+
+            if (ShouldRollActiveSegment())
+            {
+                await RollActiveSegmentAsync();
+            }
+
+            await _activeSegmentWriter.AppendAsync(recordBatch, _cancellationTokenSource.Token);
         }
-
-        if (records.Count == 0) return;
-
-        var recordBatch = new LogRecordBatch(
-            CommitLogMagicNumbers.LogRecordBatchMagicNumber,
-            batchBaseOffset,
-            records,
-            false
-        );
-
-        if (ShouldRollActiveSegment())
+        finally
         {
-            await RollActiveSegmentAsync();
+            _flushLock.Release();
         }
-
-        await _activeSegmentWriter.AppendAsync(recordBatch, _cancellationTokenSource.Token);
     }
 
     private bool ShouldRollActiveSegment()
