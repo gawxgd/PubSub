@@ -24,7 +24,6 @@ public sealed class BinaryLogSegmentWriter
     public BinaryLogSegmentWriter(
         ILogRecordBatchWriter batchWriter,
         LogSegment segment,
-        string directory,
         ulong maxSegmentBytes,
         uint indexIntervalBytes,
         uint timeIndexIntervalMs,
@@ -35,7 +34,8 @@ public sealed class BinaryLogSegmentWriter
         _maxSegmentBytes = maxSegmentBytes;
         _indexIntervalBytes = indexIntervalBytes;
         _timeIndexIntervalMs = timeIndexIntervalMs;
-        Directory.CreateDirectory(directory);
+        var logDir = Path.GetDirectoryName(segment.LogPath);
+        Directory.CreateDirectory(logDir!);
 
         _log = new FileStream(
             segment.LogPath,

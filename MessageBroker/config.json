@@ -1,4 +1,5 @@
 {
+  "LoggerPort": 5001,
   "Server": {
     "Port": 9096,
     "Address": "127.0.0.1",

@@ -40,7 +40,17 @@ public static class HostBuilderExtensions
             })
             .ConfigureWebHostDefaults(webBuilder =>
             {
-                webBuilder.UseUrls("http://0.0.0.0:5000");
+                //ToDo change
+                var configBuilder = new ConfigurationBuilder()
+                    .SetBasePath(AppContext.BaseDirectory)
+                    .AddJsonFile(ConfigFileName, true, true)
+                    .AddEnvironmentVariables(EnvironmentVariablesPrefix)
+                    .AddCommandLine(args);
+
+                var config = configBuilder.Build();
+                var loggerPort = config.GetValue<int>("LoggerPort", 5001);
+
+                webBuilder.UseUrls($"http://0.0.0.0:{loggerPort}");
                 webBuilder.Configure(app =>
                 {
                     app.UseCors();
