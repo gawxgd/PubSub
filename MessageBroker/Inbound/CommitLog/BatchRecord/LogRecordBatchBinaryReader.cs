@@ -17,16 +17,45 @@ public class LogRecordBatchBinaryReader(ILogRecordReader logRecordReader, ICompr
 
         var baseOffset = br.ReadUInt64();
         var batchLength = br.ReadUInt64();
+        if (batchLength == 0 || batchLength > Int64.MaxValue)
+        {
+            throw new InvalidDataException("Batch length cannot be zero, or bigger than Int64.MaxValue.");
+        }
+        var batchStartPosition = stream.Position;
+
         var magic = (CommitLogMagicNumbers)br.ReadByte();
+        if (magic != CommitLogMagicNumbers.LogRecordBatchMagicNumber)
+        {
+            throw new InvalidDataException(
+                $"Invalid magic number: expected {CommitLogMagicNumbers.LogRecordBatchMagicNumber}, got {magic}");
+        }
 
         var storedCrc = br.ReadVarUInt();
         var compressedFlag = (byte)br.ReadVarUInt();
         var compressed = compressedFlag != 0;
 
         var baseTimestamp = br.ReadVarULong();
+
         var recordBytesLength = br.ReadVarUInt();
+        if (recordBytesLength > int.MaxValue)
+        {
+            throw new InvalidDataException(
+                $"Record bytes length {recordBytesLength} exceeds maximum allowed size");
+        }
 
         var recordBytes = br.ReadBytes((int)recordBytesLength);
+        if (recordBytes.Length != (int)recordBytesLength)
+        {
+            throw new InvalidDataException(
+                $"Expected {recordBytesLength} bytes but only read {recordBytes.Length}");
+        }
+        
+        var actualBytesRead = (ulong)(stream.Position - batchStartPosition);
+        if (actualBytesRead != batchLength)
+        {
+            throw new InvalidDataException(
+                $"Batch length mismatch: declared {batchLength} bytes but consumed {actualBytesRead} bytes");
+        }
 
         var computedCrc = Crc32Algorithm.Compute(recordBytes);
         if (computedCrc != storedCrc)
