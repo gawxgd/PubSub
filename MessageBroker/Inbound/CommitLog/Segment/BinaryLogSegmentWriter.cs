@@ -1,4 +1,7 @@
 using System.Buffers.Binary;
+using LoggerLib.Domain.Enums;
+using LoggerLib.Domain.Port;
+using LoggerLib.Outbound.Adapter;
 using MessageBroker.Domain.Entities.CommitLog;
 using MessageBroker.Domain.Port.CommitLog.Record;
 using MessageBroker.Domain.Port.CommitLog.RecordBatch;
@@ -9,6 +12,9 @@ namespace MessageBroker.Inbound.CommitLog.Segment;
 public sealed class BinaryLogSegmentWriter
     : ILogSegmentWriter
 {
+    private static readonly IAutoLogger Logger =
+        AutoLoggerFactory.CreateLogger<BinaryLogSegmentWriter>(LogSource.MessageBroker);
+
     private readonly FileStream _index;
     private readonly FileStream _log;
     private readonly FileStream _timeIndex;
@@ -34,8 +40,8 @@ public sealed class BinaryLogSegmentWriter
         _maxSegmentBytes = maxSegmentBytes;
         _indexIntervalBytes = indexIntervalBytes;
         _timeIndexIntervalMs = timeIndexIntervalMs;
-        var logDir = Path.GetDirectoryName(segment.LogPath);
-        Directory.CreateDirectory(logDir!);
+
+        EnsureDirectoriesExists();
 
         _log = new FileStream(
             segment.LogPath,
@@ -64,6 +70,13 @@ public sealed class BinaryLogSegmentWriter
         _log.Seek(0, SeekOrigin.End);
         _index.Seek(0, SeekOrigin.End);
         _timeIndex.Seek(0, SeekOrigin.End);
+    }
+
+    private void EnsureDirectoriesExists()
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(_segment.LogPath)!);
+        Directory.CreateDirectory(Path.GetDirectoryName(_segment.IndexFilePath)!);
+        Directory.CreateDirectory(Path.GetDirectoryName(_segment.TimeIndexFilePath)!);
     }
 
     public bool ShouldRoll()
