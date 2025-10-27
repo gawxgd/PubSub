@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using SchemaRegistry.Domain.DTOs;
+using SchemaRegistry.Domain.Exceptions;
 using SchemaRegistry.Domain.Services;
 using SchemaRegistry.Domain.Services.Implementations;
 
