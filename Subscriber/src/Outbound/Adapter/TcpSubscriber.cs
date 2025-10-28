@@ -116,10 +116,11 @@ public sealed class TcpSubscriber(
 
     public async ValueTask DisposeAsync()
     {
-        await _cancellationTokenSource.CancelAsync();
-        inboundChannel.Writer.TryComplete();
-        await inboundChannel.Reader.Completion;
-        await connection.DisconnectAsync();
-        _cancellationTokenSource.Dispose();
+        await _cancellationTokenSource.CancelAsync();      // 1. Cancel internal operations
+        await connection.DisconnectAsync();                // 2. Stop TCP read loop / producer
+        inboundChannel.Writer.TryComplete();               // 3. Signal no more messages
+        await inboundChannel.Reader.Completion;            // 4. Wait for consumer to finish
+        _cancellationTokenSource.Dispose();                // 5. Cleanup
+
     }
 }
