@@ -48,10 +48,23 @@ public sealed class TcpSubscriberConnection(
 
             if (_pipeReader != null)
                 await _pipeReader.CompleteAsync();
+            
+            try
+            {
+                _client.Client.Shutdown(SocketShutdown.Both);
+            }
+            catch (SocketException ex)
+            {
+                logger.LogInfo(
+                    LogSource.Subscriber,
+                    $"Socket already closed or disconnected while shutting down connection : {ex.SocketErrorCode}"
+                );
+            }
 
-            _client.Client.Shutdown(SocketShutdown.Both);
-            _client.Close();
-            _client.Dispose();
+            finally
+            {
+                _client.Close(); 
+            }
             logger.LogInfo(LogSource.Subscriber, $"Disconnected from broker at {_client.Client.RemoteEndPoint}");
         }
         catch (Exception ex)
