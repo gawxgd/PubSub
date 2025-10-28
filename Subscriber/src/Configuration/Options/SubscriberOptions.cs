@@ -11,5 +11,6 @@ public class SubscriberOptions
     public uint MaxRetryAttempts { get; set; }
 
     public required Uri MessageBrokerConnectionUri;
-    
+    public int MaxQueueSIze { get; set; }
+    public int MaxQueueSize { get; } = 65536; // Analize the value here
 }

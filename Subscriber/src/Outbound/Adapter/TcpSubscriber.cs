@@ -15,13 +15,12 @@ public sealed class TcpSubscriber(
     uint maxRetryAttempts,
     ISubscriberConnection connection,
     ILogger logger,
+    Channel<byte[]> inboundChannel,
     Func<string, Task>? messageHandler,
     Func<Exception, Task>? errorHandler = null)
     : ISubscriber, IAsyncDisposable
 {
-    private readonly Channel<byte[]> _inboundChannel = Channel.CreateUnbounded<byte[]>();
     private readonly CancellationTokenSource _cancellationTokenSource = new();
-    private readonly ILogger _logger = logger;
 
     public async Task CreateConnection(CancellationToken cancellationToken)
     {
@@ -38,7 +37,7 @@ public sealed class TcpSubscriber(
             {
                 retryCount++;
                 var delay = TimeSpan.FromSeconds(Math.Min(retryCount, maxRetryAttempts));
-                _logger.LogDebug(LogSource.Subscriber, $" Retry {retryCount}: {ex.Message}. Waiting {delay}...");
+                logger.LogDebug(LogSource.Subscriber, $" Retry {retryCount}: {ex.Message}. Waiting {delay}...");
                 await Task.Delay(delay, cancellationToken);
             }
         }
@@ -54,13 +53,13 @@ public sealed class TcpSubscriber(
 
         if (text.Length < minMessageLength || text.Length > maxMessageLength)
         {
-            _logger.LogError(LogSource.Subscriber, $"Invalid message length: {text.Length}");
+            logger.LogError(LogSource.Subscriber, $"Invalid message length: {text.Length}");
             return;
         }
 
         if (!text.StartsWith($"{topic}:"))
         {
-            _logger.LogError(LogSource.Subscriber, $"Ignored message (wrong topic): {text}");
+            logger.LogError(LogSource.Subscriber, $"Ignored message (wrong topic): {text}");
             return;
         }
 
@@ -72,11 +71,11 @@ public sealed class TcpSubscriber(
             {
                 await messageHandler(payload);    
             }
-            _logger.LogInfo(LogSource.Subscriber, $"Received message: {payload}");
+            logger.LogInfo(LogSource.Subscriber, $"Received message: {payload}");
         }
         catch (Exception ex)
         { 
-            _logger.LogError(LogSource.Subscriber, ex.Message);
+            logger.LogError(LogSource.Subscriber, ex.Message);
         }
     }
 
@@ -88,9 +87,9 @@ public sealed class TcpSubscriber(
         {
             try
             {
-                if (await _inboundChannel.Reader.WaitToReadAsync(cancellationToken))
+                if (await inboundChannel.Reader.WaitToReadAsync(cancellationToken))
                 {
-                    while (_inboundChannel.Reader.TryRead(out var message))
+                    while (inboundChannel.Reader.TryRead(out var message))
                     {
                         await ReceiveAsync(message, cancellationToken);
                     }
@@ -98,10 +97,18 @@ public sealed class TcpSubscriber(
             }
             catch (Exception ex)
             {
-                _logger.LogError(LogSource.Subscriber, ex.Message);
+                logger.LogError(LogSource.Subscriber, ex.Message);
             }
 
-            await Task.Delay(pollInterval, cancellationToken);
+            try
+            {
+                await Task.Delay(pollInterval, cancellationToken);
+            }
+            catch (TaskCanceledException)
+            {
+                logger.LogWarning(LogSource.Subscriber, $"Task was cancelled");
+            }
+
         }
 
         await connection.DisconnectAsync(_cancellationTokenSource.Token);
@@ -110,8 +117,8 @@ public sealed class TcpSubscriber(
     public async ValueTask DisposeAsync()
     {
         await _cancellationTokenSource.CancelAsync();
-        _inboundChannel.Writer.TryComplete();
-        await _inboundChannel.Reader.Completion;
+        inboundChannel.Writer.TryComplete();
+        await inboundChannel.Reader.Completion;
         await connection.DisconnectAsync(_cancellationTokenSource.Token);
         _cancellationTokenSource.Dispose();
     }
