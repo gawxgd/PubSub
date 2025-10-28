@@ -8,7 +8,7 @@ using Subscriber.Outbound.Adapter;
 using Subscriber.Outbound.Exceptions;
 using Xunit;
 
-namespace Subscriber.UnitTests;
+namespace Subscriber.tests;
 
 public class TcpSubscriberTests
 {
