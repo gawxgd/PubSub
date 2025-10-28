@@ -42,14 +42,6 @@ public sealed class TcpSubscriberConnection(
     {
         try
         {
-            await _cancellationSource.CancelAsync();
-
-            if (_readLoopTask != null)
-                await _readLoopTask;
-
-            if (_pipeReader != null)
-                await _pipeReader.CompleteAsync();
-            
             try
             {
                 _client.Client.Shutdown(SocketShutdown.Both);
@@ -60,12 +52,23 @@ public sealed class TcpSubscriberConnection(
                     $"Socket already closed or disconnected while shutting down connection : {ex.SocketErrorCode}"
                 );
             }
-
             finally
             {
                 _client.Close(); 
             }
+            
+            await _cancellationSource.CancelAsync();
+
+            if (_readLoopTask != null)
+                await _readLoopTask;
+
+            if (_pipeReader != null)
+                await _pipeReader.CompleteAsync();
+            
+            messageChannelWriter.TryComplete();
+            
             Logger.LogInfo( $"Disconnected from broker at {_client.Client.RemoteEndPoint}");
+            
         }
         catch (Exception ex)
         {
