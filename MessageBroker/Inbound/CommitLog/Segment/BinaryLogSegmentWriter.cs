@@ -10,7 +10,7 @@ using MessageBroker.Domain.Port.CommitLog.Segment;
 namespace MessageBroker.Inbound.CommitLog.Segment;
 
 public sealed class BinaryLogSegmentWriter
-    : ILogSegmentWriter
+    : ILogSegmentWriter, IAsyncDisposable
 {
     private static readonly IAutoLogger Logger =
         AutoLoggerFactory.CreateLogger<BinaryLogSegmentWriter>(LogSource.MessageBroker);

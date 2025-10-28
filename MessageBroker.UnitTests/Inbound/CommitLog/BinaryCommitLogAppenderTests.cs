@@ -19,13 +19,13 @@ public class BinaryCommitLogAppenderTests : IDisposable
     {
         var logger = Substitute.For<ILogger>();
         AutoLoggerFactory.Initialize(logger);
-        
+
         _testDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         Directory.CreateDirectory(_testDirectory);
-        
+
         _segmentWriter = Substitute.For<ILogSegmentWriter>();
         _segmentFactory = Substitute.For<ILogSegmentFactory>();
-        
+
         var testSegment = new LogSegment(
             Path.Combine(_testDirectory, "00000000000000000000.log"),
             Path.Combine(_testDirectory, "00000000000000000000.index"),
@@ -33,12 +33,12 @@ public class BinaryCommitLogAppenderTests : IDisposable
             0,
             0
         );
-        
+
         _segmentFactory.CreateLogSegment(Arg.Any<string>(), Arg.Any<ulong>())
             .Returns(testSegment);
         _segmentFactory.CreateWriter(Arg.Any<LogSegment>())
             .Returns(_segmentWriter);
-        
+
         _segmentWriter.ShouldRoll().Returns(false);
     }
 
@@ -124,7 +124,7 @@ public class BinaryCommitLogAppenderTests : IDisposable
         // Arrange
         var appender = CreateAppender(flushInterval: TimeSpan.FromMilliseconds(50));
         LogRecordBatch? capturedBatch = null;
-        
+
         _segmentWriter.AppendAsync(Arg.Any<LogRecordBatch>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
@@ -151,7 +151,7 @@ public class BinaryCommitLogAppenderTests : IDisposable
     {
         // Arrange
         var appender = CreateAppender(flushInterval: TimeSpan.FromHours(1)); // Long interval
-    
+
         // Act - Fill channel beyond capacity (10 items)
         var tasks = new List<Task>();
         for (int i = 0; i < 15; i++)
@@ -171,7 +171,7 @@ public class BinaryCommitLogAppenderTests : IDisposable
         // Arrange
         var appender = CreateAppender(flushInterval: TimeSpan.FromMilliseconds(50));
         LogRecordBatch? capturedBatch = null;
-        
+
         _segmentWriter.AppendAsync(Arg.Any<LogRecordBatch>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
@@ -195,7 +195,7 @@ public class BinaryCommitLogAppenderTests : IDisposable
         var appender = CreateAppender(flushInterval: TimeSpan.FromMilliseconds(50));
         var originalPayload = new byte[] { 1, 2, 3, 4, 5 };
         LogRecordBatch? capturedBatch = null;
-        
+
         _segmentWriter.AppendAsync(Arg.Any<LogRecordBatch>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
@@ -240,4 +240,3 @@ public class BinaryCommitLogAppenderTests : IDisposable
         }
     }
 }
-

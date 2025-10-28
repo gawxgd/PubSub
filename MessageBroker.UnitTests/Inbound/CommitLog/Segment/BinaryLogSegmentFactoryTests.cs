@@ -87,7 +87,7 @@ public class BinaryLogSegmentFactoryTests
         var factory = CreateFactory();
         var testDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         Directory.CreateDirectory(testDir);
-        
+
         try
         {
             var segment = new MessageBroker.Domain.Entities.CommitLog.LogSegment(
@@ -104,7 +104,7 @@ public class BinaryLogSegmentFactoryTests
             // Assert
             writer.Should().NotBeNull();
             writer.Should().BeOfType<BinaryLogSegmentWriter>();
-            
+
             // Cleanup
             writer.DisposeAsync().AsTask().Wait();
         }
@@ -125,11 +125,11 @@ public class BinaryLogSegmentFactoryTests
         const uint indexIntervalBytes = 512;
         const uint timeIndexIntervalMs = 1000;
         const uint fileBufferSize = 256;
-        
+
         var factory = CreateFactory(maxSegmentBytes, indexIntervalBytes, timeIndexIntervalMs, fileBufferSize);
         var testDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         Directory.CreateDirectory(testDir);
-        
+
         try
         {
             var segment = new MessageBroker.Domain.Entities.CommitLog.LogSegment(
@@ -145,7 +145,7 @@ public class BinaryLogSegmentFactoryTests
 
             // Assert
             writer.Should().NotBeNull();
-            
+
             // Cleanup
             writer.DisposeAsync().AsTask().Wait();
         }
@@ -176,4 +176,3 @@ public class BinaryLogSegmentFactoryTests
         return new BinaryLogSegmentFactory(_batchWriter, options);
     }
 }
-

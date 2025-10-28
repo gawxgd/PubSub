@@ -6,6 +6,5 @@ public interface ILogSegmentWriter
 {
     ValueTask AppendAsync(LogRecordBatch batch, CancellationToken ct = default);
     bool ShouldRoll();
-
     ValueTask DisposeAsync();
 }

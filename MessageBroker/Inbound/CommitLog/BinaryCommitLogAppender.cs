@@ -62,6 +62,33 @@ public sealed class BinaryCommitLogAppender : ICommitLogAppender
         }
     }
 
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await _cancellationTokenSource.CancelAsync();
+
+            await _backgroundFlushTask;
+
+            await FlushChannelToLogSegmentAsync();
+
+            if (_activeSegmentWriter is IAsyncDisposable writer)
+            {
+                await writer.DisposeAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("Error while disposing BinaryCommitLogAppender", ex);
+        }
+        finally
+        {
+            _batchChannel.Writer.TryComplete();
+            _flushLock.Dispose();
+            _cancellationTokenSource.Dispose();
+        }
+    }
+
     private async Task FlushChannelToLogSegmentAsync()
     {
         await _flushLock.WaitAsync();
