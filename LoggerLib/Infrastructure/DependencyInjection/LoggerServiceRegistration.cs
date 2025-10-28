@@ -3,6 +3,7 @@ using LoggerLib.Outbound.Adapter;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using ILogger = LoggerLib.Domain.Port.ILogger;
+using SignalRLogger = LoggerLib.Outbound.Adapter.SignalRLogger;
 
 namespace LoggerLib.Infrastructure.DependencyInjection;
 
