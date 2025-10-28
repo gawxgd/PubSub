@@ -111,7 +111,7 @@ public sealed class TcpSubscriber(
 
         }
 
-        await connection.DisconnectAsync(_cancellationTokenSource.Token);
+        await connection.DisconnectAsync();
     }
 
     public async ValueTask DisposeAsync()
@@ -119,7 +119,7 @@ public sealed class TcpSubscriber(
         await _cancellationTokenSource.CancelAsync();
         inboundChannel.Writer.TryComplete();
         await inboundChannel.Reader.Completion;
-        await connection.DisconnectAsync(_cancellationTokenSource.Token);
+        await connection.DisconnectAsync();
         _cancellationTokenSource.Dispose();
     }
 }

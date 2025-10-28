@@ -147,14 +147,14 @@ public class TcpSubscriberTests
         channel.Writer.Complete(); 
 
         _connectionMock.Setup(c => c.ConnectAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
-        _connectionMock.Setup(c => c.DisconnectAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        _connectionMock.Setup(c => c.DisconnectAsync()).Returns(Task.CompletedTask);
 
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2)); 
 
         await subscriber.StartAsync(cts.Token);
 
         _messageHandlerMock.Verify(h => h.Invoke(payload), Times.Once);
-        _connectionMock.Verify(c => c.DisconnectAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _connectionMock.Verify(c => c.DisconnectAsync(), Times.Once);
     }
 
     
@@ -164,11 +164,11 @@ public class TcpSubscriberTests
         var channel = CreateBoundedChannel();
         var subscriber = CreateSubscriber(channel);
 
-        _connectionMock.Setup(c => c.DisconnectAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        _connectionMock.Setup(c => c.DisconnectAsync()).Returns(Task.CompletedTask);
 
         await subscriber.DisposeAsync();
 
-        _connectionMock.Verify(c => c.DisconnectAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _connectionMock.Verify(c => c.DisconnectAsync(), Times.Once);
         Assert.True(channel.Reader.Completion.IsCompleted);
     }
 

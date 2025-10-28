@@ -37,7 +37,7 @@ public sealed class TcpSubscriberConnection(
         }
     }
 
-    public async Task DisconnectAsync(CancellationToken cancellationToken = default)
+    public async Task DisconnectAsync()
     {
         try
         {
