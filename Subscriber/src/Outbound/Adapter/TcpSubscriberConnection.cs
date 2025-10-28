@@ -4,6 +4,7 @@ using System.Net.Sockets;
 using System.Threading.Channels;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
+using LoggerLib.Outbound.Adapter;
 using Subscriber.Domain;
 using Subscriber.Outbound.Exceptions;
 
@@ -12,14 +13,14 @@ namespace Subscriber.Outbound.Adapter;
 public sealed class TcpSubscriberConnection(
     string host,
     int port,
-    ChannelWriter<byte[]> messageChannelWriter,
-    ILogger logger)
+    ChannelWriter<byte[]> messageChannelWriter)
     : ISubscriberConnection, IAsyncDisposable
 {
     private readonly TcpClient _client = new();
     private readonly CancellationTokenSource _cancellationSource = new();
     private PipeReader? _pipeReader;
     private Task? _readLoopTask;
+    private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<TcpSubscriberConnection>(LogSource.MessageBroker);
 
     public async Task ConnectAsync(CancellationToken cancellationToken = default)
     {
@@ -28,11 +29,11 @@ public sealed class TcpSubscriberConnection(
             await _client.ConnectAsync(host, port, cancellationToken);
             _pipeReader = PipeReader.Create(_client.GetStream());
             _readLoopTask = Task.Run(() => ReadLoopAsync(_cancellationSource.Token), _cancellationSource.Token);
-            logger.LogInfo(LogSource.Subscriber,  $"Connected to broker at {_client.Client.RemoteEndPoint}");
+            Logger.LogInfo($"Connected to broker at {_client.Client.RemoteEndPoint}");
         }
         catch (SocketException ex)
         {
-            logger.LogError(LogSource.Subscriber, $"Unexpected error during connection: {ex.Message}");
+            Logger.LogError( $"Unexpected error during connection: {ex.Message}");
             throw new SubscriberConnectionException("TCP connection failed", ex);
         }
     }
@@ -55,8 +56,7 @@ public sealed class TcpSubscriberConnection(
             }
             catch (SocketException ex)
             {
-                logger.LogInfo(
-                    LogSource.Subscriber,
+                Logger.LogInfo(
                     $"Socket already closed or disconnected while shutting down connection : {ex.SocketErrorCode}"
                 );
             }
@@ -65,11 +65,11 @@ public sealed class TcpSubscriberConnection(
             {
                 _client.Close(); 
             }
-            logger.LogInfo(LogSource.Subscriber, $"Disconnected from broker at {_client.Client.RemoteEndPoint}");
+            Logger.LogInfo( $"Disconnected from broker at {_client.Client.RemoteEndPoint}");
         }
         catch (Exception ex)
         {
-            logger.LogError(LogSource.Subscriber, $"Error during disconnect: {ex.Message}");
+            Logger.LogError($"Error during disconnect: {ex.Message}");
         }
     }
 
@@ -94,7 +94,7 @@ public sealed class TcpSubscriberConnection(
 
             if (result.IsCompleted || result.IsCanceled)
             {
-                logger.LogInfo(LogSource.Subscriber, $"Disconnected from broker at {_client.Client.RemoteEndPoint}");
+                Logger.LogInfo( $"Disconnected from broker at {_client.Client.RemoteEndPoint}");
                 break;
             }
         }
@@ -113,7 +113,7 @@ public sealed class TcpSubscriberConnection(
         message = slice.ToArray();
 
         buffer = buffer.Slice(buffer.GetPosition(1, newline.Value));
-        logger.LogInfo(LogSource.Subscriber, "Received message");
+        Logger.LogInfo( "Received message");
         return true;
     }
 }

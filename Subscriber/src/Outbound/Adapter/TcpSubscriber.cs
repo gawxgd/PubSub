@@ -2,6 +2,7 @@
 using System.Threading.Channels;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
+using LoggerLib.Outbound.Adapter;
 using Subscriber.Domain;
 using Subscriber.Outbound.Exceptions;
 
@@ -14,13 +15,13 @@ public sealed class TcpSubscriber(
     TimeSpan pollInterval,
     uint maxRetryAttempts,
     ISubscriberConnection connection,
-    ILogger logger,
     Channel<byte[]> inboundChannel,
     Func<string, Task>? messageHandler,
     Func<Exception, Task>? errorHandler = null)
     : ISubscriber, IAsyncDisposable
 {
     private readonly CancellationTokenSource _cancellationTokenSource = new();
+    private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<TcpSubscriber>(LogSource.MessageBroker);
 
     public async Task CreateConnection(CancellationToken cancellationToken)
     {
@@ -37,7 +38,7 @@ public sealed class TcpSubscriber(
             {
                 retryCount++;
                 var delay = TimeSpan.FromSeconds(Math.Min(retryCount, maxRetryAttempts));
-                logger.LogDebug(LogSource.Subscriber, $" Retry {retryCount}: {ex.Message}. Waiting {delay}...");
+                Logger.LogDebug($" Retry {retryCount}: {ex.Message}. Waiting {delay}...");
                 await Task.Delay(delay, cancellationToken);
             }
         }
@@ -53,13 +54,13 @@ public sealed class TcpSubscriber(
 
         if (text.Length < minMessageLength || text.Length > maxMessageLength)
         {
-            logger.LogError(LogSource.Subscriber, $"Invalid message length: {text.Length}");
+            Logger.LogError($"Invalid message length: {text.Length}");
             return;
         }
 
         if (!text.StartsWith($"{topic}:"))
         {
-            logger.LogError(LogSource.Subscriber, $"Ignored message (wrong topic): {text}");
+            Logger.LogError( $"Ignored message (wrong topic): {text}");
             return;
         }
 
@@ -71,11 +72,11 @@ public sealed class TcpSubscriber(
             {
                 await messageHandler(payload);    
             }
-            logger.LogInfo(LogSource.Subscriber, $"Received message: {payload}");
+            Logger.LogInfo( $"Received message: {payload}");
         }
         catch (Exception ex)
         { 
-            logger.LogError(LogSource.Subscriber, ex.Message);
+            Logger.LogError( ex.Message);
         }
     }
 
@@ -97,7 +98,7 @@ public sealed class TcpSubscriber(
             }
             catch (Exception ex)
             {
-                logger.LogError(LogSource.Subscriber, ex.Message);
+                Logger.LogError(ex.Message);
             }
 
             try
@@ -106,7 +107,7 @@ public sealed class TcpSubscriber(
             }
             catch (TaskCanceledException)
             {
-                logger.LogWarning(LogSource.Subscriber, $"Task was cancelled");
+                Logger.LogWarning( $"Task was cancelled");
             }
 
         }

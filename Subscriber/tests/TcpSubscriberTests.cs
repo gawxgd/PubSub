@@ -38,7 +38,6 @@ public class TcpSubscriberTests
             PollInterval,
             MaxRetryAttempts,
             _connectionMock.Object,
-            _loggerMock.Object,
             channel,
             _messageHandlerMock.Object);
 
