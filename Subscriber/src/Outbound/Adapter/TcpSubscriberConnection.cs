@@ -62,18 +62,7 @@ public sealed class TcpSubscriberConnection(
 
     public async ValueTask DisposeAsync()
     {
-        await DisposeAsyncCore();
-        Dispose(false);
-        GC.SuppressFinalize(this);
-    }
-
-    private async ValueTask DisposeAsyncCore()
-    {
         await DisconnectAsync();
-    }
-
-    private void Dispose(bool disposing)
-    {
     }
 
     private async Task ReadLoopAsync(CancellationToken cancellationToken)
