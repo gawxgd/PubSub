@@ -1,9 +1,10 @@
 using Chr.Avro.Abstract;
 using Chr.Avro.Representation;
 using SchemaRegistry.Domain.Enums;
+using SchemaRegistry.Domain.Port;
 using SchemaRegistry.Infrastructure.Validation;
 
-namespace SchemaRegistry.Domain.Services.Implementations;
+namespace SchemaRegistry.Outbound.Adapter;
 
 public class SchemaCompatibilityService : ISchemaCompatibilityService
 {

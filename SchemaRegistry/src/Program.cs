@@ -2,10 +2,10 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using SchemaRegistry.Infrastructure.Storage;
-using SchemaRegistry.Domain.Services;
 using SchemaRegistry.Infrastructure.Validation;
 using Microsoft.Extensions.Configuration;
-using SchemaRegistry.Domain.Services.Implementations;
+using SchemaRegistry.Domain.Port;
+using SchemaRegistry.Outbound.Adapter;
 
 var builder = WebApplication.CreateBuilder(args);
 

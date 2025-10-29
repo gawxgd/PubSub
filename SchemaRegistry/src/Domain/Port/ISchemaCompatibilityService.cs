@@ -1,6 +1,6 @@
 using SchemaRegistry.Domain.Enums;
 
-namespace SchemaRegistry.Domain.Services;
+namespace SchemaRegistry.Domain.Port;
 
 public interface ISchemaCompatibilityService
 {
