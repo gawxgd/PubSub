@@ -6,6 +6,7 @@ using Chr.Avro.Representation;
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Moq;
+using SchemaRegistry.Domain.Enums;
 using SchemaRegistry.Domain.Exceptions;
 using SchemaRegistry.Domain.Models;
 using SchemaRegistry.Domain.Port;
@@ -19,6 +20,7 @@ namespace SchemaRegistry.Tests
     {
         private readonly Mock<ISchemaStore> _store = new();
         private readonly Mock<ICompatibilityChecker> _checker = new();
+        private readonly Mock<ISchemaCompatibilityService> _compatibility = new();
         private readonly IConfiguration _cfg;
 
         private readonly SchemaRegistryService _service;
@@ -42,8 +44,11 @@ namespace SchemaRegistry.Tests
                 { "SchemaRegistry:CompatibilityMode", "BACKWARD" }
             };
             _cfg = new ConfigurationBuilder().AddInMemoryCollection(inMemorySettings).Build();
+            
+            _compatibility.Setup(c => c.IsCompatible(It.IsAny<string>(), It.IsAny<string>(), CompatibilityMode.Backward))
+                .Returns(false);
 
-            _service = new SchemaRegistryService(_store.Object, _checker.Object, _cfg);
+            _service = new SchemaRegistryService(_store.Object, _compatibility.Object, _cfg);
         }
 
         // ============================================================
@@ -155,33 +160,25 @@ namespace SchemaRegistry.Tests
         // ============================================================
 
         [Theory]
-        [InlineData("BACKWARD")]
-        [InlineData("FORWARD")]
-        [InlineData("FULL")]
-        [InlineData("NONE")]
-        public async Task IsCompatible_ShouldCallProperChecker_BasedOnMode(string mode)
+        [InlineData("BACKWARD", CompatibilityMode.Backward)]
+        [InlineData("FORWARD", CompatibilityMode.Forward)]
+        [InlineData("FULL", CompatibilityMode.Full)]
+        [InlineData("NONE", CompatibilityMode.None)]
+        public async Task RegisterSchemaAsync_ShouldUseProperCompatibilityMode(string modeString, CompatibilityMode expectedMode)
         {
             // Arrange
             var cfg = new ConfigurationBuilder()
-                .AddInMemoryCollection(new Dictionary<string, string?> { ["SchemaRegistry:CompatibilityMode"] = mode })
+                .AddInMemoryCollection(new Dictionary<string, string?> { ["SchemaRegistry:CompatibilityMode"] = modeString })
                 .Build();
 
-            var service = new SchemaRegistryService(_store.Object, _checker.Object, cfg);
+            var service = new SchemaRegistryService(_store.Object, _compatibility.Object, cfg);
 
-            var newSchema = """
-            { "type": "record", "name": "User", "fields": [ { "name": "id", "type": "string" } ] }
-            """;
+            var newSchema = """{ "type": "record", "name": "User", "fields": [ { "name": "id", "type": "string" } ] }""";
+            var oldSchema = newSchema;
 
-            var oldSchema = """
-            { "type": "record", "name": "User", "fields": [ { "name": "id", "type": "string" } ] }
-            """;
-
-            // stub store
             _store.Setup(s => s.GetByChecksumAsync(It.IsAny<string>())).ReturnsAsync((SchemaEntity?)null);
             _store.Setup(s => s.GetLatestForTopicAsync(Topic)).ReturnsAsync(new SchemaEntity { SchemaJson = oldSchema });
-
-            _checker.Setup(c => c.IsBackwardCompatible(It.IsAny<RecordSchema>(), It.IsAny<RecordSchema>())).Returns(true);
-            _checker.Setup(c => c.IsForwardCompatible(It.IsAny<RecordSchema>(), It.IsAny<RecordSchema>())).Returns(true);
+            _compatibility.Setup(c => c.IsCompatible(oldSchema, newSchema, expectedMode)).Returns(true);
             _store.Setup(s => s.SaveAsync(It.IsAny<SchemaEntity>())).ReturnsAsync(new SchemaEntity { Id = 1 });
 
             // Act
@@ -189,25 +186,9 @@ namespace SchemaRegistry.Tests
 
             // Assert
             id.Should().Be(1);
-
-            if (mode == "NONE")
-            {
-                _checker.VerifyNoOtherCalls();
-            }
-            else if (mode == "BACKWARD")
-            {
-                _checker.Verify(c => c.IsBackwardCompatible(It.IsAny<RecordSchema>(), It.IsAny<RecordSchema>()), Times.Once);
-            }
-            else if (mode == "FORWARD")
-            {
-                _checker.Verify(c => c.IsForwardCompatible(It.IsAny<RecordSchema>(), It.IsAny<RecordSchema>()), Times.Once);
-            }
-            else if (mode == "FULL")
-            {
-                _checker.Verify(c => c.IsBackwardCompatible(It.IsAny<RecordSchema>(), It.IsAny<RecordSchema>()), Times.Once);
-                _checker.Verify(c => c.IsForwardCompatible(It.IsAny<RecordSchema>(), It.IsAny<RecordSchema>()), Times.Once);
-            }
+            _compatibility.Verify(c => c.IsCompatible(oldSchema, newSchema, expectedMode), Times.Once);
         }
+
 
         // ============================================================
         // SIMPLE GETTERS

@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using Chr.Avro.Abstract;
 using Chr.Avro.Representation;
 using FluentAssertions;
@@ -22,12 +21,23 @@ namespace SchemaRegistry.Tests
         private readonly CompatibilityChecker _checker = new();
         private readonly JsonSchemaReader _reader = new();
 
+        private const System.Reflection.BindingFlags PrivateInstance =
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+
         // ======== HELPERS =========
-        private RecordSchema ParseRecord(string json)
+
+        private RecordSchema ParseRecordSchema(string json)
         {
             var schema = _reader.Read(json);
             schema.Should().BeOfType<RecordSchema>();
             return (RecordSchema)schema;
+        }
+
+        private bool SchemaEquals(Schema s1, Schema s2)
+        {
+            var method = _checker.GetType().GetMethod("SchemaEquals", PrivateInstance);
+            method.Should().NotBeNull("SchemaEquals must exist on CompatibilityChecker");
+            return (bool)method!.Invoke(_checker, new object[] { s1, s2 })!;
         }
 
         private static string BaseSchemaJson => """
@@ -64,7 +74,7 @@ namespace SchemaRegistry.Tests
             }
             """;
 
-            var result = _checker.IsBackwardCompatible(ParseRecord(newSchemaJson), ParseRecord(BaseSchemaJson));
+            var result = _checker.IsBackwardCompatible(ParseRecordSchema(newSchemaJson), ParseRecordSchema(BaseSchemaJson));
             result.Should().BeTrue();
         }
 
@@ -85,7 +95,7 @@ namespace SchemaRegistry.Tests
             }
             """;
 
-            var result = _checker.IsBackwardCompatible(ParseRecord(newSchemaJson), ParseRecord(BaseSchemaJson));
+            var result = _checker.IsBackwardCompatible(ParseRecordSchema(newSchemaJson), ParseRecordSchema(BaseSchemaJson));
             result.Should().BeFalse();
         }
 
@@ -104,7 +114,7 @@ namespace SchemaRegistry.Tests
             }
             """;
 
-            var result = _checker.IsBackwardCompatible(ParseRecord(newSchemaJson), ParseRecord(BaseSchemaJson));
+            var result = _checker.IsBackwardCompatible(ParseRecordSchema(newSchemaJson), ParseRecordSchema(BaseSchemaJson));
             result.Should().BeTrue();
         }
 
@@ -124,7 +134,7 @@ namespace SchemaRegistry.Tests
             }
             """;
 
-            var result = _checker.IsBackwardCompatible(ParseRecord(newSchemaJson), ParseRecord(BaseSchemaJson));
+            var result = _checker.IsBackwardCompatible(ParseRecordSchema(newSchemaJson), ParseRecordSchema(BaseSchemaJson));
             result.Should().BeFalse();
         }
 
@@ -143,7 +153,7 @@ namespace SchemaRegistry.Tests
             }
             """;
 
-            var result = _checker.IsForwardCompatible(ParseRecord(newSchemaJson), ParseRecord(BaseSchemaJson));
+            var result = _checker.IsForwardCompatible(ParseRecordSchema(newSchemaJson), ParseRecordSchema(BaseSchemaJson));
             result.Should().BeTrue();
         }
 
@@ -162,7 +172,7 @@ namespace SchemaRegistry.Tests
             }
             """;
 
-            var result = _checker.IsForwardCompatible(ParseRecord(newSchemaJson), ParseRecord(BaseSchemaJson));
+            var result = _checker.IsForwardCompatible(ParseRecordSchema(newSchemaJson), ParseRecordSchema(BaseSchemaJson));
             result.Should().BeFalse();
         }
 
@@ -183,7 +193,7 @@ namespace SchemaRegistry.Tests
             }
             """;
 
-            var result = _checker.IsForwardCompatible(ParseRecord(newSchemaJson), ParseRecord(BaseSchemaJson));
+            var result = _checker.IsForwardCompatible(ParseRecordSchema(newSchemaJson), ParseRecordSchema(BaseSchemaJson));
             result.Should().BeTrue();
         }
 
@@ -203,7 +213,7 @@ namespace SchemaRegistry.Tests
             }
             """;
 
-            var result = _checker.IsForwardCompatible(ParseRecord(newSchemaJson), ParseRecord(BaseSchemaJson));
+            var result = _checker.IsForwardCompatible(ParseRecordSchema(newSchemaJson), ParseRecordSchema(BaseSchemaJson));
             result.Should().BeFalse();
         }
 
@@ -214,44 +224,25 @@ namespace SchemaRegistry.Tests
         [Fact]
         public void SchemaEquals_PrimitiveSchemas_ShouldBeEqual_WhenSameType()
         {
-            var s1 = new IntSchema();
-            var s2 = new IntSchema();
-            _checker.GetType().GetMethod("SchemaEquals", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
-                .Invoke(_checker, new object[] { s1, s2 })
-                .Should().Be(true);
+            SchemaEquals(new IntSchema(), new IntSchema()).Should().BeTrue();
         }
 
         [Fact]
         public void SchemaEquals_PrimitiveSchemas_ShouldNotBeEqual_WhenDifferentType()
         {
-            var s1 = new IntSchema();
-            var s2 = new StringSchema();
-            var result = (bool)_checker.GetType()
-                .GetMethod("SchemaEquals", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
-                .Invoke(_checker, new object[] { s1, s2 })!;
-            result.Should().BeFalse();
+            SchemaEquals(new IntSchema(), new StringSchema()).Should().BeFalse();
         }
 
         [Fact]
         public void SchemaEquals_ArraySchemas_ShouldBeEqual_WhenItemsAreEqual()
         {
-            var s1 = new ArraySchema(new IntSchema());
-            var s2 = new ArraySchema(new IntSchema());
-            var result = (bool)_checker.GetType()
-                .GetMethod("SchemaEquals", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
-                .Invoke(_checker, new object[] { s1, s2 })!;
-            result.Should().BeTrue();
+            SchemaEquals(new ArraySchema(new IntSchema()), new ArraySchema(new IntSchema())).Should().BeTrue();
         }
 
         [Fact]
         public void SchemaEquals_ArraySchemas_ShouldNotBeEqual_WhenItemTypeDiffers()
         {
-            var s1 = new ArraySchema(new IntSchema());
-            var s2 = new ArraySchema(new StringSchema());
-            var result = (bool)_checker.GetType()
-                .GetMethod("SchemaEquals", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
-                .Invoke(_checker, new object[] { s1, s2 })!;
-            result.Should().BeFalse();
+            SchemaEquals(new ArraySchema(new IntSchema()), new ArraySchema(new StringSchema())).Should().BeFalse();
         }
 
         [Fact]
@@ -259,10 +250,7 @@ namespace SchemaRegistry.Tests
         {
             var s1 = new UnionSchema(new Schema[] { new NullSchema(), new StringSchema() });
             var s2 = new UnionSchema(new Schema[] { new NullSchema(), new StringSchema() });
-            var result = (bool)_checker.GetType()
-                .GetMethod("SchemaEquals", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
-                .Invoke(_checker, new object[] { s1, s2 })!;
-            result.Should().BeTrue();
+            SchemaEquals(s1, s2).Should().BeTrue();
         }
 
         [Fact]
@@ -270,65 +258,37 @@ namespace SchemaRegistry.Tests
         {
             var s1 = new UnionSchema(new Schema[] { new NullSchema(), new StringSchema() });
             var s2 = new UnionSchema(new Schema[] { new IntSchema(), new StringSchema() });
-            var result = (bool)_checker.GetType()
-                .GetMethod("SchemaEquals", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
-                .Invoke(_checker, new object[] { s1, s2 })!;
-            result.Should().BeFalse();
+            SchemaEquals(s1, s2).Should().BeFalse();
         }
 
         [Fact]
         public void SchemaEquals_RecordSchemas_ShouldBeEqual_WhenFullNamesMatch()
         {
-            var s1 = new RecordSchema("com.example.User");
-            var s2 = new RecordSchema("com.example.User");
-            var result = (bool)_checker.GetType()
-                .GetMethod("SchemaEquals", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
-                .Invoke(_checker, new object[] { s1, s2 })!;
-            result.Should().BeTrue();
+            SchemaEquals(new RecordSchema("com.example.User"), new RecordSchema("com.example.User")).Should().BeTrue();
         }
 
         [Fact]
         public void SchemaEquals_RecordSchemas_ShouldNotBeEqual_WhenFullNamesDiffer()
         {
-            var s1 = new RecordSchema("com.example.User");
-            var s2 = new RecordSchema("com.example.Customer");
-            var result = (bool)_checker.GetType()
-                .GetMethod("SchemaEquals", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
-                .Invoke(_checker, new object[] { s1, s2 })!;
-            result.Should().BeFalse();
+            SchemaEquals(new RecordSchema("com.example.User"), new RecordSchema("com.example.Customer")).Should().BeFalse();
         }
 
         [Fact]
         public void SchemaEquals_EnumSchemas_ShouldBeEqual_WhenFullNamesMatch()
         {
-            var s1 = new EnumSchema("com.example.Status");
-            var s2 = new EnumSchema("com.example.Status");
-            var result = (bool)_checker.GetType()
-                .GetMethod("SchemaEquals", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
-                .Invoke(_checker, new object[] { s1, s2 })!;
-            result.Should().BeTrue();
+            SchemaEquals(new EnumSchema("com.example.Status"), new EnumSchema("com.example.Status")).Should().BeTrue();
         }
 
         [Fact]
         public void SchemaEquals_FixedSchemas_ShouldBeEqual_WhenNameAndSizeMatch()
         {
-            var s1 = new FixedSchema("com.example.Hash", 16);
-            var s2 = new FixedSchema("com.example.Hash", 16);
-            var result = (bool)_checker.GetType()
-                .GetMethod("SchemaEquals", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
-                .Invoke(_checker, new object[] { s1, s2 })!;
-            result.Should().BeTrue();
+            SchemaEquals(new FixedSchema("com.example.Hash", 16), new FixedSchema("com.example.Hash", 16)).Should().BeTrue();
         }
 
         [Fact]
         public void SchemaEquals_FixedSchemas_ShouldNotBeEqual_WhenSizeDiffers()
         {
-            var s1 = new FixedSchema("com.example.Hash", 16);
-            var s2 = new FixedSchema("com.example.Hash", 32);
-            var result = (bool)_checker.GetType()
-                .GetMethod("SchemaEquals", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
-                .Invoke(_checker, new object[] { s1, s2 })!;
-            result.Should().BeFalse();
+            SchemaEquals(new FixedSchema("com.example.Hash", 16), new FixedSchema("com.example.Hash", 32)).Should().BeFalse();
         }
     }
 }
