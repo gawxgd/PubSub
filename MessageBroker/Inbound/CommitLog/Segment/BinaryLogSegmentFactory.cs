@@ -9,6 +9,7 @@ namespace MessageBroker.Inbound.CommitLog.Segment;
 
 public sealed class BinaryLogSegmentFactory(
     ILogRecordBatchWriter batchWriter,
+    ILogRecordBatchReader batchReader,
     IOptions<CommitLogOptions> options)
     : ILogSegmentFactory
 {
@@ -23,6 +24,16 @@ public sealed class BinaryLogSegmentFactory(
             opt.IndexIntervalBytes,
             opt.TimeIndexIntervalMs,
             opt.FileBufferSize);
+    }
+
+    public ILogSegmentReader CreateReader(LogSegment segment)
+    {
+        var opt = options.Value;
+        return new BinaryLogSegmentReader(
+            batchReader,
+            segment,
+            opt.ReaderLogBufferSize,
+            opt.ReaderIndexBufferSize);
     }
 
     public LogSegment CreateLogSegment(string directory, ulong baseOffset)

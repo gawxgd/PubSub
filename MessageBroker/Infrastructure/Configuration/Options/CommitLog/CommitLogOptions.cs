@@ -28,4 +28,6 @@ public sealed class CommitLogOptions
     public uint TimeIndexIntervalMs { get; set; } = 4096;
 
     public uint FlushIntervalMs { get; set; } = 100;
+    public uint ReaderLogBufferSize { get; set; } = 64 * 1024;
+    public uint ReaderIndexBufferSize { get; set; } = 8 * 1024;
 }

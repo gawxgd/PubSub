@@ -7,4 +7,6 @@ public sealed record LogRecordBatch(
     bool Compressed)
 {
     public ulong BaseTimestamp => Records.Min(r => r.Timestamp);
+
+    public ulong LastOffset => Records.Last().Offset;
 }

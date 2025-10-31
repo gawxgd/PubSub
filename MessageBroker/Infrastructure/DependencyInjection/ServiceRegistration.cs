@@ -39,9 +39,10 @@ public static class ServiceRegistration
         services.AddSingleton<Encoding>(_ => Encoding.UTF8);
         services.AddSingleton<ICompressor, NoopCompressor>();
         services.AddSingleton<ILogRecordWriter, LogRecordBinaryWriter>();
+        services.AddSingleton<ILogRecordReader, LogRecordBinaryReader>();
         services.AddSingleton<ILogRecordBatchWriter, LogRecordBatchBinaryWriter>();
+        services.AddSingleton<ILogRecordBatchReader, LogRecordBatchBinaryReader>();
         services.AddSingleton<ILogSegmentFactory, BinaryLogSegmentFactory>();
-
         services.AddSingleton<ICommitLogFactory, CommitLogFactory>();
     }
 

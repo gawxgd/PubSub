@@ -345,3 +345,4 @@ public class LogRecordBatchBinaryReaderErrorTests
             .WithMessage("*CRC mismatch*");
     }
 }
+

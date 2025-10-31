@@ -13,6 +13,8 @@
     "MaxSegmentBytes": 1024,
     "IndexIntervalBytes": 128,
     "TimeIndexIntervalMs": 1000,
+    "ReaderLogBufferSize": 65536,
+    "ReaderIndexBufferSize": 8192,
     "FileBufferSize": 4096
   },
   "CommitLogTopics": [
