@@ -15,8 +15,6 @@ public class SchemaRegistryService(
     IConfiguration cfg
 ) : ISchemaRegistryService
 {
-    private readonly ISchemaStore _store = store;
-    private readonly ISchemaCompatibilityService _compatibility = compatibility;
     private readonly CompatibilityMode _compatMode = ParseCompatibilityMode(cfg);
 
     public async Task<int> RegisterSchemaAsync(string topic, string schemaJson)
@@ -48,14 +46,14 @@ public class SchemaRegistryService(
         var checksum = ComputeChecksum(schemaJson);
 
         // If same schema exists globally -> return its id (deduplication)
-        var existing = await _store.GetByChecksumAsync(checksum);
+        var existing = await store.GetByChecksumAsync(checksum);
         if (existing != null)
             return existing.Id;
 
         // get latest for topic to check compatibility
-        var latest = await _store.GetLatestForTopicAsync(topic);
+        var latest = await store.GetLatestForTopicAsync(topic);
         if (latest != null &&
-            !_compatibility.IsCompatible(latest.SchemaJson, schemaJson, _compatMode))
+            !compatibility.IsCompatible(latest.SchemaJson, schemaJson, _compatMode))
             throw new SchemaCompatibilityException($"New schema is not {_compatMode}-compatible with latest for topic.");
 
         // save the schema (store will assign id)
@@ -67,25 +65,25 @@ public class SchemaRegistryService(
             CreatedAt = DateTime.UtcNow
         };
 
-        var created = await _store.SaveAsync(entity);
+        var created = await store.SaveAsync(entity);
         return created.Id;
     }
 
     public Task<SchemaEntity?> GetLatestSchemaAsync(string subject)
     {
-        return _store.GetLatestForTopicAsync(subject);
+        return store.GetLatestForTopicAsync(subject);
     }
 
 
     public Task<SchemaEntity?> GetSchemaByIdAsync(int id)
     {
-        return _store.GetByIdAsync(id);
+        return store.GetByIdAsync(id);
     }
 
 
     public Task<IEnumerable<SchemaEntity>> GetVersionsAsync(string subject)
     {
-        return _store.GetAllForTopicAsync(subject);
+        return store.GetAllForTopicAsync(subject);
     }
     
     private static CompatibilityMode ParseCompatibilityMode(IConfiguration cfg)

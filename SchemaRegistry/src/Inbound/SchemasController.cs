@@ -11,14 +11,12 @@ namespace SchemaRegistry.Controllers;
 [Route("topics/{topic}/versions")] // TODO: rethink routes
 public class SchemasController(ISchemaRegistryService schemaRegistryService) : ControllerBase
 {
-    private readonly ISchemaRegistryService _schemaRegistryService = schemaRegistryService;
-
     [HttpPost]
     public async Task<IActionResult> Register(string topic, [FromBody] RegisterRequest req)
     {
         try
         {
-            var id = await _schemaRegistryService.RegisterSchemaAsync(topic, req.Schema);
+            var id = await schemaRegistryService.RegisterSchemaAsync(topic, req.Schema);
             return Ok(new { id });
         }
         catch (SchemaCompatibilityException ex)
@@ -30,7 +28,7 @@ public class SchemasController(ISchemaRegistryService schemaRegistryService) : C
     [HttpGet("latest")]
     public async Task<IActionResult> GetLatest(string topic)
     {
-        var s = await _schemaRegistryService.GetLatestSchemaAsync(topic);
+        var s = await schemaRegistryService.GetLatestSchemaAsync(topic);
 
         if (s == null)
             return NotFound();
@@ -48,7 +46,7 @@ public class SchemasController(ISchemaRegistryService schemaRegistryService) : C
     [HttpGet("~/schemas/ids/{id}")]
     public async Task<IActionResult> GetById(int id)
     {
-        var s = await _schemaRegistryService.GetSchemaByIdAsync(id);
+        var s = await schemaRegistryService.GetSchemaByIdAsync(id);
 
         if (s == null)
             return NotFound();

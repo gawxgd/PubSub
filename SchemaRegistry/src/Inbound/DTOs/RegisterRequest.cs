@@ -8,6 +8,6 @@ namespace SchemaRegistry.Inbound.DTOs;
 public record RegisterRequest
 {
     [Required]
-    [JsonPropertyName("schema")]
+    [JsonPropertyName("Schema")]
     public string Schema { get; set; } = null!;
 }
