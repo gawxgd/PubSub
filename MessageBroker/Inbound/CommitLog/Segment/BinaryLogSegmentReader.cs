@@ -1,6 +1,8 @@
 using System.Buffers.Binary;
 using MessageBroker.Domain.Entities.CommitLog;
+using MessageBroker.Domain.Entities.CommitLog.Index;
 using MessageBroker.Domain.Exceptions;
+using MessageBroker.Domain.Port.CommitLog.Index.Reader;
 using MessageBroker.Domain.Port.CommitLog.RecordBatch;
 using MessageBroker.Domain.Port.CommitLog.Segment;
 
@@ -13,16 +15,22 @@ public sealed class BinaryLogSegmentReader : ILogSegmentReader
     private readonly FileStream _log;
     private readonly FileStream? _index;
     private readonly FileStream? _timeIndex;
+    private readonly IOffsetIndexReader _offsetIndexReader;
+    private readonly ITimeIndexReader _timeIndexReader;
     private bool _disposed;
 
     public BinaryLogSegmentReader(
         ILogRecordBatchReader batchReader,
         LogSegment segment,
+        IOffsetIndexReader offsetIndexReader,
+        ITimeIndexReader timeIndexReader,
         uint logBufferSize,
         uint indexBufferSize)
     {
         _segment = segment;
         _batchReader = batchReader;
+        _offsetIndexReader = offsetIndexReader;
+        _timeIndexReader = timeIndexReader;
 
         if (!File.Exists(segment.LogPath))
         {
@@ -177,7 +185,7 @@ public sealed class BinaryLogSegmentReader : ILogSegmentReader
         }
 
         var relativeOffset = offset - _segment.BaseOffset;
-        var entryCount = (int)(_index.Length / 16); //ToDo remove hardcoded value
+        var entryCount = (int)(_index.Length / OffsetIndexEntry.Size);
 
         if (entryCount == 0)
         {
@@ -220,7 +228,7 @@ public sealed class BinaryLogSegmentReader : ILogSegmentReader
             return 0; // No time index, start from beginning
         }
 
-        var entryCount = (int)(_timeIndex.Length / 16); //ToDo remove hardcoded value
+        var entryCount = (int)(_timeIndex.Length / TimeIndexEntry.Size);
 
         if (entryCount == 0)
         {
@@ -256,40 +264,16 @@ public sealed class BinaryLogSegmentReader : ILogSegmentReader
         return FindPositionForOffset(_segment.BaseOffset + bestRelativeOffset);
     }
 
-    private (ulong relativeOffset, ulong position) ReadIndexEntry(int entryIndex)
+    private OffsetIndexEntry ReadIndexEntry(int entryIndex)
     {
-        //ToDo remove hardcoded value
-        Span<byte> buffer = stackalloc byte[16];
-        _index!.Seek(entryIndex * 16, SeekOrigin.Begin);
-        var bytesRead = _index.Read(buffer);
-
-        if (bytesRead != 16)
-        {
-            throw new InvalidDataException($"Failed to read complete index entry at position {entryIndex * 16}");
-        }
-
-        var relativeOffset = BinaryPrimitives.ReadUInt64BigEndian(buffer[..8]);
-        var position = BinaryPrimitives.ReadUInt64BigEndian(buffer.Slice(8, 8));
-
-        return (relativeOffset, position);
+        _index!.Seek(entryIndex * OffsetIndexEntry.Size, SeekOrigin.Begin);
+        return _offsetIndexReader.ReadFrom(_index);
     }
 
-    private (ulong timestamp, ulong relativeOffset) ReadTimeIndexEntry(int entryIndex)
+    private TimeIndexEntry ReadTimeIndexEntry(int entryIndex)
     {
-        //ToDo remove hardcoded value
-        Span<byte> buffer = stackalloc byte[16];
-        _timeIndex!.Seek(entryIndex * 16, SeekOrigin.Begin);
-        var bytesRead = _timeIndex.Read(buffer);
-
-        if (bytesRead != 16)
-        {
-            throw new InvalidDataException($"Failed to read complete time index entry at position {entryIndex * 16}");
-        }
-
-        var timestamp = BinaryPrimitives.ReadUInt64BigEndian(buffer[..8]);
-        var relativeOffset = BinaryPrimitives.ReadUInt64BigEndian(buffer.Slice(8, 8));
-
-        return (timestamp, relativeOffset);
+        _timeIndex!.Seek(entryIndex * TimeIndexEntry.Size, SeekOrigin.Begin);
+        return _timeIndexReader.ReadFrom(_timeIndex);
     }
 
     private void ThrowIfDisposed()

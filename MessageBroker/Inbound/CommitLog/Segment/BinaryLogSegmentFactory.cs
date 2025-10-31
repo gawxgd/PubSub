@@ -1,4 +1,6 @@
 using MessageBroker.Domain.Entities.CommitLog;
+using MessageBroker.Domain.Port.CommitLog.Index.Reader;
+using MessageBroker.Domain.Port.CommitLog.Index.Writer;
 using MessageBroker.Domain.Port.CommitLog.RecordBatch;
 using MessageBroker.Domain.Port.CommitLog.Segment;
 using MessageBroker.Infrastructure.Configuration.Options;
@@ -10,6 +12,10 @@ namespace MessageBroker.Inbound.CommitLog.Segment;
 public sealed class BinaryLogSegmentFactory(
     ILogRecordBatchWriter batchWriter,
     ILogRecordBatchReader batchReader,
+    IOffsetIndexWriter offsetIndexWriter,
+    IOffsetIndexReader offsetIndexReader,
+    ITimeIndexWriter timeIndexWriter,
+    ITimeIndexReader timeIndexReader,
     IOptions<CommitLogOptions> options)
     : ILogSegmentFactory
 {
@@ -18,6 +24,8 @@ public sealed class BinaryLogSegmentFactory(
         // ToDo add options validation
         var opt = options.Value;
         return new BinaryLogSegmentWriter(
+            offsetIndexWriter,
+            timeIndexWriter,
             batchWriter,
             segment,
             opt.MaxSegmentBytes,
@@ -32,8 +40,11 @@ public sealed class BinaryLogSegmentFactory(
         return new BinaryLogSegmentReader(
             batchReader,
             segment,
+            offsetIndexReader,
+            timeIndexReader,
             opt.ReaderLogBufferSize,
-            opt.ReaderIndexBufferSize);
+            opt.ReaderIndexBufferSize
+        );
     }
 
     public LogSegment CreateLogSegment(string directory, ulong baseOffset)

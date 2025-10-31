@@ -3,6 +3,9 @@ using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
 using MessageBroker.Domain.Entities.CommitLog;
+using MessageBroker.Domain.Entities.CommitLog.Index;
+using MessageBroker.Domain.Port.CommitLog.Index.Reader;
+using MessageBroker.Domain.Port.CommitLog.Index.Writer;
 using MessageBroker.Domain.Port.CommitLog.Record;
 using MessageBroker.Domain.Port.CommitLog.RecordBatch;
 using MessageBroker.Domain.Port.CommitLog.Segment;
@@ -19,6 +22,9 @@ public sealed class BinaryLogSegmentWriter
     private readonly FileStream _log;
     private readonly FileStream _timeIndex;
 
+    private readonly IOffsetIndexWriter _indexWriter;
+    private readonly ITimeIndexWriter _timeIndexWriter;
+
     private readonly ILogRecordBatchWriter _batchWriter;
     private LogSegment _segment;
     private readonly ulong _maxSegmentBytes;
@@ -28,6 +34,8 @@ public sealed class BinaryLogSegmentWriter
     private ulong _lastTimeIndexTimestamp;
 
     public BinaryLogSegmentWriter(
+        IOffsetIndexWriter indexWriter,
+        ITimeIndexWriter timeIndexWriter,
         ILogRecordBatchWriter batchWriter,
         LogSegment segment,
         ulong maxSegmentBytes,
@@ -35,6 +43,8 @@ public sealed class BinaryLogSegmentWriter
         uint timeIndexIntervalMs,
         uint fileBufferSize)
     {
+        _indexWriter = indexWriter;
+        _timeIndexWriter = timeIndexWriter;
         _batchWriter = batchWriter;
         _segment = segment;
         _maxSegmentBytes = maxSegmentBytes;
@@ -121,22 +131,15 @@ public sealed class BinaryLogSegmentWriter
 
     private async ValueTask WriteIndexAsync(long start, LogRecordBatch batch, CancellationToken ct)
     {
-        var rel = batch.BaseOffset - _segment.BaseOffset;
-        Span<byte> buf = stackalloc byte[16];
-        BinaryPrimitives.WriteUInt64BigEndian(buf[..8], rel);
-        BinaryPrimitives.WriteUInt64BigEndian(buf.Slice(8, 8), (ulong)start);
-        await _index.WriteAsync(buf.ToArray().AsMemory(), ct).ConfigureAwait(false);
-        await _index.FlushAsync(ct).ConfigureAwait(false);
+        var relativeOffset = batch.BaseOffset - _segment.BaseOffset;
+        var entry = new OffsetIndexEntry(relativeOffset, (ulong)start);
+        await _indexWriter.WriteToAsync(entry, _index);
     }
 
     private async ValueTask WriteTimeIndexAsync(LogRecordBatch batch, CancellationToken ct)
     {
-        var rel = batch.BaseOffset - _segment.BaseOffset;
-        var ts = batch.BaseTimestamp;
-        Span<byte> buf = stackalloc byte[16];
-        BinaryPrimitives.WriteUInt64BigEndian(buf[..8], ts);
-        BinaryPrimitives.WriteUInt64BigEndian(buf.Slice(8, 8), rel);
-        await _timeIndex.WriteAsync(buf.ToArray().AsMemory(), ct).ConfigureAwait(false);
-        await _timeIndex.FlushAsync(ct).ConfigureAwait(false);
+        var relativeOffset = batch.BaseOffset - _segment.BaseOffset;
+        var entry = new TimeIndexEntry(batch.BaseTimestamp, relativeOffset);
+        await _timeIndexWriter.WriteToAsync(entry, _timeIndex);
     }
 }
