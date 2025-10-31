@@ -113,7 +113,7 @@ namespace SchemaRegistry.Tests
 
             // Assert
             await act.Should().ThrowAsync<SchemaCompatibilityException>()
-                .WithMessage("*not compatible*");
+                .WithMessage("New schema is not Backward-compatible with latest for topic.");
             _store.Verify(s => s.SaveAsync(It.IsAny<SchemaEntity>()), Times.Never);
         }
 

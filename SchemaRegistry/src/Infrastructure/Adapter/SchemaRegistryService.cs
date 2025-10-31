@@ -9,21 +9,15 @@ using JsonException = Newtonsoft.Json.JsonException;
 
 namespace SchemaRegistry.Infrastructure.Adapter;
 
-public class SchemaRegistryService : ISchemaRegistryService
+public class SchemaRegistryService(
+    ISchemaStore store,
+    ISchemaCompatibilityService compatibility,
+    IConfiguration cfg
+) : ISchemaRegistryService
 {
-    private readonly ISchemaCompatibilityService _compatibility;
-    private readonly CompatibilityMode _compatMode;
-    private readonly ISchemaStore _store;
-
-    public SchemaRegistryService(ISchemaStore store, ISchemaCompatibilityService compatibility, IConfiguration cfg)
-    {
-        _store = store;
-        _compatibility = compatibility;
-        var modeString = cfg.GetValue<string>("SchemaRegistry:CompatibilityMode") ?? "FULL";
-        _compatMode = Enum.TryParse<CompatibilityMode>(modeString, true, out var mode)
-            ? mode
-            : CompatibilityMode.Full;
-    }
+    private readonly ISchemaStore _store = store;
+    private readonly ISchemaCompatibilityService _compatibility = compatibility;
+    private readonly CompatibilityMode _compatMode = ParseCompatibilityMode(cfg);
 
     public async Task<int> RegisterSchemaAsync(string topic, string schemaJson)
     {
@@ -93,8 +87,13 @@ public class SchemaRegistryService : ISchemaRegistryService
     {
         return _store.GetAllForTopicAsync(subject);
     }
-
-
+    
+    private static CompatibilityMode ParseCompatibilityMode(IConfiguration cfg)
+    {
+        var modeString = cfg.GetValue<string>("SchemaRegistry:CompatibilityMode") ?? "FULL";
+        return Enum.TryParse<CompatibilityMode>(modeString, true, out var mode) ? mode : CompatibilityMode.Full;
+    }
+    
     private static string ComputeChecksum(string text)
     {
         using var sha = SHA256.Create();
