@@ -124,19 +124,28 @@ namespace SchemaRegistry.Tests
             var latest = new SchemaEntity { Id = 1, Topic = Topic, SchemaJson = ValidSchemaJson };
             _store.Setup(s => s.GetByChecksumAsync(It.IsAny<string>())).ReturnsAsync((SchemaEntity?)null);
             _store.Setup(s => s.GetLatestForTopicAsync(Topic)).ReturnsAsync(latest);
-            _checker.Setup(c => c.IsBackwardCompatible(It.IsAny<RecordSchema>(), It.IsAny<RecordSchema>()))
-                    .Returns(true);
+
+            var compatMock = new Mock<ISchemaCompatibilityService>();
+            compatMock.Setup(c => c.IsCompatible(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CompatibilityMode>()))
+                .Returns(true);
+
+            var cfg = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?> { ["SchemaRegistry:CompatibilityMode"] = "BACKWARD" })
+                .Build();
+
+            var service = new SchemaRegistryService(_store.Object, compatMock.Object, cfg);
 
             _store.Setup(s => s.SaveAsync(It.IsAny<SchemaEntity>()))
                 .ReturnsAsync((SchemaEntity e) => { e.Id = 100; return e; });
 
             // Act
-            var id = await _service.RegisterSchemaAsync(Topic, ValidSchemaJson);
+            var id = await service.RegisterSchemaAsync(Topic, ValidSchemaJson);
 
             // Assert
             id.Should().Be(100);
             _store.Verify(s => s.SaveAsync(It.IsAny<SchemaEntity>()), Times.Once);
         }
+
 
         [Fact]
         public async Task RegisterSchemaAsync_ShouldSave_WhenNoPreviousSchema()

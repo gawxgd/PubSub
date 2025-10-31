@@ -1,9 +1,11 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using SchemaRegistry.Domain.Enums;
 using SchemaRegistry.Domain.Exceptions;
 using SchemaRegistry.Domain.Models;
 using SchemaRegistry.Domain.Port;
+using JsonException = Newtonsoft.Json.JsonException;
 
 namespace SchemaRegistry.Infrastructure.Adapter;
 
@@ -28,22 +30,41 @@ public class SchemaRegistryService : ISchemaRegistryService
         ArgumentException.ThrowIfNullOrWhiteSpace(topic);
         ArgumentException.ThrowIfNullOrWhiteSpace(schemaJson);
         
+        // check if the schema is even a valid json
+        try
+        {
+            _ = JsonDocument.Parse(schemaJson);
+        }
+        catch (JsonException ex)
+        {
+            throw new SchemaValidationException("Schema is not a valid JSON document.", ex);
+        }
+        
+        // check if it's a valid avro schema
+        try
+        {
+            var reader = new Chr.Avro.Representation.JsonSchemaReader();
+            _ = reader.Read(schemaJson);
+        }
+        catch (Exception ex)
+        {
+            throw new SchemaValidationException("Provided schema is not a valid Avro schema.", ex);
+        }
+        
         var checksum = ComputeChecksum(schemaJson);
 
-        // If same schema exists globally -> return its id (dedupe)
+        // If same schema exists globally -> return its id (deduplication)
         var existing = await _store.GetByChecksumAsync(checksum);
         if (existing != null)
             return existing.Id;
 
         // get latest for topic to check compatibility
         var latest = await _store.GetLatestForTopicAsync(topic);
+        if (latest != null &&
+            !_compatibility.IsCompatible(latest.SchemaJson, schemaJson, _compatMode))
+            throw new SchemaCompatibilityException($"New schema is not {_compatMode}-compatible with latest for topic.");
 
-        if (latest != null && !_compatibility.IsCompatible(latest.SchemaJson, schemaJson, _compatMode))
-            throw new SchemaCompatibilityException("New schema is not compatible with latest for topic.");
-
-        // TODO: maybe check if the schema json is valid if we are to create a new one?
-
-        // create new id (store will assign)
+        // save the schema (store will assign id)
         var entity = new SchemaEntity
         {
             Topic = topic,
