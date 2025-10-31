@@ -6,9 +6,10 @@ using Chr.Avro.Representation;
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Moq;
+using SchemaRegistry.Domain.Exceptions;
 using SchemaRegistry.Domain.Models;
-using SchemaRegistry.Domain.Services.Implementations;
-using SchemaRegistry.Infrastructure.Storage;
+using SchemaRegistry.Domain.Port;
+using SchemaRegistry.Infrastructure.Adapter;
 using SchemaRegistry.Infrastructure.Validation;
 using Xunit;
 

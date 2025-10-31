@@ -4,7 +4,7 @@ using SchemaRegistry.Domain.Enums;
 using SchemaRegistry.Domain.Port;
 using SchemaRegistry.Infrastructure.Validation;
 
-namespace SchemaRegistry.Outbound.Adapter;
+namespace SchemaRegistry.Infrastructure.Adapter;
 
 public class SchemaCompatibilityService : ISchemaCompatibilityService
 {

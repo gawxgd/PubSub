@@ -4,9 +4,8 @@ using SchemaRegistry.Domain.Enums;
 using SchemaRegistry.Domain.Exceptions;
 using SchemaRegistry.Domain.Models;
 using SchemaRegistry.Domain.Port;
-using SchemaRegistry.Infrastructure.Storage;
 
-namespace SchemaRegistry.Outbound.Adapter;
+namespace SchemaRegistry.Infrastructure.Adapter;
 
 public class SchemaRegistryService : ISchemaRegistryService
 {

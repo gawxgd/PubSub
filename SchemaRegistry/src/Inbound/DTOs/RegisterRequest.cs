@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
-namespace SchemaRegistry.Domain.DTOs;
+namespace SchemaRegistry.Inbound.DTOs;
 
 // TODO: is this thing worth creating a class? 
 

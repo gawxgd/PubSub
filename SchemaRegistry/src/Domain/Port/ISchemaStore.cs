@@ -1,8 +1,6 @@
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using SchemaRegistry.Domain.Models;
 
-namespace SchemaRegistry.Infrastructure.Storage
+namespace SchemaRegistry.Domain.Port
 {
     public interface ISchemaStore
     {

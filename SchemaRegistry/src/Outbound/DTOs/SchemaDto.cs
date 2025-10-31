@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace SchemaRegistry.Domain.DTOs;
+namespace SchemaRegistry.Outbound.DTOs;
 
 public class SchemaDto
 {

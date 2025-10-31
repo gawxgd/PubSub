@@ -1,11 +1,10 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using SchemaRegistry.Infrastructure.Storage;
 using SchemaRegistry.Infrastructure.Validation;
 using Microsoft.Extensions.Configuration;
 using SchemaRegistry.Domain.Port;
-using SchemaRegistry.Outbound.Adapter;
+using SchemaRegistry.Infrastructure.Adapter;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -36,6 +35,7 @@ else
 // core services
 builder.Services.AddSingleton<ICompatibilityChecker, CompatibilityChecker>();
 builder.Services.AddScoped<ISchemaRegistryService, SchemaRegistryService>();
+builder.Services.AddScoped<ISchemaCompatibilityService, SchemaCompatibilityService>();
 
 var app = builder.Build();
 

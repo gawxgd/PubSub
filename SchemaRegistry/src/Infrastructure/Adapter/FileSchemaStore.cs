@@ -1,7 +1,8 @@
 using System.Text.Json;
 using SchemaRegistry.Domain.Models;
+using SchemaRegistry.Domain.Port;
 
-namespace SchemaRegistry.Infrastructure.Storage;
+namespace SchemaRegistry.Infrastructure.Adapter;
 
 // TODO: implement storing schemas in a data base
 
