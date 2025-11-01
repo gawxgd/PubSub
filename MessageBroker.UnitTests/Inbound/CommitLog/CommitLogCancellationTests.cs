@@ -14,6 +14,7 @@ public class CommitLogCancellationTests : IDisposable
     private readonly string _testDirectory;
     private readonly ILogSegmentFactory _segmentFactory;
     private readonly ILogSegmentWriter _segmentWriter;
+    private readonly ITopicSegmentManager _segmentManager;
 
     public CommitLogCancellationTests()
     {
@@ -25,6 +26,7 @@ public class CommitLogCancellationTests : IDisposable
 
         _segmentWriter = Substitute.For<ILogSegmentWriter>();
         _segmentFactory = Substitute.For<ILogSegmentFactory>();
+        _segmentManager = Substitute.For<ITopicSegmentManager>();
 
         var testSegment = new LogSegment(
             Path.Combine(_testDirectory, "00000000000000000000.log"),
@@ -51,11 +53,11 @@ public class CommitLogCancellationTests : IDisposable
 
         var appendCount = 0;
         _segmentWriter.AppendAsync(Arg.Any<LogRecordBatch>(), Arg.Any<CancellationToken>())
-            .Returns(async call =>
+            .Returns(call =>
             {
                 appendCount++;
                 var token = call.Arg<CancellationToken>();
-                await Task.Delay(100, token); // Simulate slow write
+                return new ValueTask(Task.Delay(100, token));
             });
 
         // Act - Start appending, then cancel
@@ -181,22 +183,23 @@ public class CommitLogCancellationTests : IDisposable
         var cancellationDetected = new TaskCompletionSource<bool>();
 
         _segmentWriter.AppendAsync(Arg.Any<LogRecordBatch>(), Arg.Any<CancellationToken>())
-            .Returns(async call =>
+            .Returns(call =>
             {
                 var token = call.Arg<CancellationToken>();
                 slowAppendStarted.SetResult(true);
-
-                try
+                var t = Task.Run(async () =>
                 {
-                    await Task.Delay(5000, token); // Very slow append
-                }
-                catch (OperationCanceledException)
-                {
-                    cancellationDetected.SetResult(true);
-                    throw;
-                }
-
-                return default;
+                    try
+                    {
+                        await Task.Delay(5000, token);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        cancellationDetected.SetResult(true);
+                        throw;
+                    }
+                }, token);
+                return new ValueTask(t);
             });
 
         var appender = CreateAppender(flushInterval: TimeSpan.FromMilliseconds(50));
@@ -323,27 +326,27 @@ public class CommitLogCancellationTests : IDisposable
         var cancellationReceived = false;
 
         _segmentWriter.AppendAsync(Arg.Any<LogRecordBatch>(), Arg.Any<CancellationToken>())
-            .Returns(async call =>
+            .Returns(call =>
             {
                 var token = call.Arg<CancellationToken>();
                 longFlushStarted.SetResult(true);
-
-                try
+                var t = Task.Run(async () =>
                 {
-                    // Simulate very long flush operation
-                    for (int i = 0; i < 100; i++)
+                    try
                     {
-                        token.ThrowIfCancellationRequested();
-                        await Task.Delay(50, token);
+                        for (int i = 0; i < 100; i++)
+                        {
+                            token.ThrowIfCancellationRequested();
+                            await Task.Delay(50, token);
+                        }
                     }
-                }
-                catch (OperationCanceledException)
-                {
-                    cancellationReceived = true;
-                    throw;
-                }
-
-                return default;
+                    catch (OperationCanceledException)
+                    {
+                        cancellationReceived = true;
+                        throw;
+                    }
+                }, token);
+                return new ValueTask(t);
             });
 
         var appender = CreateAppender(flushInterval: TimeSpan.FromMilliseconds(50));
@@ -367,7 +370,8 @@ public class CommitLogCancellationTests : IDisposable
             _testDirectory,
             baseOffset,
             flushInterval ?? TimeSpan.FromMilliseconds(100),
-            "test-topic"
+            "test-topic",
+            _segmentManager
         );
     }
 

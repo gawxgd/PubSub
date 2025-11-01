@@ -13,6 +13,7 @@ namespace MessageBroker.UnitTests.Inbound.CommitLog;
 public class CommitLogFactoryTests : IDisposable
 {
     private readonly ILogSegmentFactory _segmentFactory;
+    private readonly ITopicSegmentManagerRegistry _registry;
     private readonly string _testDirectory;
 
     public CommitLogFactoryTests()
@@ -24,6 +25,7 @@ public class CommitLogFactoryTests : IDisposable
         Directory.CreateDirectory(_testDirectory);
 
         _segmentFactory = Substitute.For<ILogSegmentFactory>();
+        _registry = Substitute.For<ITopicSegmentManagerRegistry>();
 
         // Setup segment factory to return valid segments
         _segmentFactory.CreateLogSegment(Arg.Any<string>(), Arg.Any<ulong>())
@@ -63,6 +65,17 @@ public class CommitLogFactoryTests : IDisposable
         var act = () => factory.GetAppender("unknown-topic");
 
         // Assert
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*Topic 'unknown-topic' is not configured*");
+    }
+
+    [Fact]
+    public void GetReader_Should_Throw_When_Topic_Not_Configured()
+    {
+        var factory = CreateFactory("test-topic");
+
+        var act = () => factory.GetReader("unknown-topic");
+
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*Topic 'unknown-topic' is not configured*");
     }
@@ -174,6 +187,28 @@ public class CommitLogFactoryTests : IDisposable
         act.Should().NotThrow();
     }
 
+    [Fact]
+    public void GetReader_Should_Create_Reader_For_Configured_Topic()
+    {
+        var factory = CreateFactory("test-topic");
+
+        var reader = factory.GetReader("test-topic");
+
+        reader.Should().NotBeNull();
+        _registry.Received(1).GetOrCreate(Arg.Is("test-topic"), Arg.Any<string>(), Arg.Any<ulong>());
+    }
+
+    [Fact]
+    public void GetReader_Should_Return_Same_Instance_For_Same_Topic()
+    {
+        var factory = CreateFactory("test-topic");
+
+        var r1 = factory.GetReader("test-topic");
+        var r2 = factory.GetReader("test-topic");
+
+        r1.Should().BeSameAs(r2);
+    }
+
     private CommitLogFactory CreateFactory(
         string topicName,
         ulong baseOffset = 0,
@@ -196,7 +231,19 @@ public class CommitLogFactoryTests : IDisposable
             }
         });
 
-        return new CommitLogFactory(_segmentFactory, commitLogOptions, topicOptions);
+        var manager = Substitute.For<ITopicSegmentManager>();
+        manager.GetActiveSegment().Returns(new MessageBroker.Domain.Entities.CommitLog.LogSegment(
+            Path.Combine(_testDirectory, "00000000000000000000.log"),
+            Path.Combine(_testDirectory, "00000000000000000000.index"),
+            Path.Combine(_testDirectory, "00000000000000000000.timeindex"),
+            baseOffset,
+            baseOffset));
+        _registry.GetOrCreate(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<ulong>())
+            .Returns(manager);
+        var segmentReader = Substitute.For<ILogSegmentReader>();
+        _segmentFactory.CreateReader(Arg.Any<MessageBroker.Domain.Entities.CommitLog.LogSegment>()).Returns(segmentReader);
+
+        return new CommitLogFactory(_segmentFactory, _registry, commitLogOptions, topicOptions);
     }
 
     private CommitLogFactory CreateFactoryWithCustomDirectory(
@@ -223,7 +270,19 @@ public class CommitLogFactoryTests : IDisposable
             }
         });
 
-        return new CommitLogFactory(_segmentFactory, commitLogOptions, topicOptions);
+        var manager = Substitute.For<ITopicSegmentManager>();
+        manager.GetActiveSegment().Returns(new MessageBroker.Domain.Entities.CommitLog.LogSegment(
+            Path.Combine(directory, "00000000000000000000.log"),
+            Path.Combine(directory, "00000000000000000000.index"),
+            Path.Combine(directory, "00000000000000000000.timeindex"),
+            baseOffset,
+            baseOffset));
+        _registry.GetOrCreate(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<ulong>())
+            .Returns(manager);
+        var segmentReader = Substitute.For<ILogSegmentReader>();
+        _segmentFactory.CreateReader(Arg.Any<MessageBroker.Domain.Entities.CommitLog.LogSegment>()).Returns(segmentReader);
+
+        return new CommitLogFactory(_segmentFactory, _registry, commitLogOptions, topicOptions);
     }
 
     private CommitLogFactory CreateFactoryWithMultipleTopics()
@@ -241,7 +300,19 @@ public class CommitLogFactoryTests : IDisposable
             new CommitLogTopicOptions { Name = "topic2", BaseOffset = 0, FlushIntervalMs = 100 }
         });
 
-        return new CommitLogFactory(_segmentFactory, commitLogOptions, topicOptions);
+        var manager = Substitute.For<ITopicSegmentManager>();
+        manager.GetActiveSegment().Returns(new MessageBroker.Domain.Entities.CommitLog.LogSegment(
+            Path.Combine(_testDirectory, "00000000000000000000.log"),
+            Path.Combine(_testDirectory, "00000000000000000000.index"),
+            Path.Combine(_testDirectory, "00000000000000000000.timeindex"),
+            0,
+            0));
+        _registry.GetOrCreate(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<ulong>())
+            .Returns(manager);
+        var segmentReader = Substitute.For<ILogSegmentReader>();
+        _segmentFactory.CreateReader(Arg.Any<MessageBroker.Domain.Entities.CommitLog.LogSegment>()).Returns(segmentReader);
+
+        return new CommitLogFactory(_segmentFactory, _registry, commitLogOptions, topicOptions);
     }
 
     public void Dispose()

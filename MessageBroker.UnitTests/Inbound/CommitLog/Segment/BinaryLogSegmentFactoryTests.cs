@@ -1,5 +1,9 @@
 using FluentAssertions;
 using MessageBroker.Domain.Port.CommitLog.RecordBatch;
+using MessageBroker.Domain.Port.CommitLog.Index.Writer;
+using MessageBroker.Domain.Port.CommitLog.Index.Reader;
+using MessageBroker.Inbound.CommitLog.Index.Writer;
+using MessageBroker.Inbound.CommitLog.Index.Reader;
 using MessageBroker.Inbound.CommitLog.Segment;
 using MessageBroker.Infrastructure.Configuration.Options.CommitLog;
 using Microsoft.Extensions.Options;
@@ -173,7 +177,20 @@ public class BinaryLogSegmentFactoryTests
             FileBufferSize = fileBufferSize
         });
 
-        return new BinaryLogSegmentFactory(_batchWriter, options);
+        var batchReader = Substitute.For<ILogRecordBatchReader>();
+        var offsetIndexWriter = new BinaryOffsetIndexWriter();
+        var offsetIndexReader = new BinaryOffsetIndexReader();
+        var timeIndexWriter = new BinaryTimeIndexWriter();
+        var timeIndexReader = new BinaryTimeIndexReader();
+
+        return new BinaryLogSegmentFactory(
+            _batchWriter,
+            batchReader,
+            offsetIndexWriter,
+            offsetIndexReader,
+            timeIndexWriter,
+            timeIndexReader,
+            options);
     }
 }
 

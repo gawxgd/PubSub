@@ -15,6 +15,7 @@ public class BinaryCommitLogAppenderThreadSafetyTests : IDisposable
     private readonly string _testDirectory;
     private readonly ILogSegmentFactory _segmentFactory;
     private readonly ILogSegmentWriter _segmentWriter;
+    private readonly ITopicSegmentManager _segmentManager;
     private readonly ConcurrentBag<LogRecordBatch> _capturedBatches;
 
     public BinaryCommitLogAppenderThreadSafetyTests()
@@ -27,6 +28,7 @@ public class BinaryCommitLogAppenderThreadSafetyTests : IDisposable
 
         _segmentWriter = Substitute.For<ILogSegmentWriter>();
         _segmentFactory = Substitute.For<ILogSegmentFactory>();
+        _segmentManager = Substitute.For<ITopicSegmentManager>();
         _capturedBatches = new ConcurrentBag<LogRecordBatch>();
 
         var testSegment = new LogSegment(
@@ -362,7 +364,8 @@ public class BinaryCommitLogAppenderThreadSafetyTests : IDisposable
             _testDirectory,
             baseOffset,
             flushInterval ?? TimeSpan.FromMilliseconds(100),
-            "test-topic"
+            "test-topic",
+            _segmentManager
         );
     }
 
