@@ -7,6 +7,7 @@ using MessageBroker.Inbound.CommitLog.BatchRecord;
 using MessageBroker.Inbound.CommitLog.Compressor;
 using MessageBroker.Inbound.CommitLog.Record;
 using Xunit;
+using static MessageBroker.UnitTests.Inbound.CommitLog.CommitLogTestHelpers;
 
 namespace MessageBroker.UnitTests.Inbound.CommitLog.BatchRecord;
 
@@ -52,12 +53,7 @@ public class LogRecordBatchBinaryWriterTests
         stream.Position = 0;
         var readBatch = _batchReader.ReadBatch(stream);
         
-        readBatch.BaseOffset.Should().Be(0);
-        readBatch.Records.Should().HaveCount(1);
-        readBatch.Records.ElementAt(0).Offset.Should().Be(1);
-        readBatch.Records.ElementAt(0).Timestamp.Should().Be(1000);
-        readBatch.Records.ElementAt(0).Payload.ToArray().Should().BeEquivalentTo(new byte[] { 1, 2, 3 });
-        readBatch.Compressed.Should().BeFalse();
+        AssertBatchesEqual(batch, readBatch, "single record batch should match");
     }
 
     [Fact]
@@ -85,20 +81,7 @@ public class LogRecordBatchBinaryWriterTests
         stream.Position = 0;
         var readBatch = _batchReader.ReadBatch(stream);
         
-        readBatch.BaseOffset.Should().Be(0);
-        readBatch.Records.Should().HaveCount(3);
-        
-        readBatch.Records.ElementAt(0).Offset.Should().Be(1);
-        readBatch.Records.ElementAt(0).Timestamp.Should().Be(1000);
-        readBatch.Records.ElementAt(0).Payload.ToArray().Should().BeEquivalentTo(new byte[] { 1 });
-        
-        readBatch.Records.ElementAt(1).Offset.Should().Be(2);
-        readBatch.Records.ElementAt(1).Timestamp.Should().Be(1001);
-        readBatch.Records.ElementAt(1).Payload.ToArray().Should().BeEquivalentTo(new byte[] { 2, 3 });
-        
-        readBatch.Records.ElementAt(2).Offset.Should().Be(3);
-        readBatch.Records.ElementAt(2).Timestamp.Should().Be(1002);
-        readBatch.Records.ElementAt(2).Payload.ToArray().Should().BeEquivalentTo(new byte[] { 4, 5, 6 });
+        AssertBatchesEqual(batch, readBatch, "multiple records batch should match");
     }
 
     [Fact]
@@ -124,9 +107,7 @@ public class LogRecordBatchBinaryWriterTests
         stream.Position = 0;
         var readBatch = _batchReader.ReadBatch(stream);
         
-        readBatch.Should().NotBeNull();
-        readBatch.Records.Should().HaveCount(1);
-        readBatch.Records.ElementAt(0).Payload.ToArray().Should().BeEquivalentTo(new byte[] { 1, 2, 3 });
+        AssertBatchesEqual(batch, readBatch, "batch with CRC should match");
     }
 
     [Fact]
@@ -152,10 +133,7 @@ public class LogRecordBatchBinaryWriterTests
         stream.Position = 0;
         var readBatch = _batchReader.ReadBatch(stream);
         
-        readBatch.BaseOffset.Should().Be(42);
-        readBatch.Records.Should().HaveCount(1);
-        readBatch.Records.ElementAt(0).Offset.Should().Be(42);
-        readBatch.Records.ElementAt(0).Payload.ToArray().Should().BeEquivalentTo(new byte[] { 1 });
+        AssertBatchesEqual(batch, readBatch, "batch with base offset 42 should match");
     }
 
     [Fact]
@@ -181,8 +159,7 @@ public class LogRecordBatchBinaryWriterTests
         stream.Position = 0;
         var readBatch = _batchReader.ReadBatch(stream);
         
-        readBatch.MagicNumber.Should().Be(CommitLogMagicNumbers.LogRecordBatchMagicNumber);
-        readBatch.Records.Should().HaveCount(1);
+        AssertBatchesEqual(batch, readBatch, "batch with magic number should match");
     }
 
     [Fact]
@@ -220,11 +197,8 @@ public class LogRecordBatchBinaryWriterTests
         var readBatchUncompressed = _batchReader.ReadBatch(streamUncompressed);
         var readBatchCompressed = _batchReader.ReadBatch(streamCompressed);
         
-        readBatchUncompressed.Compressed.Should().BeFalse();
-        readBatchUncompressed.Records.ElementAt(0).Payload.ToArray().Should().BeEquivalentTo(new byte[] { 1, 2, 3 });
-        
-        readBatchCompressed.Compressed.Should().BeTrue();
-        readBatchCompressed.Records.ElementAt(0).Payload.ToArray().Should().BeEquivalentTo(new byte[] { 1, 2, 3 });
+        AssertBatchesEqual(batchUncompressed, readBatchUncompressed, "uncompressed batch should match");
+        AssertBatchesEqual(batchCompressed, readBatchCompressed, "compressed batch should match");
     }
 }
 

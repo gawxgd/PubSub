@@ -15,6 +15,8 @@ using MessageBroker.Inbound.CommitLog.Index.Reader;
 using MessageBroker.Inbound.CommitLog.Segment;
 using Microsoft.Extensions.Options;
 using MessageBroker.Infrastructure.Configuration.Options.CommitLog;
+using System.Buffers.Binary;
+using static MessageBroker.UnitTests.Inbound.CommitLog.CommitLogTestHelpers;
 
 namespace MessageBroker.UnitTests.Inbound.CommitLog;
 
@@ -115,11 +117,11 @@ public class BinaryCommitLogAppenderTests : IDisposable
         // Assert - Read back and verify
         var activeSegment = _segmentManager.GetActiveSegment();
         await using var reader = _segmentFactory.CreateReader(activeSegment);
-        var batch = reader.ReadBatch(0);
+        var readBatch = reader.ReadBatch(0);
         
-        batch.Should().NotBeNull();
-        batch!.Records.Should().HaveCount(1);
-        batch.Records.ElementAt(0).Payload.ToArray().Should().BeEquivalentTo(payload);
+        // Create expected batch using timestamps from read batch for full comparison
+        var expectedBatch = CreateExpectedBatchFromRead(readBatch!, payload);
+        AssertBatchesEqual(expectedBatch, readBatch, "flushed batch should match expected");
     }
 
     [Fact]
@@ -137,13 +139,11 @@ public class BinaryCommitLogAppenderTests : IDisposable
         // Assert - Read back and verify all three payloads were batched together
         var activeSegment = _segmentManager.GetActiveSegment();
         await using var reader = _segmentFactory.CreateReader(activeSegment);
-        var batch = reader.ReadBatch(0);
+        var readBatch = reader.ReadBatch(0);
         
-        batch.Should().NotBeNull();
-        batch!.Records.Should().HaveCount(3);
-        batch.Records.ElementAt(0).Payload.ToArray().Should().BeEquivalentTo(new byte[] { 1 });
-        batch.Records.ElementAt(1).Payload.ToArray().Should().BeEquivalentTo(new byte[] { 2 });
-        batch.Records.ElementAt(2).Payload.ToArray().Should().BeEquivalentTo(new byte[] { 3 });
+        // Create expected batch using timestamps from read batch for full comparison
+        var expectedBatch = CreateExpectedBatchFromRead(readBatch!, new byte[] { 1 }, new byte[] { 2 }, new byte[] { 3 });
+        AssertBatchesEqual(expectedBatch, readBatch, "batched payloads should match expected");
     }
 
     [Fact]
@@ -180,13 +180,11 @@ public class BinaryCommitLogAppenderTests : IDisposable
         // Assert - Read back and verify sequential offsets
         var activeSegment = _segmentManager.GetActiveSegment();
         await using var reader = _segmentFactory.CreateReader(activeSegment);
-        var batch = reader.ReadBatch(0);
+        var readBatch = reader.ReadBatch(0);
         
-        batch.Should().NotBeNull();
-        batch!.Records.Should().HaveCount(3);
-        batch.Records.ElementAt(0).Offset.Should().Be(0);
-        batch.Records.ElementAt(1).Offset.Should().Be(1);
-        batch.Records.ElementAt(2).Offset.Should().Be(2);
+        // Create expected batch using timestamps from read batch for full comparison
+        var expectedBatch = CreateExpectedBatchFromRead(readBatch!, new byte[] { 1 }, new byte[] { 2 }, new byte[] { 3 });
+        AssertBatchesEqual(expectedBatch, readBatch, "sequential offsets should match expected");
     }
 
     [Fact]
@@ -221,10 +219,14 @@ public class BinaryCommitLogAppenderTests : IDisposable
         // Assert - Read back and verify timestamp
         var activeSegment = _segmentManager.GetActiveSegment();
         await using var reader = _segmentFactory.CreateReader(activeSegment);
-        var batch = reader.ReadBatch(0);
+        var readBatch = reader.ReadBatch(0);
         
-        batch.Should().NotBeNull();
-        batch!.Records.First().Timestamp.Should().BeGreaterThan(0);
+        // Create expected batch using timestamps from read batch for full comparison
+        var expectedBatch = CreateExpectedBatchFromRead(readBatch!, new byte[] { 1 });
+        AssertBatchesEqual(expectedBatch, readBatch, "timestamp test batch should match expected");
+        
+        // Additionally verify timestamp is valid
+        readBatch!.Records.First().Timestamp.Should().BeGreaterThan(0, "timestamp should be set");
     }
 
     [Fact]
@@ -241,10 +243,11 @@ public class BinaryCommitLogAppenderTests : IDisposable
         // Assert - Read back and verify payload
         var activeSegment = _segmentManager.GetActiveSegment();
         await using var reader = _segmentFactory.CreateReader(activeSegment);
-        var batch = reader.ReadBatch(0);
+        var readBatch = reader.ReadBatch(0);
         
-        batch.Should().NotBeNull();
-        batch!.Records.First().Payload.ToArray().Should().BeEquivalentTo(originalPayload);
+        // Create expected batch using timestamps from read batch for full comparison
+        var expectedBatch = CreateExpectedBatchFromRead(readBatch!, originalPayload);
+        AssertBatchesEqual(expectedBatch, readBatch, "payload should be preserved exactly");
     }
 
     private BinaryCommitLogAppender CreateAppender(
@@ -294,6 +297,30 @@ public class BinaryCommitLogAppenderTests : IDisposable
             flushInterval ?? TimeSpan.FromMilliseconds(100),
             "test-topic",
             _segmentManager
+        );
+    }
+
+    private LogRecordBatch CreateExpectedBatchFromRead(LogRecordBatch readBatch, params byte[][] payloads)
+    {
+        // Create expected batch using actual timestamps from the read batch
+        // This allows full comparison of all fields including timestamps
+        var records = new List<LogRecord>();
+        var readRecords = readBatch.Records.ToList();
+        
+        for (int i = 0; i < payloads.Length; i++)
+        {
+            records.Add(new LogRecord(
+                readRecords[i].Offset,
+                readRecords[i].Timestamp,
+                payloads[i]
+            ));
+        }
+        
+        return new LogRecordBatch(
+            readBatch.MagicNumber,
+            readBatch.BaseOffset,
+            records,
+            readBatch.Compressed
         );
     }
 

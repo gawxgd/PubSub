@@ -88,7 +88,7 @@ public sealed class BinaryLogSegmentReader : ILogSegmentReader
                 var batch = _batchReader.ReadBatch(_log);
 
                 // Check if this batch contains our offset
-                if (offset >= batch.BaseOffset && offset < batch.LastOffset)
+                if (offset >= batch.BaseOffset && offset <= batch.LastOffset)
                 {
                     return batch;
                 }

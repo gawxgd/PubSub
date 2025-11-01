@@ -3,6 +3,7 @@ using FluentAssertions;
 using MessageBroker.Domain.Entities.CommitLog;
 using MessageBroker.Inbound.CommitLog.Record;
 using Xunit;
+using static MessageBroker.UnitTests.Inbound.CommitLog.CommitLogTestHelpers;
 
 namespace MessageBroker.UnitTests.Inbound.CommitLog.Record;
 
@@ -35,9 +36,7 @@ public class LogRecordBinaryWriterTests
         var br = new BinaryReader(stream);
         var readRecord = _reader.ReadFrom(br, baseTimestamp);
         
-        readRecord.Offset.Should().Be(42);
-        readRecord.Timestamp.Should().Be(5000);
-        readRecord.Payload.ToArray().Should().BeEquivalentTo(new byte[] { 1, 2, 3, 4, 5 });
+        AssertLogRecordsEqual(record, readRecord, "written record should match read record");
     }
 
     [Fact]
@@ -57,9 +56,7 @@ public class LogRecordBinaryWriterTests
         var br = new BinaryReader(stream);
         var readRecord = _reader.ReadFrom(br, 1000);
         
-        readRecord.Offset.Should().Be(10);
-        readRecord.Timestamp.Should().Be(2000);
-        readRecord.Payload.ToArray().Should().BeEmpty();
+        AssertLogRecordsEqual(record, readRecord, "empty payload record should match");
     }
 
     [Fact]
@@ -81,9 +78,7 @@ public class LogRecordBinaryWriterTests
         var br = new BinaryReader(stream);
         var readRecord = _reader.ReadFrom(br, 2000);
         
-        readRecord.Offset.Should().Be(100);
-        readRecord.Timestamp.Should().Be(3000);
-        readRecord.Payload.ToArray().Should().BeEquivalentTo(payload);
+        AssertLogRecordsEqual(record, readRecord, "large payload record should match");
     }
 
     [Fact]
@@ -116,13 +111,8 @@ public class LogRecordBinaryWriterTests
         var readRecord1 = _reader.ReadFrom(br1, 5000);
         var readRecord2 = _reader.ReadFrom(br2, 5000);
         
-        readRecord1.Offset.Should().Be(1);
-        readRecord1.Timestamp.Should().Be(5000);
-        readRecord1.Payload.ToArray().Should().BeEquivalentTo(new byte[] { 1 });
-        
-        readRecord2.Offset.Should().Be(2);
-        readRecord2.Timestamp.Should().Be(6000);
-        readRecord2.Payload.ToArray().Should().BeEquivalentTo(new byte[] { 2 });
+        AssertLogRecordsEqual(record1, readRecord1, "first record with small delta should match");
+        AssertLogRecordsEqual(record2, readRecord2, "second record with larger delta should match");
     }
 }
 
