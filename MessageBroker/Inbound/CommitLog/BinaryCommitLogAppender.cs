@@ -21,7 +21,7 @@ public sealed class BinaryCommitLogAppender : ICommitLogAppender
     private readonly ILogSegmentFactory _segmentFactory;
     private readonly string _directory;
     private readonly string _topic;
-    private readonly TopicSegmentManager _segmentManager;
+    private readonly ITopicSegmentManager _segmentManager;
     // instance of this cllass should be created per topic
 
     private readonly Channel<ReadOnlyMemory<byte>> _batchChannel =
@@ -39,7 +39,7 @@ public sealed class BinaryCommitLogAppender : ICommitLogAppender
         Logger = AutoLoggerFactory.CreateLogger<BinaryCommitLogAppender>(LogSource.MessageBroker);
 
     public BinaryCommitLogAppender(ILogSegmentFactory segmentFactory, string directory, ulong baseOffset,
-        TimeSpan flushInterval, string topic)
+        TimeSpan flushInterval, string topic, ITopicSegmentManager segmentManager)
     {
         _directory = directory;
         _segmentFactory = segmentFactory;
@@ -48,8 +48,11 @@ public sealed class BinaryCommitLogAppender : ICommitLogAppender
         _currentOffset = baseOffset;
         _flushInterval = flushInterval;
         _cancellationTokenSource = new CancellationTokenSource();
-        _backgroundFlushTask = StartBackgroundFlushAsync();
         _topic = topic;
+        _segmentManager = segmentManager;
+        _segmentManager.UpdateActiveSegment(_activeSegment);
+        _segmentManager.UpdateCurrentOffset(_currentOffset);
+        _backgroundFlushTask = StartBackgroundFlushAsync();
     }
 
     public async ValueTask AppendAsync(ReadOnlyMemory<byte> payload)

@@ -12,12 +12,12 @@ public interface ICommitLogReader : IAsyncDisposable
     /// <summary>
     /// Read records starting from offset, returning up to maxRecords.
     /// </summary>
-    IEnumerable<LogRecord> ReadRecords(ulong startOffset, int maxRecords);
+    IEnumerable<LogRecord> ReadRecords(ulong startOffset);
 
     /// <summary>
     /// Read records from a timestamp onwards.
     /// </summary>
-    IEnumerable<LogRecord> ReadFromTimestamp(ulong timestamp, int maxRecords);
+    IEnumerable<LogRecord> ReadFromTimestamp(ulong timestamp);
 
     /// <summary>
     /// Get the current highest offset in the log.

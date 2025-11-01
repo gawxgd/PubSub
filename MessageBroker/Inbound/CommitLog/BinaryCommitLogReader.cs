@@ -7,12 +7,12 @@ namespace MessageBroker.Inbound.CommitLog;
 public sealed class BinaryCommitLogReader : ICommitLogReader
 {
     private readonly ILogSegmentFactory _segmentFactory;
-    private readonly TopicSegmentManager _segmentManager;
+    private readonly ITopicSegmentManager _segmentManager;
     private readonly string _topic;
     private ILogSegmentReader? _segmentReader;
     private ulong _currentSegmentBaseOffset;
 
-    public BinaryCommitLogReader(ILogSegmentFactory segmentFactory, TopicSegmentManager segmentManager, string topic)
+    public BinaryCommitLogReader(ILogSegmentFactory segmentFactory, ITopicSegmentManager segmentManager, string topic)
     {
         _segmentFactory = segmentFactory;
         _segmentManager = segmentManager;
@@ -39,39 +39,31 @@ public sealed class BinaryCommitLogReader : ICommitLogReader
         return batch?.Records.FirstOrDefault(r => r.Offset == offset);
     }
 
-    public IEnumerable<LogRecord> ReadRecords(ulong startOffset, int maxRecords)
+    public IEnumerable<LogRecord> ReadRecords(ulong startOffset)
     {
         RefreshSegmentReader();
-        var recordCount = 0;
-        var highWaterMark = _segmentManager.GetHighWaterMark();
-
-        foreach (var batch in _segmentReader!.ReadRange(startOffset, highWaterMark))
+        var batch = _segmentReader!.ReadBatch(startOffset);
+        if (batch == null) yield break;
+        foreach (var record in batch.Records)
         {
-            foreach (var record in batch.Records)
+            if (record.Offset >= startOffset)
             {
-                if (record.Offset >= startOffset)
-                {
-                    yield return record;
-                    if (++recordCount >= maxRecords) yield break;
-                }
+                yield return record;
             }
         }
     }
 
-    public IEnumerable<LogRecord> ReadFromTimestamp(ulong timestamp, int maxRecords)
+    public IEnumerable<LogRecord> ReadFromTimestamp(ulong timestamp)
     {
         RefreshSegmentReader();
-        var recordCount = 0;
-
-        foreach (var batch in _segmentReader!.ReadFromTimestamp(timestamp))
+        using var enumerator = _segmentReader!.ReadFromTimestamp(timestamp).GetEnumerator();
+        if (!enumerator.MoveNext()) yield break;
+        var batch = enumerator.Current;
+        foreach (var record in batch.Records)
         {
-            foreach (var record in batch.Records)
+            if (record.Timestamp >= timestamp)
             {
-                if (record.Timestamp >= timestamp)
-                {
-                    yield return record;
-                    if (++recordCount >= maxRecords) yield break;
-                }
+                yield return record;
             }
         }
     }

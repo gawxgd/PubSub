@@ -47,6 +47,7 @@ public static class ServiceRegistration
         services.AddSingleton<ILogRecordBatchWriter, LogRecordBatchBinaryWriter>();
         services.AddSingleton<ILogRecordBatchReader, LogRecordBatchBinaryReader>();
         services.AddSingleton<ILogSegmentFactory, BinaryLogSegmentFactory>();
+        services.AddSingleton<ITopicSegmentManagerRegistry, TopicSegmentManagerRegistry>();
         services.AddSingleton<ICommitLogFactory, CommitLogFactory>();
         services.AddSingleton<IOffsetIndexWriter, BinaryOffsetIndexWriter>();
         services.AddSingleton<IOffsetIndexReader, BinaryOffsetIndexReader>();
