@@ -176,3 +176,4 @@ public class BinaryLogSegmentFactoryTests
         return new BinaryLogSegmentFactory(_batchWriter, options);
     }
 }
+

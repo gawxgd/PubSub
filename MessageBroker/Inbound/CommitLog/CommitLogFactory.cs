@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using MessageBroker.Domain.Entities.CommitLog;
 using Microsoft.Extensions.Options;
 using MessageBroker.Domain.Port.CommitLog;
 using MessageBroker.Domain.Port.CommitLog.Segment;
@@ -15,10 +16,16 @@ public sealed class CommitLogFactory(
     private readonly CommitLogOptions _commitLogOptions = commitLogOptions.Value;
     private readonly List<CommitLogTopicOptions> _commitLogTopicOptions = commitLogTopicOptions.Value;
     private readonly ConcurrentDictionary<string, ICommitLogAppender> _appenders = new();
+    private readonly ConcurrentDictionary<string, TopicSegmentManager> _segmentManagers = new();
 
-    public ICommitLogAppender Get(string topic)
+    public ICommitLogAppender GetAppender(string topic)
     {
         return _appenders.GetOrAdd(topic, CreateAppender);
+    }
+
+    public ICommitLogReader GetReader(string topic)
+    {
+        return _readers.GetOrAdd(topic, CreateReader);
     }
 
     private ICommitLogAppender CreateAppender(string topic)
@@ -38,6 +45,12 @@ public sealed class CommitLogFactory(
         return new BinaryCommitLogAppender(segmentFactory, directory, baseOffset, flushInterval, topic);
     }
 
+    private ICommitLogReader CreateReader(string topic)
+    {
+        var directory = Path.Combine(_commitLogOptions.Directory, topic);
+
+        return new BinaryCommitLogReader
+    }
 
     public void Dispose()
     {

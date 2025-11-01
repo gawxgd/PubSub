@@ -21,6 +21,7 @@ public sealed class BinaryCommitLogAppender : ICommitLogAppender
     private readonly ILogSegmentFactory _segmentFactory;
     private readonly string _directory;
     private readonly string _topic;
+    private readonly TopicSegmentManager _segmentManager;
     // instance of this cllass should be created per topic
 
     private readonly Channel<ReadOnlyMemory<byte>> _batchChannel =
@@ -121,6 +122,8 @@ public sealed class BinaryCommitLogAppender : ICommitLogAppender
             }
 
             await _activeSegmentWriter.AppendAsync(recordBatch, _cancellationTokenSource.Token);
+
+            _segmentManager.UpdateCurrentOffset(_currentOffset);
         }
         finally
         {
@@ -139,6 +142,7 @@ public sealed class BinaryCommitLogAppender : ICommitLogAppender
         var newSegment = _segmentFactory.CreateLogSegment(_directory, _currentOffset);
         _activeSegmentWriter = _segmentFactory.CreateWriter(newSegment);
         _activeSegment = newSegment;
+        _segmentManager.UpdateActiveSegment(newSegment);
     }
 
     private async Task StartBackgroundFlushAsync()

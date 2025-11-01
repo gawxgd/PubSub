@@ -19,7 +19,7 @@ public class ProcessReceivedMessageUseCase
     {
         try
         {
-            _commitLogAppender = commitLogFactory.Get(topic);
+            _commitLogAppender = commitLogFactory.GetAppender(topic);
         }
         catch (Exception ex)
         {

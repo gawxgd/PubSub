@@ -382,3 +382,4 @@ public class BinaryCommitLogAppenderThreadSafetyTests : IDisposable
     }
 }
 
+
