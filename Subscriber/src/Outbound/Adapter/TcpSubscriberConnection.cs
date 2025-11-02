@@ -38,8 +38,17 @@ public sealed class TcpSubscriberConnection(
         }
         catch (SocketException ex)
         {
-            Logger.LogError( $"Unexpected error during connection: {ex.Message}");
-            throw new SubscriberConnectionException("TCP connection failed", ex);
+            Logger.LogError( $"Error during connection: {ex.Message}");
+            bool isRetriable = ex.SocketErrorCode switch
+            {
+                SocketError.TimedOut => true,
+                SocketError.ConnectionRefused => true,
+                SocketError.NetworkDown => true,
+                SocketError.HostNotFound => true,
+                _ => false
+            };
+
+            throw new SubscriberConnectionException("TCP connection failed", ex, isRetriable);
         }
     }
 
@@ -88,25 +97,45 @@ public sealed class TcpSubscriberConnection(
 
     private async Task ReadLoopAsync(CancellationToken cancellationToken)
     {
-        while (!cancellationToken.IsCancellationRequested)
+        try
         {
-            var result = await _pipeReader!.ReadAsync(cancellationToken);
-            var buffer = result.Buffer;
-
-            while (TryReadMessage(ref buffer, out var message))
+            while (!cancellationToken.IsCancellationRequested)
             {
-                await messageChannelWriter.WriteAsync(message, cancellationToken);
-            }
+                var result = await _pipeReader!.ReadAsync(cancellationToken);
+                var buffer = result.Buffer;
 
-            _pipeReader.AdvanceTo(buffer.Start, buffer.End);
+                while (TryReadMessage(ref buffer, out var message))
+                {
+                    await messageChannelWriter.WriteAsync(message, cancellationToken);
+                }
 
-            if (result.IsCompleted || result.IsCanceled)
-            {
-                Logger.LogInfo( $"Disconnected from broker at {_client.Client.RemoteEndPoint}");
-                break;
+                _pipeReader.AdvanceTo(buffer.Start, buffer.End);
+
+                if (result.IsCompleted || result.IsCanceled)
+                {
+                    Logger.LogInfo($"Disconnected from broker at {_client.Client.RemoteEndPoint}");
+                    break;
+                }
             }
         }
+        catch (IOException ex) when (ex.InnerException is SocketException socketEx)
+        {
+            bool isRetriable = socketEx.SocketErrorCode switch
+            {
+                SocketError.ConnectionReset => true,
+                SocketError.TimedOut => true,
+                SocketError.NetworkDown => true,
+                _ => false
+            };
+
+            throw new SubscriberConnectionException("Read loop failed", socketEx, isRetriable);
+        }
+        catch (Exception ex)
+        {
+            throw new SubscriberConnectionException("Unexpected error in read loop", null, false);
+        }
     }
+
 
     private bool TryReadMessage(ref ReadOnlySequence<byte> buffer, out byte[] message)
     {

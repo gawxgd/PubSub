@@ -86,7 +86,9 @@ public sealed class TcpSubscriber(
     {
         await ((ISubscriber)this).CreateConnection();
 
-        while (!CancellationToken.IsCancellationRequested)
+        var shouldStop = false;
+
+        while (!CancellationToken.IsCancellationRequested && !shouldStop)
         {
             try
             {
@@ -98,20 +100,31 @@ public sealed class TcpSubscriber(
                     }
                 }
             }
+            catch (SubscriberConnectionException ex) when (ex.IsRetriable)
+            {
+                Logger.LogWarning($"Retriable connection error: {ex.Message}");
+                await Task.Delay(pollInterval, CancellationToken);
+                continue; 
+            }
+            catch (SubscriberConnectionException ex)
+            {
+                Logger.LogError($"Unretriable connection error: {ex.Message}");
+                shouldStop = true;
+            }
             catch (Exception ex)
             {
-                Logger.LogError(ex.Message);
+                Logger.LogError($"Unexpected error: {ex.Message}");
+                shouldStop = true;
             }
 
             try
             {
-                await Task.Delay(pollInterval);
+                await Task.Delay(pollInterval, CancellationToken);
             }
             catch (TaskCanceledException)
             {
-                Logger.LogWarning( $"Task was cancelled");
+                Logger.LogWarning("Task was cancelled");
             }
-
         }
 
         await connection.DisconnectAsync();
