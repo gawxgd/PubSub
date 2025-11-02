@@ -44,18 +44,18 @@ public class TcpSubscriberTests
     [Fact]
     public async Task CreateConnection_ShouldSucceedOnFirstAttempt()
     {
-        _connectionMock.Setup(c => c.ConnectAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        _connectionMock.Setup(c => c.ConnectAsync()).Returns(Task.CompletedTask);
         var subscriber = CreateSubscriber(CreateBoundedChannel());
 
         await ((ISubscriber)subscriber).CreateConnection();
 
-        _connectionMock.Verify(c => c.ConnectAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _connectionMock.Verify(c => c.ConnectAsync(), Times.Once);
     }
 
     [Fact]
     public async Task CreateConnection_ShouldRetryOnFailure()
     {
-        _connectionMock.SetupSequence(c => c.ConnectAsync(It.IsAny<CancellationToken>()))
+        _connectionMock.SetupSequence(c => c.ConnectAsync())
             .Throws(new SubscriberConnectionException("fail", null))
             .Throws(new SubscriberConnectionException("fail again", null))
             .Returns(Task.CompletedTask);
@@ -64,14 +64,14 @@ public class TcpSubscriberTests
 
         await ((ISubscriber)subscriber).CreateConnection();
 
-        _connectionMock.Verify(c => c.ConnectAsync(It.IsAny<CancellationToken>()), Times.Exactly(3));
+        _connectionMock.Verify(c => c.ConnectAsync(), Times.Exactly(3));
         _loggerMock.Verify(l => l.LogDebug(LogSource.Subscriber, It.Is<string>(s => s.Contains("Retry"))), Times.Exactly(2));
     }
 
     [Fact]
     public async Task CreateConnection_ShouldThrowAfterMaxRetries()
     {
-        _connectionMock.Setup(c => c.ConnectAsync(It.IsAny<CancellationToken>()))
+        _connectionMock.Setup(c => c.ConnectAsync())
             .Throws(new SubscriberConnectionException("fail", null));
 
         var subscriber = CreateSubscriber(CreateBoundedChannel());
@@ -79,7 +79,7 @@ public class TcpSubscriberTests
         await Assert.ThrowsAsync<SubscriberConnectionException>(() =>
             ((ISubscriber)subscriber).CreateConnection());
 
-        _connectionMock.Verify(c => c.ConnectAsync(It.IsAny<CancellationToken>()), Times.Exactly(3));
+        _connectionMock.Verify(c => c.ConnectAsync(), Times.Exactly(3));
     }
 
     [Fact]
@@ -145,7 +145,7 @@ public class TcpSubscriberTests
         await channel.Writer.WriteAsync(message);
         channel.Writer.Complete(); 
 
-        _connectionMock.Setup(c => c.ConnectAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        _connectionMock.Setup(c => c.ConnectAsync()).Returns(Task.CompletedTask);
         _connectionMock.Setup(c => c.DisconnectAsync()).Returns(Task.CompletedTask);
 
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2)); 

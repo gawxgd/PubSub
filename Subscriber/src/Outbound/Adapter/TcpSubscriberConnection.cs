@@ -22,14 +22,19 @@ public sealed class TcpSubscriberConnection(
     private Task? _readLoopTask;
     private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<TcpSubscriberConnection>(LogSource.MessageBroker);
 
-    public async Task ConnectAsync(CancellationToken cancellationToken = default)
+    public async Task ConnectAsync()
     {
         try
         {
-            await _client.ConnectAsync(host, port, cancellationToken);
+            await _client.ConnectAsync(host, port);
             _pipeReader = PipeReader.Create(_client.GetStream());
             _readLoopTask = Task.Run(() => ReadLoopAsync(_cancellationSource.Token), _cancellationSource.Token);
             Logger.LogInfo($"Connected to broker at {_client.Client.RemoteEndPoint}");
+        }
+        catch (OperationCanceledException ex)
+        {
+            Logger.LogInfo("Read loop cancelled.");
+            throw;
         }
         catch (SocketException ex)
         {
