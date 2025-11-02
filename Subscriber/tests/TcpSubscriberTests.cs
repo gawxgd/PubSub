@@ -47,7 +47,7 @@ public class TcpSubscriberTests
         _connectionMock.Setup(c => c.ConnectAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         var subscriber = CreateSubscriber(CreateBoundedChannel());
 
-        await subscriber.CreateConnection(CancellationToken.None);
+        await ((ISubscriber)subscriber).CreateConnection();
 
         _connectionMock.Verify(c => c.ConnectAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -62,7 +62,7 @@ public class TcpSubscriberTests
 
         var subscriber = CreateSubscriber(CreateBoundedChannel());
 
-        await subscriber.CreateConnection(CancellationToken.None);
+        await ((ISubscriber)subscriber).CreateConnection();
 
         _connectionMock.Verify(c => c.ConnectAsync(It.IsAny<CancellationToken>()), Times.Exactly(3));
         _loggerMock.Verify(l => l.LogDebug(LogSource.Subscriber, It.Is<string>(s => s.Contains("Retry"))), Times.Exactly(2));
@@ -77,7 +77,7 @@ public class TcpSubscriberTests
         var subscriber = CreateSubscriber(CreateBoundedChannel());
 
         await Assert.ThrowsAsync<SubscriberConnectionException>(() =>
-            subscriber.CreateConnection(CancellationToken.None));
+            ((ISubscriber)subscriber).CreateConnection());
 
         _connectionMock.Verify(c => c.ConnectAsync(It.IsAny<CancellationToken>()), Times.Exactly(3));
     }
@@ -88,7 +88,7 @@ public class TcpSubscriberTests
         var subscriber = CreateSubscriber(CreateBoundedChannel());
         var message = Encoding.UTF8.GetBytes(new string('x', MaxMessageLength + 10));
 
-        await subscriber.ReceiveAsync(message, CancellationToken.None);
+        await subscriber.ReceiveAsync(message);
 
         _loggerMock.Verify(l => l.LogError(LogSource.Subscriber, It.Is<string>(s => s.Contains("Invalid message length"))));
         _messageHandlerMock.Verify(h => h.Invoke(It.IsAny<string>()), Times.Never);
@@ -100,7 +100,7 @@ public class TcpSubscriberTests
         var subscriber = CreateSubscriber(CreateBoundedChannel());
         var message = Encoding.UTF8.GetBytes("wrong-topic:payload");
 
-        await subscriber.ReceiveAsync(message, CancellationToken.None);
+        await subscriber.ReceiveAsync(message);
 
         _loggerMock.Verify(l => l.LogError(LogSource.Subscriber, It.Is<string>(s => s.Contains("wrong topic"))));
         _messageHandlerMock.Verify(h => h.Invoke(It.IsAny<string>()), Times.Never);
@@ -113,7 +113,7 @@ public class TcpSubscriberTests
         var payload = "test-payload";
         var message = Encoding.UTF8.GetBytes($"{Topic}:{payload}");
 
-        await subscriber.ReceiveAsync(message, CancellationToken.None);
+        await subscriber.ReceiveAsync(message);
 
         _messageHandlerMock.Verify(h => h.Invoke(payload), Times.Once);
         _loggerMock.Verify(l => l.LogInfo(LogSource.Subscriber, It.Is<string>(s => s.Contains(payload))), Times.Once);
@@ -129,7 +129,7 @@ public class TcpSubscriberTests
 
         _messageHandlerMock.Setup(h => h.Invoke(payload)).Throws(exception);
 
-        await subscriber.ReceiveAsync(message, CancellationToken.None);
+        await subscriber.ReceiveAsync(message);
 
         _loggerMock.Verify(l => l.LogError(LogSource.Subscriber, exception.Message), Times.Once);
     }
@@ -150,7 +150,7 @@ public class TcpSubscriberTests
 
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2)); 
 
-        await subscriber.StartAsync(cts.Token);
+        await subscriber.StartAsync();
 
         _messageHandlerMock.Verify(h => h.Invoke(payload), Times.Once);
         _connectionMock.Verify(c => c.DisconnectAsync(), Times.Once);

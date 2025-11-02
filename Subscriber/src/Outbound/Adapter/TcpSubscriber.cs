@@ -20,18 +20,20 @@ public sealed class TcpSubscriber(
     Func<Exception, Task>? errorHandler = null)
     : ISubscriber, IAsyncDisposable
 {
-    private readonly CancellationTokenSource _cancellationTokenSource = new();
+    private readonly CancellationTokenSource _cts = new();
+    private CancellationToken CancellationToken => _cts.Token;
+
     private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<TcpSubscriber>(LogSource.MessageBroker);
 
-    public async Task CreateConnection(CancellationToken cancellationToken)
+    async Task ISubscriber.CreateConnection()
     {
         var retryCount = 0;
 
-        while (retryCount < maxRetryAttempts && !cancellationToken.IsCancellationRequested)
+        while (retryCount < maxRetryAttempts && !CancellationToken.IsCancellationRequested)
         {
             try
             {
-                await connection.ConnectAsync(cancellationToken);
+                await connection.ConnectAsync();
                 return;
             }
             catch (SubscriberConnectionException ex)
@@ -39,14 +41,14 @@ public sealed class TcpSubscriber(
                 retryCount++;
                 var delay = TimeSpan.FromSeconds(Math.Min(retryCount, maxRetryAttempts));
                 Logger.LogDebug($" Retry {retryCount}: {ex.Message}. Waiting {delay}...");
-                await Task.Delay(delay, cancellationToken);
+                await Task.Delay(delay);
             }
         }
 
         throw new SubscriberConnectionException("Max retry attempts exceeded", null);
     }
 
-    public async Task ReceiveAsync(byte[] message, CancellationToken cancellationToken)
+    public async Task ReceiveAsync(byte[] message)
     {
         //TODO: change topic checking and reading message to avro
         
@@ -80,19 +82,19 @@ public sealed class TcpSubscriber(
         }
     }
 
-    public async Task StartAsync(CancellationToken cancellationToken)
+    public async Task StartAsync()
     {
-        await CreateConnection(cancellationToken);
+        await ((ISubscriber)this).CreateConnection();
 
-        while (!_cancellationTokenSource.Token.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        while (!CancellationToken.IsCancellationRequested)
         {
             try
             {
-                if (await inboundChannel.Reader.WaitToReadAsync(cancellationToken))
+                if (await inboundChannel.Reader.WaitToReadAsync(CancellationToken))
                 {
                     while (inboundChannel.Reader.TryRead(out var message))
                     {
-                        await ReceiveAsync(message, cancellationToken);
+                        await ReceiveAsync(message);
                     }
                 }
             }
@@ -103,7 +105,7 @@ public sealed class TcpSubscriber(
 
             try
             {
-                await Task.Delay(pollInterval, cancellationToken);
+                await Task.Delay(pollInterval);
             }
             catch (TaskCanceledException)
             {
@@ -117,11 +119,11 @@ public sealed class TcpSubscriber(
 
     public async ValueTask DisposeAsync()
     {
-        await _cancellationTokenSource.CancelAsync();      // 1. Cancel internal operations
+        await _cts.CancelAsync();      // 1. Cancel internal operations
         await connection.DisconnectAsync();                // 2. Stop TCP read loop / producer
         inboundChannel.Writer.TryComplete();               // 3. Signal no more messages
         await inboundChannel.Reader.Completion;            // 4. Wait for consumer to finish
-        _cancellationTokenSource.Dispose();                // 5. Cleanup
+        _cts.Dispose();                // 5. Cleanup
 
     }
 }
