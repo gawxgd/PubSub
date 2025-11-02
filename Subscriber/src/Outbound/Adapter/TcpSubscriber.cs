@@ -81,14 +81,10 @@ public sealed class TcpSubscriber(
             Logger.LogError( ex.Message);
         }
     }
-
-    public async Task StartAsync()
+    
+    public async Task StartMessageProcessingAsync()
     {
-        await ((ISubscriber)this).CreateConnection();
-
-        var shouldStop = false;
-
-        while (!CancellationToken.IsCancellationRequested && !shouldStop)
+        while (!CancellationToken.IsCancellationRequested)
         {
             try
             {
@@ -100,21 +96,9 @@ public sealed class TcpSubscriber(
                     }
                 }
             }
-            catch (SubscriberConnectionException ex) when (ex.IsRetriable)
-            {
-                Logger.LogWarning($"Retriable connection error: {ex.Message}");
-                await Task.Delay(pollInterval, CancellationToken);
-                continue; 
-            }
-            catch (SubscriberConnectionException ex)
-            {
-                Logger.LogError($"Unretriable connection error: {ex.Message}");
-                shouldStop = true;
-            }
             catch (Exception ex)
             {
-                Logger.LogError($"Unexpected error: {ex.Message}");
-                shouldStop = true;
+                Logger.LogError($"Error while processing message: {ex.Message}");
             }
 
             try
@@ -123,12 +107,35 @@ public sealed class TcpSubscriber(
             }
             catch (TaskCanceledException)
             {
-                Logger.LogWarning("Task was cancelled");
+                Logger.LogWarning("Message processing task cancelled");
             }
         }
-
-        await connection.DisconnectAsync();
     }
+    
+    public async Task StartConnectionAsync()
+    {
+        try
+        {
+            await ((ISubscriber)this).CreateConnection();
+        }
+        catch (SubscriberConnectionException ex) when (ex.IsRetriable)
+        {
+            Logger.LogWarning($"Retriable connection error: {ex.Message}");
+            await Task.Delay(pollInterval, CancellationToken);
+            await StartConnectionAsync(); 
+        }
+        catch (SubscriberConnectionException ex)
+        {
+            Logger.LogError($"Unretriable connection error: {ex.Message}");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError($"Unexpected error: {ex.Message}");
+            throw;
+        }
+    }
+    
 
     public async ValueTask DisposeAsync()
     {

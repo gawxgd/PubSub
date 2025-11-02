@@ -135,7 +135,7 @@ public class TcpSubscriberTests
     }
 
     [Fact]
-    public async Task StartAsync_ShouldProcessMessageAndExit()
+    public async Task StartConnectionAndMessageProcessing_ShouldProcessMessageAndExit()
     {
         var channel = CreateBoundedChannel();
         var subscriber = CreateSubscriber(channel);
@@ -148,9 +148,15 @@ public class TcpSubscriberTests
         _connectionMock.Setup(c => c.ConnectAsync()).Returns(Task.CompletedTask);
         _connectionMock.Setup(c => c.DisconnectAsync()).Returns(Task.CompletedTask);
 
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2)); 
+        await subscriber.StartConnectionAsync();
 
-        await subscriber.StartAsync();
+        var processingTask = subscriber.StartMessageProcessingAsync();
+
+        await Task.Delay(500);
+
+        await subscriber.DisposeAsync();
+
+        await processingTask;
 
         _messageHandlerMock.Verify(h => h.Invoke(payload), Times.Once);
         _connectionMock.Verify(c => c.DisconnectAsync(), Times.Once);
