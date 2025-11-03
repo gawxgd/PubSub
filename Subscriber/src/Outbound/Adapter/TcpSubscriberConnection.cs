@@ -39,14 +39,7 @@ public sealed class TcpSubscriberConnection(
         catch (SocketException ex)
         {
             Logger.LogError( $"Error during connection: {ex.Message}");
-            bool isRetriable = ex.SocketErrorCode switch
-            {
-                SocketError.TimedOut => true,
-                SocketError.ConnectionRefused => true,
-                SocketError.NetworkDown => true,
-                SocketError.HostNotFound => true,
-                _ => false
-            };
+            bool isRetriable = this.IsRetriable(ex);
 
             throw new SubscriberConnectionException("TCP connection failed", ex, isRetriable);
         }
@@ -120,13 +113,7 @@ public sealed class TcpSubscriberConnection(
         }
         catch (IOException ex) when (ex.InnerException is SocketException socketEx)
         {
-            bool isRetriable = socketEx.SocketErrorCode switch
-            {
-                SocketError.ConnectionReset => true,
-                SocketError.TimedOut => true,
-                SocketError.NetworkDown => true,
-                _ => false
-            };
+            bool isRetriable = IsRetriable(socketEx);
 
             throw new SubscriberConnectionException("Read loop failed", socketEx, isRetriable);
         }
@@ -152,5 +139,17 @@ public sealed class TcpSubscriberConnection(
         buffer = buffer.Slice(buffer.GetPosition(1, newline.Value));
         Logger.LogInfo( "Received message");
         return true;
+    }
+
+    private bool IsRetriable(SocketException ex)
+    {
+        return ex.SocketErrorCode switch
+        {
+            SocketError.TimedOut => true,
+            SocketError.ConnectionRefused => true,
+            SocketError.NetworkDown => true,
+            SocketError.HostNotFound => true,
+            _ => false
+        };
     }
 }
