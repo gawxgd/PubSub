@@ -7,9 +7,21 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <Folder Include="Domain\" />
       <Folder Include="Inbound\" />
-      <Folder Include="Outbound\" />
+      <Folder Include="src\" />
     </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\LoggerLib\LoggerLib.csproj" />
+    </ItemGroup>
+
+
+    <ItemGroup>
+      <PackageReference Include="xunit" Version="2.8.0" />
+      <PackageReference Include="Moq" Version="4.20.70" />
+      <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+      <PackageReference Include="xunit.runner.visualstudio" Version="2.8.0" />
+    </ItemGroup>
+
 
 </Project>
