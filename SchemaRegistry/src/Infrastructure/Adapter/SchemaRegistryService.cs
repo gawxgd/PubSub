@@ -5,7 +5,6 @@ using SchemaRegistry.Domain.Enums;
 using SchemaRegistry.Domain.Exceptions;
 using SchemaRegistry.Domain.Models;
 using SchemaRegistry.Domain.Port;
-using JsonException = Newtonsoft.Json.JsonException;
 
 namespace SchemaRegistry.Infrastructure.Adapter;
 
@@ -88,7 +87,7 @@ public class SchemaRegistryService(
     
     private static CompatibilityMode ParseCompatibilityMode(IConfiguration cfg)
     {
-        var modeString = cfg.GetValue<string>("SchemaRegistry:CompatibilityMode") ?? "FULL";
+        var modeString = cfg.GetValue<string>("SchemaRegistry:CompatibilityMode") ?? nameof(CompatibilityMode.Full);
         return Enum.TryParse<CompatibilityMode>(modeString, true, out var mode) ? mode : CompatibilityMode.Full;
     }
     

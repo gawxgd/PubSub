@@ -1,4 +1,3 @@
-using Newtonsoft.Json;
 using Chr.Avro.Representation;
 using Chr.Avro.Abstract;
 

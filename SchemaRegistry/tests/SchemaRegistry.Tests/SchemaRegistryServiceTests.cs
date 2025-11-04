@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Chr.Avro.Abstract;
-using Chr.Avro.Representation;
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Moq;
@@ -11,19 +10,16 @@ using SchemaRegistry.Domain.Exceptions;
 using SchemaRegistry.Domain.Models;
 using SchemaRegistry.Domain.Port;
 using SchemaRegistry.Infrastructure.Adapter;
-using SchemaRegistry.Infrastructure.Validation;
 using Xunit;
 
 namespace SchemaRegistry.Tests
 {
     public class SchemaRegistryServiceTests
     {
-        private readonly Mock<ISchemaStore> _store = new();
-        private readonly Mock<ICompatibilityChecker> _checker = new();
-        private readonly Mock<ISchemaCompatibilityService> _compatibility = new();
-        private readonly IConfiguration _cfg;
-
-        private readonly SchemaRegistryService _service;
+        private Mock<ISchemaStore> _store = null!;
+        private Mock<ISchemaCompatibilityService> _compatibility = null!;
+        private IConfiguration _cfg = null!;
+        private SchemaRegistryService _service = null!;
 
         private const string Topic = "users";
         private const string ValidSchemaJson = """
@@ -39,13 +35,25 @@ namespace SchemaRegistry.Tests
 
         public SchemaRegistryServiceTests()
         {
+            ResetMocks();
+        }
+
+        /// <summary>
+        /// Przywraca czysty stan mocków i serwisu.
+        /// </summary>
+        private void ResetMocks()
+        {
+            _store = new Mock<ISchemaStore>(MockBehavior.Strict);
+            _compatibility = new Mock<ISchemaCompatibilityService>(MockBehavior.Strict);
+
             var inMemorySettings = new Dictionary<string, string?>
             {
                 { "SchemaRegistry:CompatibilityMode", "BACKWARD" }
             };
             _cfg = new ConfigurationBuilder().AddInMemoryCollection(inMemorySettings).Build();
-            
-            _compatibility.Setup(c => c.IsCompatible(It.IsAny<string>(), It.IsAny<string>(), CompatibilityMode.Backward))
+
+            _compatibility
+                .Setup(c => c.IsCompatible(It.IsAny<string>(), It.IsAny<string>(), CompatibilityMode.Backward))
                 .Returns(false);
 
             _service = new SchemaRegistryService(_store.Object, _compatibility.Object, _cfg);
@@ -61,7 +69,13 @@ namespace SchemaRegistry.Tests
         [InlineData(" ")]
         public async Task RegisterSchemaAsync_ShouldThrow_WhenTopicInvalid(string topic)
         {
+            // Arrange
+            ResetMocks();
+
+            // Act
             Func<Task> act = () => _service.RegisterSchemaAsync(topic, ValidSchemaJson);
+
+            // Assert
             await act.Should().ThrowAsync<ArgumentException>().WithMessage("*topic*");
         }
 
@@ -71,7 +85,13 @@ namespace SchemaRegistry.Tests
         [InlineData(" ")]
         public async Task RegisterSchemaAsync_ShouldThrow_WhenSchemaInvalid(string schema)
         {
+            // Arrange
+            ResetMocks();
+
+            // Act
             Func<Task> act = () => _service.RegisterSchemaAsync("test", schema);
+
+            // Assert
             await act.Should().ThrowAsync<ArgumentException>().WithMessage("*schemaJson*");
         }
 
@@ -83,6 +103,8 @@ namespace SchemaRegistry.Tests
         public async Task RegisterSchemaAsync_ShouldReturnExistingId_WhenChecksumMatches()
         {
             // Arrange
+            ResetMocks();
+
             var existing = new SchemaEntity { Id = 42, Topic = Topic, SchemaJson = ValidSchemaJson, Checksum = "abc" };
             _store.Setup(s => s.GetByChecksumAsync(It.IsAny<string>())).ReturnsAsync(existing);
 
@@ -102,11 +124,13 @@ namespace SchemaRegistry.Tests
         public async Task RegisterSchemaAsync_ShouldThrow_WhenBackwardIncompatible()
         {
             // Arrange
+            ResetMocks();
+
             var latest = new SchemaEntity { Id = 1, Topic = Topic, SchemaJson = ValidSchemaJson };
             _store.Setup(s => s.GetByChecksumAsync(It.IsAny<string>())).ReturnsAsync((SchemaEntity?)null);
             _store.Setup(s => s.GetLatestForTopicAsync(Topic)).ReturnsAsync(latest);
-            _checker.Setup(c => c.IsBackwardCompatible(It.IsAny<RecordSchema>(), It.IsAny<RecordSchema>()))
-                    .Returns(false);
+            _compatibility.Setup(c => c.IsCompatible(It.IsAny<string>(), It.IsAny<string>(), CompatibilityMode.Backward))
+                .Returns(false);
 
             // Act
             Func<Task> act = () => _service.RegisterSchemaAsync(Topic, ValidSchemaJson);
@@ -121,6 +145,8 @@ namespace SchemaRegistry.Tests
         public async Task RegisterSchemaAsync_ShouldSave_WhenBackwardCompatible()
         {
             // Arrange
+            ResetMocks();
+
             var latest = new SchemaEntity { Id = 1, Topic = Topic, SchemaJson = ValidSchemaJson };
             _store.Setup(s => s.GetByChecksumAsync(It.IsAny<string>())).ReturnsAsync((SchemaEntity?)null);
             _store.Setup(s => s.GetLatestForTopicAsync(Topic)).ReturnsAsync(latest);
@@ -146,11 +172,12 @@ namespace SchemaRegistry.Tests
             _store.Verify(s => s.SaveAsync(It.IsAny<SchemaEntity>()), Times.Once);
         }
 
-
         [Fact]
         public async Task RegisterSchemaAsync_ShouldSave_WhenNoPreviousSchema()
         {
             // Arrange
+            ResetMocks();
+
             _store.Setup(s => s.GetByChecksumAsync(It.IsAny<string>())).ReturnsAsync((SchemaEntity?)null);
             _store.Setup(s => s.GetLatestForTopicAsync(Topic)).ReturnsAsync((SchemaEntity?)null);
             _store.Setup(s => s.SaveAsync(It.IsAny<SchemaEntity>()))
@@ -176,6 +203,8 @@ namespace SchemaRegistry.Tests
         public async Task RegisterSchemaAsync_ShouldUseProperCompatibilityMode(string modeString, CompatibilityMode expectedMode)
         {
             // Arrange
+            ResetMocks();
+
             var cfg = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?> { ["SchemaRegistry:CompatibilityMode"] = modeString })
                 .Build();
@@ -198,7 +227,6 @@ namespace SchemaRegistry.Tests
             _compatibility.Verify(c => c.IsCompatible(oldSchema, newSchema, expectedMode), Times.Once);
         }
 
-
         // ============================================================
         // SIMPLE GETTERS
         // ============================================================
@@ -206,11 +234,16 @@ namespace SchemaRegistry.Tests
         [Fact]
         public async Task GetLatestSchemaAsync_ShouldDelegateToStore()
         {
+            // Arrange
+            ResetMocks();
+
             var entity = new SchemaEntity { Id = 99, Topic = Topic };
             _store.Setup(s => s.GetLatestForTopicAsync(Topic)).ReturnsAsync(entity);
 
+            // Act
             var result = await _service.GetLatestSchemaAsync(Topic);
 
+            // Assert
             result.Should().BeSameAs(entity);
             _store.Verify(s => s.GetLatestForTopicAsync(Topic), Times.Once);
         }
@@ -218,11 +251,16 @@ namespace SchemaRegistry.Tests
         [Fact]
         public async Task GetSchemaByIdAsync_ShouldDelegateToStore()
         {
+            // Arrange
+            ResetMocks();
+
             var entity = new SchemaEntity { Id = 12 };
             _store.Setup(s => s.GetByIdAsync(12)).ReturnsAsync(entity);
 
+            // Act
             var result = await _service.GetSchemaByIdAsync(12);
 
+            // Assert
             result.Should().BeSameAs(entity);
             _store.Verify(s => s.GetByIdAsync(12), Times.Once);
         }
@@ -230,11 +268,16 @@ namespace SchemaRegistry.Tests
         [Fact]
         public async Task GetVersionsAsync_ShouldDelegateToStore()
         {
+            // Arrange
+            ResetMocks();
+
             var list = new[] { new SchemaEntity { Id = 1 }, new SchemaEntity { Id = 2 } };
             _store.Setup(s => s.GetAllForTopicAsync(Topic)).ReturnsAsync(list);
 
+            // Act
             var result = await _service.GetVersionsAsync(Topic);
 
+            // Assert
             result.Should().BeEquivalentTo(list);
         }
     }
