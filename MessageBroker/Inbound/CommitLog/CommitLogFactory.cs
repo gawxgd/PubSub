@@ -2,13 +2,14 @@ using System.Collections.Concurrent;
 using Microsoft.Extensions.Options;
 using MessageBroker.Domain.Port.CommitLog;
 using MessageBroker.Domain.Port.CommitLog.Segment;
+using MessageBroker.Domain.Port.CommitLog.TopicSegmentManager;
 using MessageBroker.Infrastructure.Configuration.Options.CommitLog;
 
 namespace MessageBroker.Inbound.CommitLog;
 
 public sealed class CommitLogFactory(
     ILogSegmentFactory segmentFactory,
-    ITopicSegmentManagerRegistry segmentRegistry,
+    ITopicSegmentRegistryFactory topicSegmentRegistryFactory,
     IOptions<CommitLogOptions> commitLogOptions,
     IOptions<List<CommitLogTopicOptions>> commitLogTopicOptions)
     : ICommitLogFactory, IDisposable
@@ -41,8 +42,8 @@ public sealed class CommitLogFactory(
         var directory = topicOpt.Directory ?? Path.Combine(_commitLogOptions.Directory, topic);
         var baseOffset = topicOpt.BaseOffset;
         var flushInterval = TimeSpan.FromMilliseconds(topicOpt.FlushIntervalMs);
-        var manager = segmentRegistry.GetOrCreate(topic, directory, baseOffset);
-        
+        var manager = topicSegmentRegistryFactory.GetOrCreate(topic, directory, baseOffset);
+
         return new BinaryCommitLogAppender(segmentFactory, directory, baseOffset, flushInterval, topic, manager);
     }
 
@@ -58,8 +59,8 @@ public sealed class CommitLogFactory(
 
         var directory = topicOpt.Directory ?? Path.Combine(_commitLogOptions.Directory, topic);
         var baseOffset = topicOpt.BaseOffset;
-        var manager = segmentRegistry.GetOrCreate(topic, directory, baseOffset);
-        
+        var manager = topicSegmentRegistryFactory.GetOrCreate(topic, directory, baseOffset);
+
         return new BinaryCommitLogReader(segmentFactory, manager, topic);
     }
 

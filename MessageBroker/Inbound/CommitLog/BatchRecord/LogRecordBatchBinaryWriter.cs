@@ -9,7 +9,7 @@ using static MessageBroker.Domain.Util.VarEncodingSize;
 
 namespace MessageBroker.Inbound.CommitLog.BatchRecord;
 
-public class LogRecordBatchBinaryWriter(ILogRecordWriter recordIo, ICompressor compressor, Encoding encoding)
+public class  LogRecordBatchBinaryWriter(ILogRecordWriter recordIo, ICompressor compressor, Encoding encoding)
     : ILogRecordBatchWriter
 {
     public void WriteTo(LogRecordBatch recordBatch, Stream stream)
