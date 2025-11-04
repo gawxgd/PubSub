@@ -55,6 +55,7 @@ public class CommitLogCorruptionIntegrationTests : IDisposable
         {
             await app.AppendAsync(BitConverter.GetBytes(i));
         }
+
         await Task.Delay(200);
 
         var topicDir = Path.Combine(_dir, "corr");
@@ -72,14 +73,18 @@ public class CommitLogCorruptionIntegrationTests : IDisposable
         }
 
         var reader = factory.GetReader("corr");
-        Action act = () => reader.ReadRecords(0).ToList();
+        Action act = () => reader.ReadRecordBatch(0);
         act.Should().Throw<Exception>();
     }
 
     public void Dispose()
     {
-        try { if (Directory.Exists(_dir)) Directory.Delete(_dir, true); } catch { }
+        try
+        {
+            if (Directory.Exists(_dir)) Directory.Delete(_dir, true);
+        }
+        catch
+        {
+        }
     }
 }
-
-

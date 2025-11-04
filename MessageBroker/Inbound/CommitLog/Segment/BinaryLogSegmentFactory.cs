@@ -50,7 +50,7 @@ public sealed class BinaryLogSegmentFactory(
     public LogSegment CreateLogSegment(string directory, ulong baseOffset)
     {
         var fileName = $"{baseOffset:D20}.log";
-        var logPath = Path.Combine(directory, fileName);
+        var logPath = Path.Join(directory, fileName);
         var indexPath = Path.ChangeExtension(logPath, ".index");
         var timeIndexPath = Path.ChangeExtension(logPath, ".timeindex");
         return new LogSegment(logPath, indexPath, timeIndexPath, baseOffset, baseOffset);

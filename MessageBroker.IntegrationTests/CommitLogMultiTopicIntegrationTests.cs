@@ -70,8 +70,8 @@ public class CommitLogMultiTopicIntegrationTests : IDisposable
         var readerA = factory.GetReader("topicA");
         var readerB = factory.GetReader("topicB");
 
-        var recordsA = readerA.ReadRecords(0).ToList();
-        var recordsB = readerB.ReadRecords(0).ToList();
+        var recordsA = readerA.ReadRecordBatch(0)!.Records;
+        var recordsB = readerB.ReadRecordBatch(0)!.Records;
 
         recordsA.Should().NotBeEmpty();
         recordsB.Should().NotBeEmpty();
@@ -108,8 +108,8 @@ public class CommitLogMultiTopicIntegrationTests : IDisposable
         var readerA = factory.GetReader("topicA");
         var readerB = factory.GetReader("topicB");
 
-        var offsetsA = readerA.ReadRecords(0).Select(r => r.Offset).ToList();
-        var offsetsB = readerB.ReadRecords(0).Select(r => r.Offset).ToList();
+        var offsetsA = readerA.ReadRecordBatch(0)!.Records.Select(r => r.Offset).ToList();
+        var offsetsB = readerB.ReadRecordBatch(0)!.Records.Select(r => r.Offset).ToList();
 
         offsetsA.Should().NotBeEmpty();
         offsetsB.Should().NotBeEmpty();
@@ -123,8 +123,8 @@ public class CommitLogMultiTopicIntegrationTests : IDisposable
         {
             if (Directory.Exists(_rootDir)) Directory.Delete(_rootDir, true);
         }
-        catch { }
+        catch
+        {
+        }
     }
 }
-
-

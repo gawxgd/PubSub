@@ -347,3 +347,5 @@ public class LogRecordBatchBinaryReaderErrorTests
 }
 
 
+
+

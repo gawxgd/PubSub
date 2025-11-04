@@ -4,6 +4,7 @@ using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
 using MessageBroker.Domain.Entities.CommitLog;
 using MessageBroker.Domain.Port.CommitLog.Segment;
+using MessageBroker.Domain.Port.CommitLog.TopicSegmentManager;
 using MessageBroker.Inbound.CommitLog;
 using NSubstitute;
 using Xunit;
@@ -15,7 +16,7 @@ public class BinaryCommitLogAppenderThreadSafetyTests : IDisposable
     private readonly string _testDirectory;
     private readonly ILogSegmentFactory _segmentFactory;
     private readonly ILogSegmentWriter _segmentWriter;
-    private readonly ITopicSegmentManager _segmentManager;
+    private readonly ITopicSegmentRegistry _segmentRegistry;
     private readonly ConcurrentBag<LogRecordBatch> _capturedBatches;
 
     public BinaryCommitLogAppenderThreadSafetyTests()
@@ -28,7 +29,7 @@ public class BinaryCommitLogAppenderThreadSafetyTests : IDisposable
 
         _segmentWriter = Substitute.For<ILogSegmentWriter>();
         _segmentFactory = Substitute.For<ILogSegmentFactory>();
-        _segmentManager = Substitute.For<ITopicSegmentManager>();
+        _segmentRegistry = Substitute.For<ITopicSegmentRegistry>();
         _capturedBatches = new ConcurrentBag<LogRecordBatch>();
 
         var testSegment = new LogSegment(
@@ -103,10 +104,11 @@ public class BinaryCommitLogAppenderThreadSafetyTests : IDisposable
             .ToHashSet(); // Use HashSet for uniqueness check
 
         allOffsets.Should().HaveCount(taskCount, "each record should have unique offset");
-    
+
         // Verify offsets form a contiguous sequence from 0 to taskCount-1
         var expectedOffsets = Enumerable.Range(0, taskCount).Select(i => (ulong)i).ToHashSet();
-        allOffsets.Should().BeEquivalentTo(expectedOffsets, "offsets should be sequential from 0 to {0}", taskCount - 1);
+        allOffsets.Should()
+            .BeEquivalentTo(expectedOffsets, "offsets should be sequential from 0 to {0}", taskCount - 1);
     }
 
     [Fact]
@@ -325,7 +327,7 @@ public class BinaryCommitLogAppenderThreadSafetyTests : IDisposable
         var appender = CreateAppender(flushInterval: TimeSpan.FromMilliseconds(100));
         var appendCount = 30;
         var appendTasks = new List<Task>();
-    
+
         // Act - Start appending
         for (int i = 0; i < appendCount; i++)
         {
@@ -342,14 +344,14 @@ public class BinaryCommitLogAppenderThreadSafetyTests : IDisposable
                 }
             }));
         }
-    
+
         // Wait a bit then dispose while appends are happening
         await Task.Delay(50);
         await appender.DisposeAsync();
-    
+
         // Wait for all tasks to complete
         await Task.WhenAll(appendTasks);
-    
+
         // Assert - Some records should have been written before dispose
         var totalRecords = _capturedBatches.Sum(b => b.Records.Count);
         totalRecords.Should().BeGreaterThan(0, "some records should be written before dispose");
@@ -365,7 +367,7 @@ public class BinaryCommitLogAppenderThreadSafetyTests : IDisposable
             baseOffset,
             flushInterval ?? TimeSpan.FromMilliseconds(100),
             "test-topic",
-            _segmentManager
+            _segmentRegistry
         );
     }
 
@@ -384,5 +386,3 @@ public class BinaryCommitLogAppenderThreadSafetyTests : IDisposable
         }
     }
 }
-
-

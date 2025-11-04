@@ -3,6 +3,7 @@ using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
 using MessageBroker.Domain.Entities.CommitLog;
 using MessageBroker.Domain.Port.CommitLog.Segment;
+using MessageBroker.Domain.Port.CommitLog.TopicSegmentManager;
 using MessageBroker.Inbound.CommitLog;
 using NSubstitute;
 using Xunit;
@@ -14,7 +15,7 @@ public class CommitLogCancellationTests : IDisposable
     private readonly string _testDirectory;
     private readonly ILogSegmentFactory _segmentFactory;
     private readonly ILogSegmentWriter _segmentWriter;
-    private readonly ITopicSegmentManager _segmentManager;
+    private readonly ITopicSegmentRegistry _segmentRegistry;
 
     public CommitLogCancellationTests()
     {
@@ -26,7 +27,7 @@ public class CommitLogCancellationTests : IDisposable
 
         _segmentWriter = Substitute.For<ILogSegmentWriter>();
         _segmentFactory = Substitute.For<ILogSegmentFactory>();
-        _segmentManager = Substitute.For<ITopicSegmentManager>();
+        _segmentRegistry = Substitute.For<ITopicSegmentRegistry>();
 
         var testSegment = new LogSegment(
             Path.Combine(_testDirectory, "00000000000000000000.log"),
@@ -371,7 +372,7 @@ public class CommitLogCancellationTests : IDisposable
             baseOffset,
             flushInterval ?? TimeSpan.FromMilliseconds(100),
             "test-topic",
-            _segmentManager
+            _segmentRegistry
         );
     }
 

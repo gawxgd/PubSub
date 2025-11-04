@@ -58,7 +58,7 @@ public class CommitLogPayloadEqualityIntegrationTests : IDisposable
         await Task.Delay(100);
 
         var reader = factory.GetReader("payload");
-        var records = reader.ReadRecords(0).ToList();
+        var records = reader.ReadRecordBatch(0)!.Records.ToList();
         records.Should().HaveCountGreaterThanOrEqualTo(2);
         records[0].Payload.ToArray().Should().BeEquivalentTo(empty);
         records[1].Payload.ToArray().Should().BeEquivalentTo(small);
@@ -95,7 +95,7 @@ public class CommitLogPayloadEqualityIntegrationTests : IDisposable
         await Task.Delay(300);
 
         var reader = factory.GetReader("payload");
-        var recs = reader.ReadRecords(0).ToList();
+        var recs = reader.ReadRecordBatch(0)!.Records.ToList();
 
         recs.Should().HaveCountGreaterThanOrEqualTo(5);
         recs[0].Payload.ToArray().Should().BeEquivalentTo(p1);
@@ -108,8 +108,12 @@ public class CommitLogPayloadEqualityIntegrationTests : IDisposable
 
     public void Dispose()
     {
-        try { if (Directory.Exists(_dir)) Directory.Delete(_dir, true); } catch { }
+        try
+        {
+            if (Directory.Exists(_dir)) Directory.Delete(_dir, true);
+        }
+        catch
+        {
+        }
     }
 }
-
-

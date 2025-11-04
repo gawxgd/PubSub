@@ -48,6 +48,7 @@ public class CommitLogSegmentRollingIntegrationTests : IDisposable
     [Fact]
     public async Task Should_Create_Multiple_Segments_And_Preserve_Offset_Continuity()
     {
+        //ToDo add method to handle reading many batches
         var factory = _sp.GetRequiredService<ICommitLogFactory>();
         var app = factory.GetAppender("roll");
 
@@ -63,7 +64,7 @@ public class CommitLogSegmentRollingIntegrationTests : IDisposable
         logs.Count.Should().BeGreaterThan(1);
 
         var reader = factory.GetReader("roll");
-        var recs = reader.ReadRecords(0).ToList();
+        var recs = reader.ReadRecordBatch(0)!.Records.ToList();
         recs.Should().HaveCount(1000);
         recs.Select(r => r.Offset).Should().OnlyHaveUniqueItems();
         recs.Select(r => r.Offset).Should().BeInAscendingOrder();
@@ -71,8 +72,12 @@ public class CommitLogSegmentRollingIntegrationTests : IDisposable
 
     public void Dispose()
     {
-        try { if (Directory.Exists(_dir)) Directory.Delete(_dir, true); } catch { }
+        try
+        {
+            if (Directory.Exists(_dir)) Directory.Delete(_dir, true);
+        }
+        catch
+        {
+        }
     }
 }
-
-

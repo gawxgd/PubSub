@@ -33,12 +33,12 @@ public sealed class BinaryCommitLogAppender : ICommitLogAppender
             FullMode = BoundedChannelFullMode.Wait
         });
 
-    private Task _backgroundFlushTask;
-    private CancellationTokenSource _cancellationTokenSource;
+    private readonly Task _backgroundFlushTask;
+    private readonly CancellationTokenSource _cancellationTokenSource;
     private readonly object _inflightLock = new();
     private readonly HashSet<CancellationTokenSource> _inflightTokens = new();
 
-    private static IAutoLogger
+    private static readonly IAutoLogger
         Logger = AutoLoggerFactory.CreateLogger<BinaryCommitLogAppender>(LogSource.MessageBroker);
 
     public BinaryCommitLogAppender(ILogSegmentFactory segmentFactory, string directory, ulong baseOffset,

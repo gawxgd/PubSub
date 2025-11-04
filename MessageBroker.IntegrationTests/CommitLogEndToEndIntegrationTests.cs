@@ -56,7 +56,7 @@ public class CommitLogEndToEndIntegrationTests : IDisposable
         await Task.Delay(100);
 
         var reader = factory.GetReader("default");
-        var records = reader.ReadRecords(0).ToList();
+        var records = reader.ReadRecordBatch(0)!.Records;
 
         records.Should().NotBeEmpty();
         records.First().Payload.ToArray().Should().BeEquivalentTo(payload);
@@ -69,8 +69,8 @@ public class CommitLogEndToEndIntegrationTests : IDisposable
         {
             if (Directory.Exists(_dir)) Directory.Delete(_dir, true);
         }
-        catch { }
+        catch
+        {
+        }
     }
 }
-
-

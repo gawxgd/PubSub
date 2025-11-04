@@ -75,7 +75,7 @@ public sealed class BinaryLogSegmentReader : ILogSegmentReader
         if (offset < _segment.BaseOffset)
         {
             throw new SegmentReaderException(
-                "Start read offest is smaller than segment base offset, trying to read from wrong file");
+                "Start read offset is smaller than segment base offset, trying to read from wrong file");
         }
 
         var position = FindPositionForOffset(offset);

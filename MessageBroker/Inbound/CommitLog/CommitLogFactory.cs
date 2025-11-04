@@ -39,7 +39,7 @@ public sealed class CommitLogFactory(
             throw new InvalidOperationException($"Topic '{topic}' is not configured.");
         }
 
-        var directory = topicOpt.Directory ?? Path.Combine(_commitLogOptions.Directory, topic);
+        var directory = topicOpt.Directory ?? Path.Join(_commitLogOptions.Directory, topic);
         var baseOffset = topicOpt.BaseOffset;
         var flushInterval = TimeSpan.FromMilliseconds(topicOpt.FlushIntervalMs);
         var manager = topicSegmentRegistryFactory.GetOrCreate(topic, directory, baseOffset);
@@ -57,7 +57,7 @@ public sealed class CommitLogFactory(
             throw new InvalidOperationException($"Topic '{topic}' is not configured.");
         }
 
-        var directory = topicOpt.Directory ?? Path.Combine(_commitLogOptions.Directory, topic);
+        var directory = topicOpt.Directory ?? Path.Join(_commitLogOptions.Directory, topic);
         var baseOffset = topicOpt.BaseOffset;
         var manager = topicSegmentRegistryFactory.GetOrCreate(topic, directory, baseOffset);
 
