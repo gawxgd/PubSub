@@ -7,9 +7,11 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <Folder Include="Domain\" />
-      <Folder Include="Inbound\" />
-      <Folder Include="Outbound\Adapter\" />
+        <Folder Include="Inbound\"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\LoggerLib\LoggerLib.csproj"/>
     </ItemGroup>
 
 </Project>

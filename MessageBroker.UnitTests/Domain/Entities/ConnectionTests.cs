@@ -1,12 +1,21 @@
 using System.Diagnostics;
 using FluentAssertions;
+using LoggerLib.Domain.Port;
+using LoggerLib.Outbound.Adapter;
 using MessageBroker.Domain.Entities;
+using NSubstitute;
 using Xunit;
 
 namespace MessageBroker.UnitTests.Domain.Entities;
 
 public class ConnectionTests
 {
+    public ConnectionTests()
+    {
+        var logger = Substitute.For<ILogger>();
+        AutoLoggerFactory.Initialize(logger);
+    }
+
     [Fact]
     public void Constructor_Should_Set_All_Properties()
     {

@@ -2,6 +2,7 @@ using System.Net.Sockets;
 using System.Text;
 using FluentAssertions;
 using MessageBroker.E2ETests.Infrastructure;
+using Publisher.Outbound.Adapter;
 using Xunit;
 
 namespace MessageBroker.E2ETests;
@@ -95,7 +96,11 @@ public class TcpServerEdgeCasesE2ETests
             if (stream.DataAvailable)
             {
                 var received = await stream.ReadAsync(buffer.AsMemory(totalReceived));
-                if (received == 0) break;
+                if (received == 0)
+                {
+                    break;
+                }
+
                 totalReceived += received;
             }
 
@@ -205,7 +210,10 @@ public class TcpServerEdgeCasesE2ETests
         }
         finally
         {
-            foreach (var client in clients) client?.Dispose();
+            foreach (var client in clients)
+            {
+                client?.Dispose();
+            }
         }
 
         await host.StopAsync();
@@ -290,7 +298,9 @@ public class TcpServerEdgeCasesE2ETests
 
         // Either connects and works, or fails gracefully (no crash)
         if (exception != null)
+        {
             exception.Should().BeOfType<SocketException>("Connection during shutdown should fail with SocketException");
+        }
 
         await shutdownTask;
     }
@@ -366,5 +376,174 @@ public class TcpServerEdgeCasesE2ETests
         await Task.Delay(500);
 
         await host.StopAsync();
+    }
+
+    [Fact]
+    public async Task Should_Handle_Publisher_Abrupt_Disconnect()
+    {
+        var port = PortManager.GetNextPort();
+        using var host = TestHostHelper.CreateTestHost(port);
+        await host.StartAsync();
+        await Task.Delay(500);
+
+        var publisher = new TcpPublisher(HostAddress, port, 1000, 3, 5);
+        await publisher.CreateConnection();
+
+        // Send some messages
+        await publisher.PublishAsync(Encoding.UTF8.GetBytes("Test message 1"));
+        await publisher.PublishAsync(Encoding.UTF8.GetBytes("Test message 2"));
+        await Task.Delay(100);
+
+        // Abruptly dispose publisher
+        await publisher.DisposeAsync();
+
+        // Server should handle this gracefully
+        await Task.Delay(500);
+
+        // Server should still be running and accept new connections
+        await using var newPublisher = new TcpPublisher(HostAddress, port, 1000, 3, 5);
+        await newPublisher.CreateConnection();
+        await newPublisher.PublishAsync(Encoding.UTF8.GetBytes("New publisher message"));
+        await Task.Delay(100);
+
+        await host.StopAsync();
+    }
+
+    [Fact]
+    public async Task Should_Handle_Publisher_Large_Messages()
+    {
+        var port = PortManager.GetNextPort();
+        using var host = TestHostHelper.CreateTestHost(port);
+        await host.StartAsync();
+        await Task.Delay(500);
+
+        await using var publisher = new TcpPublisher(HostAddress, port, 10000, 3, 5);
+        await publisher.CreateConnection();
+
+        // Send large message (1MB)
+        var largeData = new byte[1024 * 1024];
+        new Random().NextBytes(largeData);
+
+        await publisher.PublishAsync(largeData);
+        await Task.Delay(2000); // Allow processing time
+
+        // Publisher should still be functional
+        await publisher.PublishAsync(Encoding.UTF8.GetBytes("Small message after large"));
+        await Task.Delay(100);
+
+        await host.StopAsync();
+    }
+
+    [Fact]
+    public async Task Should_Handle_Publisher_Rapid_Successive_Messages()
+    {
+        var port = PortManager.GetNextPort();
+        using var host = TestHostHelper.CreateTestHost(port);
+        await host.StartAsync();
+        await Task.Delay(500);
+
+        await using var publisher = new TcpPublisher(HostAddress, port, 10000, 3, 5);
+        await publisher.CreateConnection();
+
+        var messageCount = 200;
+
+        // Send many messages rapidly without waiting
+        for (var i = 0; i < messageCount; i++)
+        {
+            var msg = Encoding.UTF8.GetBytes($"Rapid message {i}");
+            await publisher.PublishAsync(msg);
+        }
+
+        await Task.Delay(2000); // Allow processing time
+
+        // Publisher should still be functional
+        await publisher.PublishAsync(Encoding.UTF8.GetBytes("Final message"));
+        await Task.Delay(100);
+
+        await host.StopAsync();
+    }
+
+    [Fact]
+    public async Task Should_Handle_Publisher_Connection_During_Shutdown()
+    {
+        var port = PortManager.GetNextPort();
+        using var host = TestHostHelper.CreateTestHost(port);
+        await host.StartAsync();
+        await Task.Delay(500);
+
+        // Start shutdown
+        var shutdownTask = host.StopAsync();
+
+        // Try to connect publisher during shutdown
+        var exception = await Record.ExceptionAsync(async () =>
+        {
+            await using var publisher = new TcpPublisher(HostAddress, port, 1000, 3, 5);
+            await publisher.CreateConnection();
+        });
+
+        // Either connects and works, or fails gracefully (no crash)
+        if (exception != null)
+        {
+            exception.Should()
+                .BeOfType<SocketException>("Publisher connection during shutdown should fail with SocketException");
+        }
+
+        await shutdownTask;
+    }
+
+    [Fact]
+    public async Task Should_Handle_Publisher_With_Binary_Data()
+    {
+        var port = PortManager.GetNextPort();
+        using var host = TestHostHelper.CreateTestHost(port);
+        await host.StartAsync();
+        await Task.Delay(500);
+
+        await using var publisher = new TcpPublisher(HostAddress, port, 1000, 3, 5);
+        await publisher.CreateConnection();
+
+        // Binary data with nulls
+        var binaryData = new byte[] { 0x00, 0xFF, 0x00, 0x01, 0x00, 0x7F };
+
+        await publisher.PublishAsync(binaryData);
+        await Task.Delay(500);
+
+        // Publisher should still be functional
+        await publisher.PublishAsync(Encoding.UTF8.GetBytes("Text message after binary"));
+        await Task.Delay(100);
+
+        await host.StopAsync();
+    }
+
+    [Fact]
+    public async Task Should_Handle_Publisher_Reconnection_After_Server_Restart()
+    {
+        var port = PortManager.GetNextPort();
+
+        // Start server
+        using var host = TestHostHelper.CreateTestHost(port);
+        await host.StartAsync();
+        await Task.Delay(500);
+
+        await using var publisher = new TcpPublisher(HostAddress, port, 1000, 3, 5);
+        await publisher.CreateConnection();
+        await publisher.PublishAsync(Encoding.UTF8.GetBytes("Before restart"));
+        await Task.Delay(100);
+
+        // Stop server
+        await host.StopAsync();
+        await Task.Delay(1000);
+
+        // Start new server on same port
+        using var newHost = TestHostHelper.CreateTestHost(port);
+        await newHost.StartAsync();
+        await Task.Delay(500);
+
+        // Publisher should reconnect automatically
+        await Task.Delay(2000); // Allow reconnection time
+        await publisher.PublishAsync(Encoding.UTF8.GetBytes("After restart"));
+        await Task.Delay(100);
+
+        await newHost.StopAsync();
     }
 }

@@ -1,13 +1,22 @@
 using System.Collections.Concurrent;
 using FluentAssertions;
+using LoggerLib.Domain.Port;
+using LoggerLib.Outbound.Adapter;
 using MessageBroker.Domain.Entities;
 using MessageBroker.Inbound.Adapter;
+using NSubstitute;
 using Xunit;
 
 namespace MessageBroker.UnitTests.Inbound.Adapter.Repositories;
 
 public class InMemoryConnectionRepositoryTests
 {
+    public InMemoryConnectionRepositoryTests()
+    {
+        var logger = Substitute.For<ILogger>();
+        AutoLoggerFactory.Initialize(logger);
+    }
+
     [Fact]
     public void GenerateConnectionId_Should_Return_Sequential_Ids()
     {
