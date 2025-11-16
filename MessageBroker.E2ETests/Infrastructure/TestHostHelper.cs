@@ -5,6 +5,8 @@ using MessageBroker.Domain.Port;
 using MessageBroker.Inbound.Adapter;
 using MessageBroker.Inbound.TcpServer.Service;
 using MessageBroker.Infrastructure.Configuration.Options;
+using MessageBroker.Infrastructure.Configuration.Options.CommitLog;
+using MessageBroker.Infrastructure.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -21,23 +23,45 @@ public static class TestHostHelper
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
+                // TCP Server options
                 ["Port"] = actualPort.ToString(),
                 ["Address"] = address,
                 ["MaxRequestSizeInByte"] = "512",
                 ["InlineCompletions"] = "false",
                 ["SocketPolling"] = "false",
-                ["Backlog"] = "100"
+                ["Backlog"] = "100",
+
+                // Commit Log options
+                ["CommitLog:Directory"] = Path.Combine(Path.GetTempPath(), "e2e-commit-log-" + Guid.NewGuid()),
+                ["CommitLog:MaxSegmentBytes"] = "10485760", // 10 MB
+                ["CommitLog:IndexIntervalBytes"] = "4096",
+                ["CommitLog:FileBufferSize"] = "65536",
+                ["CommitLog:TimeIndexIntervalMs"] = "4096",
+                ["CommitLog:FlushIntervalMs"] = "100",
+
+                // Default topic configuration
+                ["CommitLogTopics:0:Name"] = "default",
+                ["CommitLogTopics:0:BaseOffset"] = "0",
+                ["CommitLogTopics:0:FlushIntervalMs"] = "100"
             })
             .Build();
 
         var host = Host.CreateDefaultBuilder()
             .ConfigureServices(services =>
             {
+                // TCP services
                 services.AddSingleton<IConnectionRepository, InMemoryConnectionRepository>();
                 services.AddSingleton<IConnectionManager, ConnectionManager>();
                 services.AddSingleton<CreateSocketUseCase>();
                 services.AddHostedService<TcpServer>();
                 services.Configure<TcpServerOptions>(configuration);
+
+                // Commit Log services - THIS WAS MISSING!
+                services.AddCommitLogServices();
+                services.Configure<CommitLogOptions>(configuration.GetSection("CommitLog"));
+                services.Configure<List<CommitLogTopicOptions>>(configuration.GetSection("CommitLogTopics"));
+
+                // Logger
                 services.AddSignalRLogger();
             })
             .Build();

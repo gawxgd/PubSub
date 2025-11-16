@@ -5,10 +5,14 @@ using System.Threading.Channels;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
+using MessageBroker.Domain.Port.CommitLog;
 
 namespace MessageBroker.Domain.Logic.TcpServer.UseCase;
 
-public class HandleClientConnectionUseCase(Socket socket, Action onConnectionClosed)
+public class HandleClientConnectionUseCase(
+    Socket socket,
+    Action onConnectionClosed,
+    ICommitLogFactory commitLogFactory)
 {
     private readonly string _connectedClientEndpoint = socket.RemoteEndPoint?.ToString() ?? "Unknown";
 
@@ -127,8 +131,15 @@ public class HandleClientConnectionUseCase(Socket socket, Action onConnectionClo
         {
             Logger.LogInfo($"[{_connectedClientEndpoint}] Received {message.Length} bytes");
 
-            await new ProcessReceivedMessageUseCase()
-                .ProcessMessageAsync(message, cancellationToken);
+            try
+            {
+                await new ProcessReceivedMessageUseCase(commitLogFactory, "default")
+                    .ProcessMessageAsync(message, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Consume message channel exception for {_connectedClientEndpoint}", ex);
+            }
 
             await socket.SendAsync(message, SocketFlags.None, cancellationToken);
         }

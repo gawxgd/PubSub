@@ -29,6 +29,7 @@ public static class HostBuilderExtensions
                 services.AddBrokerOptions(context.Configuration);
                 services.AddTcpServices();
                 services.AddSignalRLogger();
+                services.AddCommitLogServices();
                 services.AddCors(options =>
                 {
                     options.AddDefaultPolicy(builder =>
@@ -36,22 +37,28 @@ public static class HostBuilderExtensions
                         builder.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
                     });
                 });
-
             })
             .ConfigureWebHostDefaults(webBuilder =>
             {
-                webBuilder.UseUrls("http://0.0.0.0:5000");
+                //ToDo change
+                var configBuilder = new ConfigurationBuilder()
+                    .SetBasePath(AppContext.BaseDirectory)
+                    .AddJsonFile(ConfigFileName, true, true)
+                    .AddEnvironmentVariables(EnvironmentVariablesPrefix)
+                    .AddCommandLine(args);
+
+                var config = configBuilder.Build();
+                var loggerPort = config.GetValue<int>("LoggerPort", 5001);
+
+                webBuilder.UseUrls($"http://0.0.0.0:{loggerPort}");
                 webBuilder.Configure(app =>
                 {
                     app.UseCors();
                     app.UseRouting();
-                    app.UseEndpoints(endpoints =>
-                    {
-                        endpoints.MapLogger();
-                    });
+                    app.UseEndpoints(endpoints => { endpoints.MapLogger(); });
                 });
             });
-        
+
         return builder;
     }
 }

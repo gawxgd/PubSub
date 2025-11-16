@@ -1,4 +1,4 @@
-﻿using LoggerLib.Domain.Enums;
+using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Infrastructure.SignalR;
 using Microsoft.AspNetCore.SignalR;
