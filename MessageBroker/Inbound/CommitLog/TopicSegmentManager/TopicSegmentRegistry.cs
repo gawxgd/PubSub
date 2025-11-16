@@ -31,11 +31,6 @@ public sealed class TopicSegmentRegistry(
         }
     }
 
-    public LogSegment? GetSegmentByOBaseOffset(ulong offset)
-    {
-        return _allSegments.GetValueOrDefault(offset);
-    }
-
     public LogSegment? GetSegmentContainingOffset(ulong offset)
     {
         //ToDo rewrite this

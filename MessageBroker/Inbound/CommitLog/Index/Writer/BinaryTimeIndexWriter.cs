@@ -10,7 +10,7 @@ public sealed class BinaryTimeIndexWriter : ITimeIndexWriter
     {
         Span<byte> buffer = stackalloc byte[TimeIndexEntry.Size];
         BinaryPrimitives.WriteUInt64BigEndian(buffer[..8], entry.Timestamp);
-        BinaryPrimitives.WriteUInt64BigEndian(buffer.Slice(8, 8), entry.RelativeOffset);
+        BinaryPrimitives.WriteUInt64BigEndian(buffer.Slice(8, 8), entry.FilePosition);
         await stream.WriteAsync(buffer.ToArray().AsMemory()).ConfigureAwait(false);
         await stream.FlushAsync().ConfigureAwait(false);
     }

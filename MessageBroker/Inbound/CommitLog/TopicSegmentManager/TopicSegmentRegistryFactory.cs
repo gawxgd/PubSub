@@ -48,8 +48,11 @@ public sealed class TopicSegmentRegistryFactory(ILogSegmentFactory segmentFactor
 
     public void Dispose()
     {
-        foreach (var kv in _managers)
-            kv.Value.Dispose();
+        foreach (var entry in _managers)
+        {
+            entry.Value.Dispose();
+        }
+
         _managers.Clear();
     }
 }

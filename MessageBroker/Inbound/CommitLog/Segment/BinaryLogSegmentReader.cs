@@ -70,8 +70,6 @@ public sealed class BinaryLogSegmentReader : ILogSegmentReader
 
     public LogRecordBatch? ReadBatch(ulong offset)
     {
-        // ThrowIfDisposed(); ToDo
-
         if (offset < _segment.BaseOffset)
         {
             throw new SegmentReaderException(
@@ -79,7 +77,7 @@ public sealed class BinaryLogSegmentReader : ILogSegmentReader
         }
 
         var position = FindPositionForOffset(offset);
-        _log.Seek(position, SeekOrigin.Begin);
+        _log.Seek((long)position, SeekOrigin.Begin);
 
         while (_log.Position < _log.Length)
         {
@@ -110,15 +108,14 @@ public sealed class BinaryLogSegmentReader : ILogSegmentReader
 
     public IEnumerable<LogRecordBatch> ReadRange(ulong startOffset, ulong endOffset)
     {
-        ThrowIfDisposed();
-
+        // ToDo will it be needed
         if (startOffset >= endOffset)
         {
             yield break;
         }
 
         var position = FindPositionForOffset(startOffset);
-        _log.Seek(position, SeekOrigin.Begin);
+        _log.Seek((long)position, SeekOrigin.Begin);
 
         while (_log.Position < _log.Length)
         {
@@ -152,10 +149,9 @@ public sealed class BinaryLogSegmentReader : ILogSegmentReader
 
     public IEnumerable<LogRecordBatch> ReadFromTimestamp(ulong timestamp)
     {
-        ThrowIfDisposed();
-
+        //ToDo fix timestamp handling right now it saves offset not position in file
         var position = FindPositionForTimestamp(timestamp);
-        _log.Seek(position, SeekOrigin.Begin);
+        _log.Seek((long)position, SeekOrigin.Begin);
 
         while (_log.Position < _log.Length)
         {
@@ -177,92 +173,41 @@ public sealed class BinaryLogSegmentReader : ILogSegmentReader
         }
     }
 
-    private long FindPositionForOffset(ulong offset)
+    private ulong FindPositionForOffset(ulong offset)
     {
         if (_index == null || _index.Length == 0)
-        {
-            return 0; // No index, start from beginning
-        }
-
-        var relativeOffset = offset - _segment.BaseOffset;
-        var entryCount = (int)(_index.Length / OffsetIndexEntry.Size);
-
-        if (entryCount == 0)
-        {
             return 0;
-        }
 
-        // Binary search for the largest offset <= target
-        int left = 0;
-        int right = entryCount - 1;
-        long bestPosition = 0;
+        ulong relative = offset - _segment.BaseOffset;
+        int entryCount = (int)(_index.Length / OffsetIndexEntry.Size);
 
-        while (left <= right)
-        {
-            int mid = left + (right - left) / 2;
-            var (indexRelOffset, indexPosition) = ReadIndexEntry(mid);
+        var bestEntry = IndexBinarySearch.Search(
+            entryCount,
+            readEntryAt: ReadIndexEntry,
+            getKey: e => e.RelativeOffset,
+            targetKey: relative
+        );
 
-            if (indexRelOffset == relativeOffset)
-            {
-                return (long)indexPosition;
-            }
-
-            if (indexRelOffset < relativeOffset)
-            {
-                bestPosition = (long)indexPosition;
-                left = mid + 1;
-            }
-            else
-            {
-                right = mid - 1;
-            }
-        }
-
-        return bestPosition;
+        return bestEntry.FilePosition;
     }
 
-    private long FindPositionForTimestamp(ulong timestamp)
+    private ulong FindPositionForTimestamp(ulong timestamp)
     {
         if (_timeIndex == null || _timeIndex.Length == 0)
-        {
-            return 0; // No time index, start from beginning
-        }
-
-        var entryCount = (int)(_timeIndex.Length / TimeIndexEntry.Size);
-
-        if (entryCount == 0)
-        {
             return 0;
-        }
 
-        // Binary search for the largest timestamp <= target
-        int left = 0;
-        int right = entryCount - 1;
-        ulong bestRelativeOffset = 0;
+        int entryCount = (int)(_timeIndex.Length / TimeIndexEntry.Size);
 
-        while (left <= right)
-        {
-            int mid = left + (right - left) / 2;
-            var (indexTimestamp, indexRelOffset) = ReadTimeIndexEntry(mid);
+        var bestEntry = IndexBinarySearch.Search(
+            entryCount,
+            readEntryAt: ReadTimeIndexEntry,
+            getKey: e => e.Timestamp,
+            targetKey: timestamp
+        );
 
-            if (indexTimestamp == timestamp)
-            {
-                return FindPositionForOffset(_segment.BaseOffset + indexRelOffset);
-            }
-
-            if (indexTimestamp < timestamp)
-            {
-                bestRelativeOffset = indexRelOffset;
-                left = mid + 1;
-            }
-            else
-            {
-                right = mid - 1;
-            }
-        }
-
-        return FindPositionForOffset(_segment.BaseOffset + bestRelativeOffset);
+        return bestEntry.FilePosition;
     }
+
 
     private OffsetIndexEntry ReadIndexEntry(int entryIndex)
     {
@@ -274,14 +219,6 @@ public sealed class BinaryLogSegmentReader : ILogSegmentReader
     {
         _timeIndex!.Seek(entryIndex * TimeIndexEntry.Size, SeekOrigin.Begin);
         return _timeIndexReader.ReadFrom(_timeIndex);
-    }
-
-    private void ThrowIfDisposed()
-    {
-        if (_disposed)
-        {
-            throw new ObjectDisposedException(nameof(BinaryLogSegmentReader));
-        }
     }
 
     public async ValueTask DisposeAsync()

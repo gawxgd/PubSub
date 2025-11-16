@@ -12,7 +12,7 @@ public sealed class CommitLogFactory(
     ITopicSegmentRegistryFactory topicSegmentRegistryFactory,
     IOptions<CommitLogOptions> commitLogOptions,
     IOptions<List<CommitLogTopicOptions>> commitLogTopicOptions)
-    : ICommitLogFactory, IDisposable
+    : ICommitLogFactory, IAsyncDisposable
 {
     private readonly CommitLogOptions _commitLogOptions = commitLogOptions.Value;
     private readonly List<CommitLogTopicOptions> _commitLogTopicOptions = commitLogTopicOptions.Value;
@@ -44,7 +44,7 @@ public sealed class CommitLogFactory(
         var flushInterval = TimeSpan.FromMilliseconds(topicOpt.FlushIntervalMs);
         var manager = topicSegmentRegistryFactory.GetOrCreate(topic, directory, baseOffset);
 
-        return new BinaryCommitLogAppender(segmentFactory, directory, baseOffset, flushInterval, topic, manager);
+        return new BinaryCommitLogAppender(segmentFactory, directory, baseOffset, flushInterval, manager);
     }
 
     private ICommitLogReader CreateReader(string topic)
@@ -61,16 +61,23 @@ public sealed class CommitLogFactory(
         var baseOffset = topicOpt.BaseOffset;
         var manager = topicSegmentRegistryFactory.GetOrCreate(topic, directory, baseOffset);
 
-        return new BinaryCommitLogReader(segmentFactory, manager, topic);
+        return new BinaryCommitLogReader(segmentFactory, manager);
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
-        foreach (var kv in _appenders)
-            (kv.Value as IAsyncDisposable)?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        foreach (var entry in _appenders)
+        {
+            await entry.Value.DisposeAsync();
+        }
+
         _appenders.Clear();
-        foreach (var kv in _readers)
-            (kv.Value as IAsyncDisposable)?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+
+        foreach (var entry in _readers)
+        {
+            await entry.Value.DisposeAsync();
+        }
+
         _readers.Clear();
     }
 }

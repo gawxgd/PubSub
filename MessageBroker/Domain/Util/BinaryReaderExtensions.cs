@@ -3,7 +3,7 @@ namespace MessageBroker.Domain.Util;
 public static class BinaryReaderExtensions
 {
     /// <summary>
-    ///     Reads an unsigned variable-length 32-bit integer (VarUInt) from the stream.
+    /// Reads an unsigned variable-length 32-bit integer (VarUInt) from the stream.
     /// </summary>
     public static uint ReadVarUInt(this BinaryReader br)
     {
@@ -22,7 +22,7 @@ public static class BinaryReaderExtensions
     }
 
     /// <summary>
-    ///     Reads an unsigned variable-length 64-bit integer (VarULong) from the stream.
+    /// Reads an unsigned variable-length 64-bit integer (VarULong) from the stream.
     /// </summary>
     public static ulong ReadVarULong(this BinaryReader br)
     {

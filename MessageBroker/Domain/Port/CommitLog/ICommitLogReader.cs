@@ -10,12 +10,12 @@ public interface ICommitLogReader : IAsyncDisposable
     LogRecord? ReadRecord(ulong offset);
 
     /// <summary>
-    /// Read records starting from offset, returning up to maxRecords.
+    /// Read record batch from baseOffset
     /// </summary>
     LogRecordBatch? ReadRecordBatch(ulong baseOffset);
 
     /// <summary>
-    /// Read records from a timestamp onwards.
+    /// Not implemented
     /// </summary>
     IEnumerable<LogRecord> ReadFromTimestamp(ulong timestamp);
 

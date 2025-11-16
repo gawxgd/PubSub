@@ -10,7 +10,6 @@ public class LogRecordBinaryWriter : ILogRecordWriter
     {
         bw.Write(record.Offset);
         // it is important that offset has constant size
-
         bw.WriteVarULong(record.Timestamp - batchBaseTimestamp);
         bw.WriteVarUInt((uint)record.Payload.Length);
         bw.Write(record.Payload.Span);

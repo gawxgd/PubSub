@@ -12,8 +12,6 @@ namespace MessageBroker.Inbound.CommitLog;
 
 public sealed class BinaryCommitLogAppender : ICommitLogAppender
 {
-    //ToDo writers per topic
-    // ToDo implement dispose
     private LogSegment _activeSegment;
     private ILogSegmentWriter _activeSegmentWriter;
     private ulong _currentOffset;
@@ -21,9 +19,7 @@ public sealed class BinaryCommitLogAppender : ICommitLogAppender
     private readonly TimeSpan _flushInterval;
     private readonly ILogSegmentFactory _segmentFactory;
     private readonly string _directory;
-    private readonly string _topic;
     private readonly ITopicSegmentRegistry _segmentRegistry;
-    // instance of this cllass should be created per topic
 
     private readonly Channel<ReadOnlyMemory<byte>> _batchChannel =
         Channel.CreateBounded<ReadOnlyMemory<byte>>(new BoundedChannelOptions(10) //ToDo get from options
@@ -35,14 +31,12 @@ public sealed class BinaryCommitLogAppender : ICommitLogAppender
 
     private readonly Task _backgroundFlushTask;
     private readonly CancellationTokenSource _cancellationTokenSource;
-    private readonly object _inflightLock = new();
-    private readonly HashSet<CancellationTokenSource> _inflightTokens = new();
 
     private static readonly IAutoLogger
         Logger = AutoLoggerFactory.CreateLogger<BinaryCommitLogAppender>(LogSource.MessageBroker);
 
     public BinaryCommitLogAppender(ILogSegmentFactory segmentFactory, string directory, ulong baseOffset,
-        TimeSpan flushInterval, string topic, ITopicSegmentRegistry segmentRegistry)
+        TimeSpan flushInterval, ITopicSegmentRegistry segmentRegistry)
     {
         _directory = directory;
         _segmentFactory = segmentFactory;
@@ -51,7 +45,6 @@ public sealed class BinaryCommitLogAppender : ICommitLogAppender
         _currentOffset = baseOffset;
         _flushInterval = flushInterval;
         _cancellationTokenSource = new CancellationTokenSource();
-        _topic = topic;
         _segmentRegistry = segmentRegistry;
         _segmentRegistry.UpdateActiveSegment(_activeSegment);
         _segmentRegistry.UpdateCurrentOffset(_currentOffset);
@@ -92,26 +85,6 @@ public sealed class BinaryCommitLogAppender : ICommitLogAppender
         {
             _batchChannel.Writer.TryComplete();
             _flushLock.Dispose();
-            CancellationTokenSource[] tokens;
-            lock (_inflightLock)
-            {
-                tokens = _inflightTokens.ToArray();
-                _inflightTokens.Clear();
-            }
-
-            foreach (var t in tokens)
-            {
-                try
-                {
-                    t.Cancel();
-                }
-                catch
-                {
-                }
-
-                t.Dispose();
-            }
-
             _cancellationTokenSource.Dispose();
         }
     }
@@ -137,7 +110,7 @@ public sealed class BinaryCommitLogAppender : ICommitLogAppender
 
             var recordBatch = new LogRecordBatch(
                 CommitLogMagicNumbers.LogRecordBatchMagicNumber,
-                (ulong)batchBaseOffset,
+                batchBaseOffset,
                 records,
                 false
             );
@@ -148,22 +121,8 @@ public sealed class BinaryCommitLogAppender : ICommitLogAppender
             }
 
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token);
-            lock (_inflightLock)
-            {
-                _inflightTokens.Add(linkedCts);
-            }
 
-            try
-            {
-                await _activeSegmentWriter.AppendAsync(recordBatch, linkedCts.Token);
-            }
-            finally
-            {
-                lock (_inflightLock)
-                {
-                    _inflightTokens.Remove(linkedCts);
-                }
-            }
+            await _activeSegmentWriter.AppendAsync(recordBatch, linkedCts.Token);
 
             _segmentRegistry.UpdateCurrentOffset(_currentOffset);
         }
@@ -197,7 +156,7 @@ public sealed class BinaryCommitLogAppender : ICommitLogAppender
                 await FlushChannelToLogSegmentAsync();
             }
         }
-        catch (Exception ex) when (ex is TaskCanceledException || ex is OperationCanceledException)
+        catch (Exception ex) when (ex is TaskCanceledException or OperationCanceledException)
         {
             Logger.LogDebug("Flush task cancelled");
         }

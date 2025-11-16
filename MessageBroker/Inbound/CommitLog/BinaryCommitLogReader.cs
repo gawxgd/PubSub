@@ -16,16 +16,14 @@ public sealed class BinaryCommitLogReader : ICommitLogReader
 
     private readonly ILogSegmentFactory _segmentFactory;
     private readonly ITopicSegmentRegistry _segmentRegistry;
-    private readonly string _topic;
     private ILogSegmentReader? _activeSegmentReader;
     private ulong _currentSegmentBaseOffset;
     private readonly ConcurrentDictionary<ulong, ILogSegmentReader> _inactiveSegmentReaders = new();
 
-    public BinaryCommitLogReader(ILogSegmentFactory segmentFactory, ITopicSegmentRegistry segmentRegistry, string topic)
+    public BinaryCommitLogReader(ILogSegmentFactory segmentFactory, ITopicSegmentRegistry segmentRegistry)
     {
         _segmentFactory = segmentFactory;
         _segmentRegistry = segmentRegistry;
-        _topic = topic;
         RefreshSegmentReader();
     }
 

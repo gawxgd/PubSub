@@ -3,7 +3,7 @@ namespace MessageBroker.Domain.Util;
 public static class BinaryWriterExtensions
 {
     /// <summary>
-    ///     Writes an unsigned variable-length 32-bit integer (VarUInt) to the stream.
+    /// Writes an unsigned variable-length 32-bit integer (VarUInt) to the stream.
     /// </summary>
     public static void WriteVarUInt(this BinaryWriter bw, uint value)
     {
@@ -17,7 +17,7 @@ public static class BinaryWriterExtensions
     }
 
     /// <summary>
-    ///     Writes an unsigned variable-length 64-bit integer (VarULong) to the stream.
+    /// Writes an unsigned variable-length 64-bit integer (VarULong) to the stream.
     /// </summary>
     public static void WriteVarULong(this BinaryWriter bw, ulong value)
     {

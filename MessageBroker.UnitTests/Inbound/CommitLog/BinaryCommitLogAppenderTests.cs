@@ -299,7 +299,6 @@ public class BinaryCommitLogAppenderTests : IDisposable
             _testDirectory,
             baseOffset,
             flushInterval ?? TimeSpan.FromMilliseconds(100),
-            "test-topic",
             _segmentRegistry
         );
     }

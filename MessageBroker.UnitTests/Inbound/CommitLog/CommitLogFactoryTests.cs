@@ -182,7 +182,7 @@ public class CommitLogFactoryTests : IDisposable
         var appender = factory.GetAppender("test-topic");
 
         // Act
-        var act = () => factory.Dispose();
+        var act = () => factory.DisposeAsync();
 
         // Assert
         act.Should().NotThrow();

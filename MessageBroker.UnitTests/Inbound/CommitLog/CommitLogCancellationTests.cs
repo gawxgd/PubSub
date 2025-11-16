@@ -371,7 +371,6 @@ public class CommitLogCancellationTests : IDisposable
             _testDirectory,
             baseOffset,
             flushInterval ?? TimeSpan.FromMilliseconds(100),
-            "test-topic",
             _segmentRegistry
         );
     }

@@ -1,9 +1,9 @@
 namespace MessageBroker.Domain.Util;
 
-public class VarEncodingSize
+public static class VarEncodingSize
 {
     /// <summary>
-    ///     Returns the number of bytes required to serialize a ulong as a VarULong.
+    /// Returns the number of bytes required to serialize a ulong as a VarULong.
     /// </summary>
     public static int GetVarULongSize(ulong value)
     {
@@ -18,7 +18,7 @@ public class VarEncodingSize
     }
 
     /// <summary>
-    ///     Returns the number of bytes required to serialize a uint as a VarUInt.
+    /// Returns the number of bytes required to serialize a uint as a VarUInt.
     /// </summary>
     public static int GetVarUIntSize(uint value)
     {

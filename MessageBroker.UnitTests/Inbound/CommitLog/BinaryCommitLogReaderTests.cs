@@ -45,7 +45,7 @@ public class BinaryCommitLogReaderTests
 
         _segmentFactory.CreateReader(segment).Returns(segReader);
 
-        var reader = new BinaryCommitLogReader(_segmentFactory, _registry, "t");
+        var reader = new BinaryCommitLogReader(_segmentFactory, _registry);
 
         var records = reader.ReadRecordBatch(10)!.Records.ToList();
 
@@ -75,7 +75,7 @@ public class BinaryCommitLogReaderTests
 
         _segmentFactory.CreateReader(segment).Returns(segReader);
 
-        var reader = new BinaryCommitLogReader(_segmentFactory, _registry, "t");
+        var reader = new BinaryCommitLogReader(_segmentFactory, _registry);
 
         var records = reader.ReadFromTimestamp(200).ToList();
 
@@ -97,7 +97,7 @@ public class BinaryCommitLogReaderTests
         _segmentFactory.CreateReader(seg1).Returns(segReader1);
         _segmentFactory.CreateReader(seg2).Returns(segReader2);
 
-        var reader = new BinaryCommitLogReader(_segmentFactory, _registry, "t");
+        var reader = new BinaryCommitLogReader(_segmentFactory, _registry);
 
         reader.ReadRecordBatch(0);
 
