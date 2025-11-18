@@ -1,6 +1,7 @@
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
+using MessageBroker.Domain.Enums;
 using MessageBroker.Domain.Port.CommitLog;
 using MessageBroker.Inbound.CommitLog;
 using MessageBroker.Inbound.CommitLog.Record;
@@ -8,14 +9,14 @@ using MessageBroker.Inbound.CommitLog.Segment;
 
 namespace MessageBroker.Domain.Logic.TcpServer.UseCase;
 
-public class ProcessReceivedMessageUseCase
+public class ProcessReceivedPublisherMessageUseCase
 {
     private static readonly IAutoLogger Logger =
-        AutoLoggerFactory.CreateLogger<ProcessReceivedMessageUseCase>(LogSource.MessageBroker);
+        AutoLoggerFactory.CreateLogger<ProcessReceivedPublisherMessageUseCase>(LogSource.MessageBroker);
 
     private readonly ICommitLogAppender _commitLogAppender;
 
-    public ProcessReceivedMessageUseCase(ICommitLogFactory commitLogFactory, string topic)
+    public ProcessReceivedPublisherMessageUseCase(ICommitLogFactory commitLogFactory, string topic)
     {
         try
         {
@@ -27,11 +28,15 @@ public class ProcessReceivedMessageUseCase
             throw;
         }
     }
+    
 
-    public async Task ProcessMessageAsync(ReadOnlyMemory<byte> message, CancellationToken cancellationToken)
+    public async Task ProcessMessageAsync(ReadOnlyMemory<byte> message,
+        CancellationToken cancellationToken)
     {
         Logger.LogDebug($"Processing message {message.Length} bytes");
 
+        
+        
         await _commitLogAppender.AppendAsync(message);
         Logger.LogInfo("Appended message to commit log");
     }

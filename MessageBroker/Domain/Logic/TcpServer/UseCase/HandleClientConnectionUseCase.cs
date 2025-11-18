@@ -5,6 +5,7 @@ using System.Threading.Channels;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
+using MessageBroker.Domain.Enums;
 using MessageBroker.Domain.Port.CommitLog;
 
 namespace MessageBroker.Domain.Logic.TcpServer.UseCase;
@@ -127,14 +128,27 @@ public class HandleClientConnectionUseCase(
         Logger.LogInfo(
             $"Consuming message channel, connected to client {_connectedClientEndpoint}");
 
+        ConnectionType connectionType = new RecognizeConnectionTypeUseCase(_messageChannel.Reader)
+            .RecognizeConnectionType(cancellationToken);
+        
         await foreach (var message in _messageChannel.Reader.ReadAllAsync(cancellationToken))
         {
             Logger.LogInfo($"[{_connectedClientEndpoint}] Received {message.Length} bytes");
 
             try
             {
-                await new ProcessReceivedMessageUseCase(commitLogFactory, "default")
-                    .ProcessMessageAsync(message, cancellationToken);
+                switch (connectionType)
+                {
+                    case ConnectionType.Publisher:
+                        await new ProcessReceivedPublisherMessageUseCase(commitLogFactory, "default")
+                            .ProcessMessageAsync(message, cancellationToken);
+                        break;
+                    case ConnectionType.Subscriber:
+                        await new ProccesSubscriberAskUseCase(commitLogFactory, "default")
+                            .ProccesAskAsync(message, cancellationToken);
+                        break;
+                    
+                }
             }
             catch (Exception ex)
             {
