@@ -20,7 +20,7 @@ public class ProcessReceivedPublisherMessageUseCase
     {
         try
         {
-            _commitLogAppender = commitLogFactory.Get(topic);
+            _commitLogAppender = commitLogFactory.GetAppender(topic);
         }
         catch (Exception ex)
         {
@@ -34,8 +34,6 @@ public class ProcessReceivedPublisherMessageUseCase
         CancellationToken cancellationToken)
     {
         Logger.LogDebug($"Processing message {message.Length} bytes");
-
-        
         
         await _commitLogAppender.AppendAsync(message);
         Logger.LogInfo("Appended message to commit log");

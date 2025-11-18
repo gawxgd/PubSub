@@ -46,7 +46,7 @@ public class CommitLogFactoryTests : IDisposable
         var factory = CreateFactory("test-topic");
 
         // Act
-        var appender = factory.Get("test-topic");
+        var appender = factory.GetAppender("test-topic");
 
         // Assert
         appender.Should().NotBeNull();
@@ -60,7 +60,7 @@ public class CommitLogFactoryTests : IDisposable
         var factory = CreateFactory("test-topic");
 
         // Act
-        var act = () => factory.Get("unknown-topic");
+        var act = () => factory.GetAppender("unknown-topic");
 
         // Assert
         act.Should().Throw<InvalidOperationException>()
@@ -74,8 +74,8 @@ public class CommitLogFactoryTests : IDisposable
         var factory = CreateFactory("test-topic");
 
         // Act
-        var appender1 = factory.Get("test-topic");
-        var appender2 = factory.Get("test-topic");
+        var appender1 = factory.GetAppender("test-topic");
+        var appender2 = factory.GetAppender("test-topic");
 
         // Assert
         appender1.Should().BeSameAs(appender2);
@@ -106,7 +106,7 @@ public class CommitLogFactoryTests : IDisposable
         var factory = CreateFactoryWithCustomDirectory("test-topic", customDirectory);
 
         // Act
-        var appender = factory.Get("test-topic");
+        var appender = factory.GetAppender("test-topic");
 
         // Assert
         appender.Should().NotBeNull();
@@ -120,7 +120,7 @@ public class CommitLogFactoryTests : IDisposable
         var factory = CreateFactory("test-topic");
 
         // Act
-        var appender = factory.Get("test-topic");
+        var appender = factory.GetAppender("test-topic");
 
         // Assert
         appender.Should().NotBeNull();
@@ -137,7 +137,7 @@ public class CommitLogFactoryTests : IDisposable
         var factory = CreateFactory("test-topic", baseOffset: expectedOffset);
 
         // Act
-        var appender = factory.Get("test-topic");
+        var appender = factory.GetAppender("test-topic");
 
         // Assert
         appender.Should().NotBeNull();
@@ -151,8 +151,8 @@ public class CommitLogFactoryTests : IDisposable
         var factory = CreateFactoryWithMultipleTopics();
 
         // Act
-        var appender1 = factory.Get("topic1");
-        var appender2 = factory.Get("topic2");
+        var appender1 = factory.GetAppender("topic1");
+        var appender2 = factory.GetAppender("topic2");
 
         // Assert
         appender1.Should().NotBeNull();
@@ -165,7 +165,7 @@ public class CommitLogFactoryTests : IDisposable
     {
         // Arrange
         var factory = CreateFactory("test-topic");
-        var appender = factory.Get("test-topic");
+        var appender = factory.GetAppender("test-topic");
 
         // Act
         var act = () => factory.Dispose();

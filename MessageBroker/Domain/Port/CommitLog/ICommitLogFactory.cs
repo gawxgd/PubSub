@@ -2,5 +2,6 @@ namespace MessageBroker.Domain.Port.CommitLog;
 
 public interface ICommitLogFactory
 {
-    ICommitLogAppender Get(string topic);
+    ICommitLogAppender GetAppender(string topic);
+    ICommitLogReader  GetReader(string topic, ulong offset); 
 }

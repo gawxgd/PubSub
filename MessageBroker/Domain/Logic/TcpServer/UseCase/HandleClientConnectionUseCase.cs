@@ -144,8 +144,8 @@ public class HandleClientConnectionUseCase(
                             .ProcessMessageAsync(message, cancellationToken);
                         break;
                     case ConnectionType.Subscriber:
-                        await new ProccesSubscriberAskUseCase(commitLogFactory, "default")
-                            .ProccesAskAsync(message, cancellationToken);
+                        await new ProcessSubscriberRequestUseCase(socket, commitLogFactory)
+                            .ProcessRequestAsync(message, cancellationToken);
                         break;
                     
                 }

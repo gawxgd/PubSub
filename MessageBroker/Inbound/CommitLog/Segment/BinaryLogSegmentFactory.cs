@@ -25,6 +25,11 @@ public sealed class BinaryLogSegmentFactory(
             opt.FileBufferSize);
     }
 
+    public ILogSegmentReader CreateReader(LogSegment segment)
+    {
+        return new BinaryLogSegmentReader();
+    }
+
     public LogSegment CreateLogSegment(string directory, ulong baseOffset)
     {
         var fileName = $"{baseOffset:D20}.log";

@@ -16,9 +16,15 @@ public sealed class CommitLogFactory(
     private readonly List<CommitLogTopicOptions> _commitLogTopicOptions = commitLogTopicOptions.Value;
     private readonly ConcurrentDictionary<string, ICommitLogAppender> _appenders = new();
 
-    public ICommitLogAppender Get(string topic)
+    public ICommitLogAppender GetAppender(string topic)
     {
         return _appenders.GetOrAdd(topic, CreateAppender);
+    }
+
+    public ICommitLogReader GetReader(string topic, ulong offset)
+    {
+        //TODO
+        return new BinaryCommitLogReader(segmentFactory, topic, offset);
     }
 
     private ICommitLogAppender CreateAppender(string topic)
