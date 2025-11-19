@@ -15,7 +15,8 @@ public sealed class TcpSubscriber(
     TimeSpan pollInterval,
     uint maxRetryAttempts,
     ISubscriberConnection connection,
-    Channel<byte[]> inboundChannel,
+    Channel<byte[]> respondChannel,
+    Channel<byte[]> requestChannel,
     Func<string, Task>? messageHandler,
     Func<Exception, Task>? errorHandler = null)
     : ISubscriber, IAsyncDisposable
@@ -88,9 +89,9 @@ public sealed class TcpSubscriber(
         {
             try
             {
-                if (await inboundChannel.Reader.WaitToReadAsync(CancellationToken))
+                if (await respondChannel.Reader.WaitToReadAsync(CancellationToken))
                 {
-                    while (inboundChannel.Reader.TryRead(out var message))
+                    while (respondChannel.Reader.TryRead(out var message))
                     {
                         await ReceiveAsync(message);
                     }
@@ -135,15 +136,32 @@ public sealed class TcpSubscriber(
             throw;
         }
     }
-    
+
+    public async Task SendRequestAsync(byte[] message)
+    {
+        await requestChannel.Writer.WriteAsync(message, _cts.Token);
+    }
+
 
     public async ValueTask DisposeAsync()
     {
-        await _cts.CancelAsync();      // 1. Cancel internal operations
-        await connection.DisconnectAsync();                // 2. Stop TCP read loop / producer
-        inboundChannel.Writer.TryComplete();               // 3. Signal no more messages
-        await inboundChannel.Reader.Completion;            // 4. Wait for consumer to finish
-        _cts.Dispose();                // 5. Cleanup
+        // 1. Cancel internal operations
+        await _cts.CancelAsync();
 
+        // 2. Stop TCP read/write loops
+        await connection.DisconnectAsync();
+        
+        
+        // 3. Signal no more outbound messages (requests to broker)
+        requestChannel.Writer.TryComplete();
+        await requestChannel.Reader.Completion;  // wait until producer finishes
+
+        // 4. Signal no more inbound messages (responses from broker)
+        respondChannel.Writer.TryComplete();
+        await respondChannel.Reader.Completion;   // wait until consumer finishes
+
+        // 5. Cleanup
+        _cts.Dispose();
     }
+
 }

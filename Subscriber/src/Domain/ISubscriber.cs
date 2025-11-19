@@ -6,4 +6,5 @@ public interface ISubscriber
         Task ReceiveAsync(byte[] message);
         Task StartMessageProcessingAsync();
         Task StartConnectionAsync();
+        Task SendRequestAsync(byte[] message);
 }

@@ -13,7 +13,8 @@ namespace Subscriber.Outbound.Adapter;
 public sealed class TcpSubscriberConnection(
     string host,
     int port,
-    ChannelWriter<byte[]> messageChannelWriter)
+    Channel<byte[]> requestChannel,
+    Channel<byte[]> responseChannel)
     : ISubscriberConnection, IAsyncDisposable
 {
     private readonly TcpClient _client = new();
@@ -21,6 +22,7 @@ public sealed class TcpSubscriberConnection(
     private PipeReader? _pipeReader;
     private PipeWriter? _pipeWriter;
     private Task? _readLoopTask;
+    private Task? _writeLoopTask;
     private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<TcpSubscriberConnection>(LogSource.MessageBroker);
 
     public async Task ConnectAsync()
@@ -39,7 +41,8 @@ public sealed class TcpSubscriberConnection(
             _pipeWriter.Advance(connectionTypeMessage.Length);
             await _pipeWriter.FlushAsync(_cancellationSource.Token);
             
-            _readLoopTask = Task.Run(() => ReadLoopAsync(_cancellationSource.Token), _cancellationSource.Token);
+            _readLoopTask = Task.Run(() => ReadLoopAsync( _cancellationSource.Token));
+            _writeLoopTask = Task.Run(() => WriteLoopAsync(_cancellationSource.Token));
             Logger.LogInfo($"Connected to broker at {_client.Client.RemoteEndPoint} and sent subscriber handshake");
         }
         catch (OperationCanceledException ex)
@@ -76,6 +79,9 @@ public sealed class TcpSubscriberConnection(
             }
             
             await _cancellationSource.CancelAsync();
+            
+            if (_writeLoopTask != null)
+                await _writeLoopTask;
 
             if (_readLoopTask != null)
                 await _readLoopTask;
@@ -86,7 +92,8 @@ public sealed class TcpSubscriberConnection(
             if (_pipeWriter != null)
                 await _pipeWriter.CompleteAsync();
             
-            messageChannelWriter.TryComplete();
+            responseChannel.Writer.TryComplete();
+            requestChannel.Writer.TryComplete();
             
             Logger.LogInfo( $"Disconnected from broker at {_client.Client.RemoteEndPoint}");
             
@@ -113,7 +120,7 @@ public sealed class TcpSubscriberConnection(
 
                 while (TryReadMessage(ref buffer, out var message))
                 {
-                    await messageChannelWriter.WriteAsync(message, cancellationToken);
+                    await responseChannel.Writer.WriteAsync(message, cancellationToken);
                 }
 
                 _pipeReader.AdvanceTo(buffer.Start, buffer.End);
@@ -153,6 +160,26 @@ public sealed class TcpSubscriberConnection(
         buffer = buffer.Slice(buffer.GetPosition(1, newline.Value));
         Logger.LogInfo( "Received message");
         return true;
+    }
+    
+    private async Task WriteLoopAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await foreach (var message in requestChannel.Reader.ReadAllAsync(cancellationToken))
+            {
+                var writer = _pipeWriter!;
+                var span = writer.GetSpan(message.Length);
+                message.CopyTo(span);
+                writer.Advance(message.Length);
+                await writer.FlushAsync(cancellationToken);
+                Logger.LogDebug($"Sent request to broker: {message.Length} bytes");
+            }
+        }
+        finally
+        {
+            await _pipeWriter!.CompleteAsync();
+        }
     }
 
     private bool IsRetriable(SocketException ex)
