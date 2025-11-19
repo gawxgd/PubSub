@@ -19,6 +19,7 @@ public sealed class TcpSubscriberConnection(
     private readonly TcpClient _client = new();
     private readonly CancellationTokenSource _cancellationSource = new();
     private PipeReader? _pipeReader;
+    private PipeWriter? _pipeWriter;
     private Task? _readLoopTask;
     private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<TcpSubscriberConnection>(LogSource.MessageBroker);
 
@@ -27,9 +28,19 @@ public sealed class TcpSubscriberConnection(
         try
         {
             await _client.ConnectAsync(host, port);
-            _pipeReader = PipeReader.Create(_client.GetStream());
+            var stream = _client.GetStream();
+            _pipeReader = PipeReader.Create(stream);
+            _pipeWriter = PipeWriter.Create(stream);
+            
+            // Send first message with connection type byte (0x02 = Subscriber)
+            var connectionTypeMessage = new byte[] { 0x02 };
+            var buffer = _pipeWriter.GetMemory(connectionTypeMessage.Length);
+            connectionTypeMessage.CopyTo(buffer);
+            _pipeWriter.Advance(connectionTypeMessage.Length);
+            await _pipeWriter.FlushAsync(_cancellationSource.Token);
+            
             _readLoopTask = Task.Run(() => ReadLoopAsync(_cancellationSource.Token), _cancellationSource.Token);
-            Logger.LogInfo($"Connected to broker at {_client.Client.RemoteEndPoint}");
+            Logger.LogInfo($"Connected to broker at {_client.Client.RemoteEndPoint} and sent subscriber handshake");
         }
         catch (OperationCanceledException ex)
         {
@@ -71,6 +82,9 @@ public sealed class TcpSubscriberConnection(
 
             if (_pipeReader != null)
                 await _pipeReader.CompleteAsync();
+            
+            if (_pipeWriter != null)
+                await _pipeWriter.CompleteAsync();
             
             messageChannelWriter.TryComplete();
             

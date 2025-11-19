@@ -128,8 +128,8 @@ public class HandleClientConnectionUseCase(
         Logger.LogInfo(
             $"Consuming message channel, connected to client {_connectedClientEndpoint}");
 
-        ConnectionType connectionType = new RecognizeConnectionTypeUseCase(_messageChannel.Reader)
-            .RecognizeConnectionType(cancellationToken);
+        ConnectionType connectionType = await new RecognizeConnectionTypeUseCase(_messageChannel.Reader)
+            .RecognizeConnectionTypeAsync(cancellationToken);
         
         await foreach (var message in _messageChannel.Reader.ReadAllAsync(cancellationToken))
         {

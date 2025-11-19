@@ -71,7 +71,15 @@ public sealed class TcpPublisherConnection(
         {
             await _client.ConnectAsync(host, port, _cancellationSource.Token);
             _pipeWriter = PipeWriter.Create(_client.GetStream());
-            Logger.LogInfo($"Connected to broker on {_client.Client.RemoteEndPoint}");
+            
+            // Send first message with connection type byte (0x01 = Publisher)
+            var connectionTypeMessage = new byte[] { 0x01 };
+            var buffer = PipeWriter.GetMemory(connectionTypeMessage.Length);
+            connectionTypeMessage.CopyTo(buffer);
+            PipeWriter.Advance(connectionTypeMessage.Length);
+            await PipeWriter.FlushAsync(_cancellationSource.Token);
+            
+            Logger.LogInfo($"Connected to broker on {_client.Client.RemoteEndPoint} and sent publisher handshake");
         }
         catch (SocketException ex) when (CanRetrySocketException(ex))
         {
