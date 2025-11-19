@@ -7,7 +7,7 @@ namespace MessageBroker.Inbound.CommitLog.Segment;
 
 public class BinaryLogSegmentReader: ILogSegmentReader
 {
-    private readonly LogSegment _segment;
+    private LogSegment _segment;
     private readonly LogRecordBatchBinaryReader _batchReader;
 
     public BinaryLogSegmentReader(LogSegment segment)
@@ -21,6 +21,8 @@ public class BinaryLogSegmentReader: ILogSegmentReader
 
     public void ReadAll(Channel<byte[]> channel)
     {
+        ulong lastOffset = _segment.BaseOffset;
+        
         if (!File.Exists(_segment.LogPath))
         {
             return;
@@ -43,6 +45,7 @@ public class BinaryLogSegmentReader: ILogSegmentReader
                     // Convert ReadOnlyMemory<byte> to byte[] for channel
                     var payloadArray = record.Payload.ToArray();
                     channel.Writer.TryWrite(payloadArray);
+                    lastOffset = record.Offset;
                 }
             }
             catch (Exception)
@@ -51,10 +54,19 @@ public class BinaryLogSegmentReader: ILogSegmentReader
                 break;
             }
         }
+        
+        _segment = _segment with { NextOffset = lastOffset + 1 };
+    }
+
+    public LogSegment GetSegment()
+    {
+        return _segment;
     }
 
     public void ReadFromOffset(ulong currentOffset, Channel<byte[]> channel)
     {
+        ulong lastOffset = currentOffset;
+        
         if (!File.Exists(_segment.LogPath))
         {
             return;
@@ -79,6 +91,7 @@ public class BinaryLogSegmentReader: ILogSegmentReader
                         // Convert ReadOnlyMemory<byte> to byte[] for channel
                         var payloadArray = record.Payload.ToArray();
                         channel.Writer.TryWrite(payloadArray);
+                        lastOffset = record.Offset;
                     }
                 }
             }
@@ -88,5 +101,7 @@ public class BinaryLogSegmentReader: ILogSegmentReader
                 break;
             }
         }
+        
+        _segment = _segment with { NextOffset = lastOffset + 1 };
     }
 }

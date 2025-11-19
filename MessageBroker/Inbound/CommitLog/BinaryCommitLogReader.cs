@@ -27,7 +27,16 @@ public class BinaryCommitLogReader: ICommitLogReader
         if (_activeSegment != null)
         {
             var segmentReader = _segmentFactory.CreateReader(_activeSegment);
-            segmentReader.ReadFromOffset(_currentOffset, channel);
+            if (_activeSegment.BaseOffset != _currentOffset)
+            {
+                segmentReader.ReadFromOffset(_currentOffset, channel);
+            }
+            else
+            {
+                segmentReader.ReadAll(channel);
+            }
+            // Update active segment with NextOffset from reader
+            _activeSegment = segmentReader.GetSegment();
             _activeSegment = FindNext();
         }
 
@@ -37,10 +46,9 @@ public class BinaryCommitLogReader: ICommitLogReader
             // read all and send to channel 
             segmentReader.ReadAll(channel);
             
-            // update offset
-
+            // Update active segment with NextOffset from reader
+            _activeSegment = segmentReader.GetSegment();
             _activeSegment = FindNext();
-            // go to next segment
         }
     }
 
@@ -82,6 +90,24 @@ public class BinaryCommitLogReader: ICommitLogReader
     } 
     private LogSegment? FindNext()
     {
-        return null;
+        if (_activeSegment == null || !Directory.Exists(_directory))
+        {
+            return null;
+        }
+
+        var expectedBaseOffset = _activeSegment.NextOffset;
+        
+        var expectedFileName = $"{expectedBaseOffset:D20}.log";
+        var expectedLogPath = Path.Combine(_directory, expectedFileName);
+
+        if (!File.Exists(expectedLogPath))
+        {
+            return null;
+        }
+
+        var indexPath = Path.ChangeExtension(expectedLogPath, ".index");
+        var timeIndexPath = Path.ChangeExtension(expectedLogPath, ".timeindex");
+        
+        return new LogSegment(expectedLogPath, indexPath, timeIndexPath, expectedBaseOffset, expectedBaseOffset);
     } 
 }
