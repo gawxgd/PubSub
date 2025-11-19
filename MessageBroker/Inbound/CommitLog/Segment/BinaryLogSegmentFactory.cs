@@ -27,7 +27,7 @@ public sealed class BinaryLogSegmentFactory(
 
     public ILogSegmentReader CreateReader(LogSegment segment)
     {
-        return new BinaryLogSegmentReader();
+        return new BinaryLogSegmentReader(segment);
     }
 
     public LogSegment CreateLogSegment(string directory, ulong baseOffset)

@@ -14,16 +14,60 @@ public class ProcessSubscriberRequestUseCase(Socket socket, ICommitLogFactory co
     
     public async Task ProcessRequestAsync(ReadOnlyMemory<byte> message, CancellationToken cancellationToken)
     {
-        // read topic and offset from message
+        // TODO read topic and offset from message
         var topic = string.Empty;
         ulong offset = 0;
         
-        // create channel (pipe?) 
-        Channel<byte[]> ? channel = null;
         
         Logger.LogDebug($"Processing subscriber request: {message}");
         var commitLogReader = commitLogFactory.GetReader(topic, offset);
-        await commitLogReader.ReadAsync(channel);
+        //TODO channel size config
+        var channel = Channel.CreateBounded<byte[]>(10);
+        
+        var readTask = Task.Run(async () =>
+        {
+            try
+            {
+                await commitLogReader.ReadAsync(channel);
+            }
+            finally
+            {
+                channel.Writer.Complete();
+            }
+        }, cancellationToken);
+        
+        try
+        {
+            await foreach (var messageBytes in channel.Reader.ReadAllAsync(cancellationToken))
+            {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    break;
+                }
+                await socket.SendAsync(messageBytes, SocketFlags.None, cancellationToken);
+                
+                Logger.LogDebug($"Sent message to subscriber: {messageBytes.Length} bytes");
+            }
+        }
+        catch (SocketException ex)
+        {
+            Logger.LogError($"Socket error while sending to subscriber: {ex.Message}", ex);
+        }
+        catch (OperationCanceledException)
+        {
+            Logger.LogInfo("Subscriber connection cancelled");
+        }
+        finally
+        {
+            try
+            {
+                await readTask;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Error in commit log reader: {ex.Message}", ex);
+            }
+        }
         Logger.LogInfo("Messages from commit log sent to subscriber");
     }
 }
