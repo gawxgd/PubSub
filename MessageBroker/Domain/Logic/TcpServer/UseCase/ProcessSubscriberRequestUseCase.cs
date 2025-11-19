@@ -1,4 +1,6 @@
-﻿using System.Net.Sockets;
+﻿using System.Buffers;
+using System.IO.Pipelines;
+using System.Net.Sockets;
 using System.Threading.Channels;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
@@ -18,11 +20,11 @@ public class ProcessSubscriberRequestUseCase(Socket socket, ICommitLogFactory co
         var topic = string.Empty;
         ulong offset = 0;
         
-        
-        Logger.LogDebug($"Processing subscriber request: {message}");
+        Logger.LogDebug($"Processing subscriber request: {message.Length} bytes");
         var commitLogReader = commitLogFactory.GetReader(topic, offset);
-        //TODO channel size config
+        
         var channel = Channel.CreateBounded<byte[]>(10);
+        var pipe = new Pipe();
         
         var readTask = Task.Run(async () =>
         {
@@ -36,38 +38,82 @@ public class ProcessSubscriberRequestUseCase(Socket socket, ICommitLogFactory co
             }
         }, cancellationToken);
         
-        try
-        {
-            await foreach (var messageBytes in channel.Reader.ReadAllAsync(cancellationToken))
-            {
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    break;
-                }
-                await socket.SendAsync(messageBytes, SocketFlags.None, cancellationToken);
-                
-                Logger.LogDebug($"Sent message to subscriber: {messageBytes.Length} bytes");
-            }
-        }
-        catch (SocketException ex)
-        {
-            Logger.LogError($"Socket error while sending to subscriber: {ex.Message}", ex);
-        }
-        catch (OperationCanceledException)
-        {
-            Logger.LogInfo("Subscriber connection cancelled");
-        }
-        finally
+        var writeToPipeTask = Task.Run(async () =>
         {
             try
             {
-                await readTask;
+                await foreach (var messageBytes in channel.Reader.ReadAllAsync(cancellationToken))
+                {
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        break;
+                    }
+
+                    var writer = pipe.Writer;
+                    
+                    var payloadSpan = writer.GetSpan(messageBytes.Length);
+                    messageBytes.CopyTo(payloadSpan);
+                    writer.Advance(messageBytes.Length);
+                    
+                    await writer.FlushAsync(cancellationToken);
+                    Logger.LogDebug($"Written message to pipe: {messageBytes.Length} bytes");
+                }
             }
-            catch (Exception ex)
+            finally
             {
-                Logger.LogError($"Error in commit log reader: {ex.Message}", ex);
+                await pipe.Writer.CompleteAsync();
             }
+        }, cancellationToken);
+        
+        var sendTask = Task.Run(async () =>
+        {
+            try
+            {
+                var reader = pipe.Reader;
+                while (!cancellationToken.IsCancellationRequested)
+                {
+                    var result = await reader.ReadAsync(cancellationToken);
+                    var buffer = result.Buffer;
+
+                    if (buffer.Length > 0)
+                    {
+                        foreach (var segment in buffer)
+                        {
+                            await socket.SendAsync(segment, SocketFlags.None, cancellationToken);
+                        }
+                    }
+
+                    reader.AdvanceTo(buffer.End);
+
+                    if (result.IsCompleted)
+                    {
+                        break;
+                    }
+                }
+            }
+            catch (SocketException ex)
+            {
+                Logger.LogError($"Socket error while sending to subscriber: {ex.Message}", ex);
+            }
+            catch (OperationCanceledException)
+            {
+                Logger.LogInfo("Subscriber connection cancelled");
+            }
+            finally
+            {
+                await pipe.Reader.CompleteAsync();
+            }
+        }, cancellationToken);
+        
+        try
+        {
+            await Task.WhenAll(readTask, writeToPipeTask, sendTask);
         }
+        catch (Exception ex)
+        {
+            Logger.LogError($"Error in subscriber processing: {ex.Message}", ex);
+        }
+        
         Logger.LogInfo("Messages from commit log sent to subscriber");
     }
 }
