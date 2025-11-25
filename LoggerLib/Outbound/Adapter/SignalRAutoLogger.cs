@@ -20,6 +20,7 @@ public class SignalRAutoLogger(
     {
         var formattedMessage = FormatMessage(message, filePath, lineNumber, methodName);
         logger.LogInfo(logSource, formattedMessage);
+        Console.WriteLine(formattedMessage);
     }
 
     public void LogError(string message, Exception? ex = null,
@@ -29,6 +30,7 @@ public class SignalRAutoLogger(
     {
         var formattedMessage = FormatMessage(message, filePath, lineNumber, methodName, ex);
         logger.LogError(logSource, formattedMessage);
+        Console.WriteLine(formattedMessage);
     }
 
     public void LogWarning(string message, Exception? ex = null,
@@ -38,6 +40,7 @@ public class SignalRAutoLogger(
     {
         var formattedMessage = FormatMessage(message, filePath, lineNumber, methodName, ex);
         logger.LogWarning(logSource, formattedMessage);
+        Console.WriteLine(formattedMessage);
     }
 
     public void LogDebug(string message, Exception? ex = null,
@@ -47,6 +50,7 @@ public class SignalRAutoLogger(
     {
         var formattedMessage = FormatMessage(message, filePath, lineNumber, methodName, ex);
         logger.LogDebug(logSource, formattedMessage);
+        Console.WriteLine(formattedMessage);
     }
 
     public void LogTrace(string message, Exception? ex = null,
@@ -56,6 +60,7 @@ public class SignalRAutoLogger(
     {
         var formattedMessage = FormatMessage(message, filePath, lineNumber, methodName, ex);
         logger.LogTrace(logSource, formattedMessage);
+        Console.WriteLine(formattedMessage);
     }
 
     private string FormatMessage(string message, string filePath, int lineNumber, string methodName,
