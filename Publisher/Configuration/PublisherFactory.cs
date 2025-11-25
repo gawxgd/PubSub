@@ -32,7 +32,7 @@ public sealed class PublisherFactory : IPublisherFactory
                 PublisherFactoryErrorCode.InvalidUri);
         }
 
-        if (!string.Equals(AllowedUriScheme, connectionUri.Scheme.ToLowerInvariant()))
+        if (!string.Equals(connectionUri.Scheme, AllowedUriScheme, StringComparison.OrdinalIgnoreCase))
         {
             throw new PublisherFactoryException(
                 $"Unsupported URI scheme '{connectionUri.Scheme}'. Allowed: '{AllowedUriScheme}'.",
