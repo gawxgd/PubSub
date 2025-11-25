@@ -11,8 +11,8 @@
       - "9096:9096"  # Expose the TCP server port
       - "5001:5001" # for ASP.NET Core (SignalR)
     environment:
-      - MessageBrokerEnv_Port=9096
-      - MessageBrokerEnv_Address=0.0.0.0  # Listen on all interfaces in container
+      - MessageBrokerEnv_Server__Port=9096
+      - MessageBrokerEnv_Server__Address=0.0.0.0  # Listen on all interfaces in container
       # - MessageBrokerEnv_Logger__BaseUrl=http://logger:8080
     networks:
       - pubsub-network
