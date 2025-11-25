@@ -15,8 +15,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../MessageBroker/MessageBroker.csproj" />
-    <ProjectReference Include="../LoggerLib/LoggerLib.csproj" />
+    <ProjectReference Include="../../src/MessageBroker.csproj" />
+    <ProjectReference Include="../../../LoggerLib/LoggerLib.csproj" />
   </ItemGroup>
 
 </Project>

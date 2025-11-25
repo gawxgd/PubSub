@@ -20,8 +20,9 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\MessageBroker\MessageBroker.csproj"/>
-        <ProjectReference Include="..\Publisher\Publisher.csproj"/>
+        <ProjectReference Include="..\..\src\MessageBroker.csproj"/>
+        <ProjectReference Include="..\..\..\Publisher\Publisher.csproj"/>
+        <ProjectReference Include="..\..\..\LoggerLib\LoggerLib.csproj"/>
     </ItemGroup>
 
 </Project>

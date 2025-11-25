@@ -1,15 +1,16 @@
 ﻿FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
 WORKDIR /app
 EXPOSE 9096
+EXPOSE 5001
 
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["MessageBroker/MessageBroker.csproj", "MessageBroker/"]
+COPY ["MessageBroker/src/MessageBroker.csproj", "MessageBroker/src/"]
 COPY ["LoggerLib/LoggerLib.csproj", "LoggerLib/"]
-RUN dotnet restore "MessageBroker/MessageBroker.csproj"
+RUN dotnet restore "MessageBroker/src/MessageBroker.csproj"
 COPY . .
-WORKDIR "/src/MessageBroker"
+WORKDIR "/src/MessageBroker/src"
 RUN dotnet build "MessageBroker.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 FROM build AS publish
