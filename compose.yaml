@@ -4,29 +4,29 @@
     platform: linux/amd64
     build:
       context: .
-      dockerfile: MessageBroker/Dockerfile
+      dockerfile: MessageBroker/src/Dockerfile
       platforms:
         - linux/amd64
     ports:
       - "9096:9096"  # Expose the TCP server port
-      - "5000:5000" # for ASP.NET Core (SignalR)
+      - "5001:5001" # for ASP.NET Core (SignalR)
     environment:
-      - MessageBrokerEnv_Port=9096
-      - MessageBrokerEnv_Address=0.0.0.0  # Listen on all interfaces in container
+      - MessageBrokerEnv_Server__Port=9096
+      - MessageBrokerEnv_Server__Address=0.0.0.0  # Listen on all interfaces in container
       # - MessageBrokerEnv_Logger__BaseUrl=http://logger:8080
     networks:
       - pubsub-network
     restart: unless-stopped
-
-#  logger-frontend:
-#    image: nginx:alpine
-#    volumes:
-#      - ./LoggerFrontend:/usr/share/nginx/html:ro
-#    ports:
-#      - "8088:80"
-#    networks:
-#      - pubsub-network
-#    restart: unless-stopped
+  
+  #  logger-frontend:
+  #    image: nginx:alpine
+  #    volumes:
+  #      - ./LoggerFrontend:/usr/share/nginx/html:ro
+  #    ports:
+  #      - "8088:80"
+  #    networks:
+  #      - pubsub-network
+  #    restart: unless-stopped
 
   pubsubdemo:
     image: pubsubdemo
