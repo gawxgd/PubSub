@@ -21,41 +21,30 @@ Feature: Publisher and Subscriber Communication
             | Max Retry Attempts  | 3              |
         When the publisher sends message "Hello World" to topic "test-topic"
         Then a subscriber receives message "Hello World" from topic "test-topic"
-    
-    Scenario: Publisher sends message with custom queue size
+
+    Scenario: Ordered delivery per partition
         Given a publisher is configured with the following options:
             | Setting             | Value          |
-            | Topic               | test-topic     |
-            | Broker              | 127.0.0.1:9096 |
-            | Queue Size          | 5000           |
-            | Max Retry Attempts  | 3              |
-            | Max Send Attempts   | 3              |
-        And a subscriber is configured with the following options:
-            | Setting             | Value          |
-            | Topic               | test-topic     |
-            | Broker              | 127.0.0.1:9096 |
-            | Min Message Length  | 1              |
-            | Max Message Length  | 1024           |
-            | Poll Interval       | 100            |
-            | Max Retry Attempts  | 3              |
-        When the publisher sends message "Custom Config" to topic "test-topic"
-        Then a subscriber receives message "Custom Config" from topic "test-topic"
-    
-    Scenario: Communication with custom broker and retry attempts
-        Given a publisher is configured with the following options:
-            | Setting             | Value          |
-            | Topic               | custom-topic   |
+            | Topic               | payments       |
             | Broker              | 127.0.0.1:9096 |
             | Queue Size          | 1000           |
-            | Max Retry Attempts  | 5              |
+            | Max Retry Attempts  | 3              |
             | Max Send Attempts   | 3              |
         And a subscriber is configured with the following options:
             | Setting             | Value          |
-            | Topic               | custom-topic   |
+            | Topic               | payments       |
             | Broker              | 127.0.0.1:9096 |
             | Min Message Length  | 1              |
             | Max Message Length  | 1024           |
             | Poll Interval       | 100            |
             | Max Retry Attempts  | 3              |
-        When the publisher sends message "Configured Message" to topic "custom-topic"
-        Then a subscriber receives message "Configured Message" from topic "custom-topic"
+        When the publisher sends messages in order:
+            | Message |
+            | p1      |
+            | p2      |
+            | p3      |
+        Then the subscriber receives messages in order:
+            | Message |
+            | p1      |
+            | p2      |
+            | p3      |
