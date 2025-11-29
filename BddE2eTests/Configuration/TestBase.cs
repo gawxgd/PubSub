@@ -16,3 +16,4 @@ public class TestBase
         AutoLoggerFactory.Initialize(logger);
     }
 }
+
