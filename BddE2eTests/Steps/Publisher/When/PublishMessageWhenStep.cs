@@ -12,14 +12,26 @@ public class PublishMessageWhenStep(ScenarioContext scenarioContext)
     [When(@"the publisher sends message ""(.*)"" to topic ""(.*)""")]
     public async Task WhenThePublisherSendsMessageToTopic(string message, string topic)
     {
-        var publisher = _context.Publisher;
-        
-        var messageBytes = Encoding.UTF8.GetBytes(message);
-        
-        await publisher.PublishAsync(messageBytes);
+        await PublishSingleMessage(message);
         
         _context.SentMessage = message;
         _context.Topic = topic;
     }
-}
 
+    [When(@"the publisher sends messages in order:")]
+    public async Task WhenThePublisherSendsMessagesInOrder(Table table)
+    {
+        foreach (var row in table.Rows)
+        {
+            var message = row["Message"];
+            await PublishSingleMessage(message);
+        }
+    }
+
+    private async Task PublishSingleMessage(string message)
+    {
+        var publisher = _context.Publisher;
+        var messageBytes = Encoding.UTF8.GetBytes(message);
+        await publisher.PublishAsync(messageBytes);
+    }
+}

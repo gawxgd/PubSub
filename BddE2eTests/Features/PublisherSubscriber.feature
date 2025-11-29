@@ -25,14 +25,14 @@ Feature: Publisher and Subscriber Communication
     Scenario: Ordered delivery per partition
         Given a publisher is configured with the following options:
             | Setting             | Value          |
-            | Topic               | payments       |
+            | Topic               | test-topic     |
             | Broker              | 127.0.0.1:9096 |
             | Queue Size          | 1000           |
             | Max Retry Attempts  | 3              |
             | Max Send Attempts   | 3              |
         And a subscriber is configured with the following options:
             | Setting             | Value          |
-            | Topic               | payments       |
+            | Topic               | test-topic     |
             | Broker              | 127.0.0.1:9096 |
             | Min Message Length  | 1              |
             | Max Message Length  | 1024           |

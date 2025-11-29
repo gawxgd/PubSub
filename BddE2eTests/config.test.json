@@ -27,12 +27,6 @@
       "BaseOffset": 0,
       "FlushIntervalMs": 100,
       "Directory": null
-    },
-    {
-      "Name": "payments",
-      "BaseOffset": 0,
-      "FlushIntervalMs": 100,
-      "Directory": null
     }
   ]
 }
