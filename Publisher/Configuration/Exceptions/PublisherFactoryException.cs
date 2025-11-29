@@ -6,6 +6,7 @@ public enum PublisherFactoryErrorCode
     UnsupportedScheme,
     InvalidPort,
     QueueSizeExceeded,
+    InvalidTopic,
     Unknown
 }
 

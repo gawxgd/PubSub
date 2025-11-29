@@ -15,12 +15,12 @@ public sealed class PublisherFactory : IPublisherFactory
 
     public IPublisher CreatePublisher(PublisherOptions options)
     {
-        var (host, port, maxQueueSize, maxSendAttempts, maxRetryAttempts) = ValidateOptions(options);
+        var (host, port, topic, maxQueueSize, maxSendAttempts, maxRetryAttempts) = ValidateOptions(options);
 
-        return new TcpPublisher(host, port, maxQueueSize, maxSendAttempts, maxRetryAttempts);
+        return new TcpPublisher(host, port, topic, maxQueueSize, maxSendAttempts, maxRetryAttempts);
     }
 
-    private static (string host, int port, uint maxQueueSize, uint maxSendAttempts, uint maxRetryAttempts)
+    private static (string host, int port, string topic, uint maxQueueSize, uint maxSendAttempts, uint maxRetryAttempts)
         ValidateOptions(PublisherOptions options)
     {
         var connectionUri = options.MessageBrokerConnectionUri;
@@ -53,7 +53,14 @@ public sealed class PublisherFactory : IPublisherFactory
                 PublisherFactoryErrorCode.QueueSizeExceeded);
         }
 
-        return (connectionUri.Host, connectionUri.Port, options.MaxPublisherQueueSize, options.MaxSendAttempts,
+        if (string.IsNullOrWhiteSpace(options.Topic))
+        {
+            throw new PublisherFactoryException(
+                "Topic cannot be null or empty.",
+                PublisherFactoryErrorCode.InvalidTopic);
+        }
+
+        return (connectionUri.Host, connectionUri.Port, options.Topic, options.MaxPublisherQueueSize, options.MaxSendAttempts,
             options.MaxRetryAttempts);
     }
 }

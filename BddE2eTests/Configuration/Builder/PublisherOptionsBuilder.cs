@@ -13,6 +13,7 @@ public class PublisherOptionsBuilder
     
     private string _brokerHost = DefaultBrokerHost;
     private int _brokerPort = DefaultBrokerPort;
+    private string _topic = string.Empty;
     private uint _maxPublisherQueueSize = DefaultMaxPublisherQueueSize;
     private uint _maxSendAttempts = DefaultMaxSendAttempts;
     private uint _maxRetryAttempts = DefaultMaxRetryAttempts;
@@ -26,6 +27,12 @@ public class PublisherOptionsBuilder
     public PublisherOptionsBuilder WithBrokerPort(int port)
     {
         _brokerPort = port;
+        return this;
+    }
+
+    public PublisherOptionsBuilder WithTopic(string topic)
+    {
+        _topic = topic;
         return this;
     }
 
@@ -51,6 +58,7 @@ public class PublisherOptionsBuilder
     {
         return new PublisherOptions(
             MessageBrokerConnectionUri: new Uri($"{UriScheme}://{_brokerHost}:{_brokerPort}"),
+            Topic: _topic,
             MaxPublisherQueueSize: _maxPublisherQueueSize,
             MaxSendAttempts: _maxSendAttempts,
             MaxRetryAttempts: _maxRetryAttempts

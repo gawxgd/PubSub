@@ -1,3 +1,4 @@
+using System.Text;
 using System.Threading.Channels;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
@@ -7,11 +8,13 @@ using Publisher.Outbound.Exceptions;
 
 namespace Publisher.Outbound.Adapter;
 
-public sealed class TcpPublisher(string host, int port, uint maxSendAttempts, uint maxQueueSize, uint maxRetryAttempts)
+public sealed class TcpPublisher(string host, int port, string topic, uint maxSendAttempts, uint maxQueueSize, uint maxRetryAttempts)
     : IPublisher, IAsyncDisposable
 {
     private static readonly IAutoLogger Logger =  AutoLoggerFactory.CreateLogger<TcpPublisher>(LogSource.Publisher);
     private static readonly TimeSpan BaseRetryDelay = TimeSpan.FromSeconds(1);
+    private const char TopicSeparator = ':';
+    private const char MessageTerminator = '\n';
     private readonly CancellationTokenSource _cancellationTokenSource = new();
 
     private readonly Channel<byte[]> _channel = Channel.CreateBounded<byte[]>(
@@ -102,7 +105,12 @@ public sealed class TcpPublisher(string host, int port, uint maxSendAttempts, ui
 
     public async Task PublishAsync(byte[] message)
     {
-        await _channel.Writer.WriteAsync(message, _cancellationTokenSource.Token);
+        var messageText = Encoding.UTF8.GetString(message);
+        var formattedMessage = $"{topic}{TopicSeparator}{messageText}{MessageTerminator}";
+        var messageBytes = Encoding.UTF8.GetBytes(formattedMessage);
+        //ToDo change after serialization deserialization
+        
+        await _channel.Writer.WriteAsync(messageBytes, _cancellationTokenSource.Token);
     }
 
     private async Task SafeDisconnectPublisher()

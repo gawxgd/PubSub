@@ -33,6 +33,7 @@ public class ConfigurePublisherGivenStep(ScenarioContext scenarioContext)
             {
                 case TopicSetting:
                     topic = value;
+                    builder.WithTopic(value);
                     break;
                 case BrokerSetting:
                     var brokerParts = value.Split(BrokerSeparator);
