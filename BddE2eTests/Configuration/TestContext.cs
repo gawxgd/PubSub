@@ -1,13 +1,12 @@
 using System.Threading.Channels;
-using BddE2eTests.Configuration;
 using BddE2eTests.Configuration.Builder;
 using Publisher.Domain.Port;
 using Reqnroll;
 using Subscriber.Domain;
 
-namespace BddE2eTests.Steps;
+namespace BddE2eTests.Configuration;
 
-public class TestContext(ScenarioContext scenarioContext)
+public class ScenarioTestContext(ScenarioContext scenarioContext)
 {
     private const string PublisherKey = "Publisher";
     private const string SubscriberKey = "Subscriber";
