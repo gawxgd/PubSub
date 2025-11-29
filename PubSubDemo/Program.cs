@@ -47,6 +47,7 @@ try
     await using var publisher = new TcpPublisher(
         brokerOptions.Host,
         brokerOptions.Port,
+        "demo-topic",
         brokerOptions.MaxQueueSize, 5, 5);
 
     // Create publishing service

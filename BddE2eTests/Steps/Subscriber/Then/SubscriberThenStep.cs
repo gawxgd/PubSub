@@ -1,14 +1,12 @@
-using System.Threading.Channels;
-using NUnit.Framework;
 using Reqnroll;
-using Subscriber.Domain;
+using BddE2eTests.Configuration;
 
 namespace BddE2eTests.Steps.Subscriber.Then;
 
 [Binding]
 public class SubscriberThenStep(ScenarioContext scenarioContext)
 {
-    private readonly TestContext _context = new(scenarioContext);
+    private readonly ScenarioTestContext _context = new(scenarioContext);
 
     [Then(@"a subscriber receives message ""(.*)"" from topic ""(.*)""")]
     public async Task ThenASubscriberReceivesMessageFromTopic(string expectedMessage, string topic)

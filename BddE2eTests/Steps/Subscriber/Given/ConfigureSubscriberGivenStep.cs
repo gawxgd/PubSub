@@ -1,6 +1,7 @@
 using System.Threading.Channels;
 using Reqnroll;
 using Subscriber.Configuration;
+using BddE2eTests.Configuration;
 
 namespace BddE2eTests.Steps.Subscriber.Given;
 
@@ -19,7 +20,7 @@ public class ConfigureSubscriberGivenStep(ScenarioContext scenarioContext)
     private const string TopicRequiredError = "Topic must be specified in the configuration table";
     private const int ConnectionEstablishmentDelayMs = 500;
 
-    private readonly TestContext _context = new(scenarioContext);
+    private readonly ScenarioTestContext _context = new(scenarioContext);
 
     [Given(@"a subscriber is configured with the following options:")]
     public async Task GivenASubscriberIsConfiguredWithTheFollowingOptions(Table table)

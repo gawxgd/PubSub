@@ -1,5 +1,6 @@
 using System.Text;
 using Reqnroll;
+using BddE2eTests.Configuration;
 
 namespace BddE2eTests.Steps.Publisher.When;
 
@@ -8,7 +9,7 @@ public class PublishMessageWhenStep(ScenarioContext scenarioContext)
 {
     private const int MessageProcessingDelayMs = 500;
     
-    private readonly TestContext _context = new(scenarioContext);
+    private readonly ScenarioTestContext _context = new(scenarioContext);
 
     [When(@"the publisher sends message ""(.*)"" to topic ""(.*)""")]
     public async Task WhenThePublisherSendsMessageToTopic(string message, string topic)

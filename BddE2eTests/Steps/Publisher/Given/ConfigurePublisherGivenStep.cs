@@ -1,5 +1,6 @@
 using Reqnroll;
 using Publisher.Configuration;
+using BddE2eTests.Configuration;
 
 namespace BddE2eTests.Steps.Publisher.Given;
 
@@ -16,7 +17,7 @@ public class ConfigurePublisherGivenStep(ScenarioContext scenarioContext)
     private const char BrokerSeparator = ':';
     private const string TopicRequiredError = "Topic must be specified in the configuration table";
 
-    private readonly TestContext _context = new(scenarioContext);
+    private readonly ScenarioTestContext _context = new(scenarioContext);
 
     [Given(@"a publisher is configured with the following options:")]
     public async Task GivenAPublisherIsConfiguredWithTheFollowingOptions(Table table)

@@ -114,7 +114,7 @@ public class TcpServerChaosTests
             {
                 try
                 {
-                    var publisher = new TcpPublisher(hostAddress, port, 1000, 3, 5);
+                    var publisher = new TcpPublisher(hostAddress, port, "topic", 1000, 3, 5);
                     await publisher.CreateConnection();
                     publishers.Add(publisher);
 
@@ -169,7 +169,7 @@ public class TcpServerChaosTests
             await Task.WhenAll(chaosTasks);
 
             // Server should survive chaos
-            await using var testPublisher = new TcpPublisher(hostAddress, port, 1000, 3, 5);
+            await using var testPublisher = new TcpPublisher(hostAddress, port, "test-topic", 1000, 3, 5);
             await testPublisher.CreateConnection();
             await testPublisher.PublishAsync(Encoding.UTF8.GetBytes("Test after chaos"));
             await Task.Delay(100);
@@ -214,7 +214,7 @@ public class TcpServerChaosTests
                 {
                     try
                     {
-                        var publisher = new TcpPublisher(hostAddress, port, 1000, 3, 5);
+                        var publisher = new TcpPublisher(hostAddress, port, "storm-topic", 1000, 3, 5);
                         await publisher.CreateConnection();
                         publishers.Add(publisher);
 
@@ -242,7 +242,7 @@ public class TcpServerChaosTests
             await Task.Delay(2000); // Allow processing time
 
             // Server should still be functional
-            await using var testPublisher = new TcpPublisher(hostAddress, port, 1000, 3, 5);
+            await using var testPublisher = new TcpPublisher(hostAddress, port, "storm-topic", 1000, 3, 5);
             await testPublisher.CreateConnection();
             await testPublisher.PublishAsync(Encoding.UTF8.GetBytes("Test after storm"));
             await Task.Delay(100);
@@ -282,7 +282,7 @@ public class TcpServerChaosTests
             // Create multiple publishers flooding the server with messages
             for (var i = 0; i < 10; i++)
             {
-                var publisher = new TcpPublisher(hostAddress, port, 10000, 3, 5);
+                var publisher = new TcpPublisher(hostAddress, port, "flood-topic", 10000, 3, 5);
                 await publisher.CreateConnection();
                 publishers.Add(publisher);
 
@@ -308,7 +308,7 @@ public class TcpServerChaosTests
             await Task.Delay(3000); // Allow processing time
 
             // Server should still be functional
-            await using var testPublisher = new TcpPublisher(hostAddress, port, 1000, 3, 5);
+            await using var testPublisher = new TcpPublisher(hostAddress, port, "flood-topic", 1000, 3, 5);
             await testPublisher.CreateConnection();
             await testPublisher.PublishAsync(Encoding.UTF8.GetBytes("Test after flood"));
             await Task.Delay(100);

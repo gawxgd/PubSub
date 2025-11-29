@@ -1,9 +1,8 @@
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
 using NSubstitute;
-using NUnit.Framework;
 
-namespace BddE2eTests.Steps;
+namespace BddE2eTests.Configuration;
 
 [SetUpFixture]
 public class TestBase

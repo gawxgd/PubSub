@@ -386,7 +386,7 @@ public class TcpServerEdgeCasesE2ETests
         await host.StartAsync();
         await Task.Delay(500);
 
-        var publisher = new TcpPublisher(HostAddress, port, 1000, 3, 5);
+        var publisher = new TcpPublisher(HostAddress, port, "test-topic", 1000, 3, 5);
         await publisher.CreateConnection();
 
         // Send some messages
@@ -401,7 +401,7 @@ public class TcpServerEdgeCasesE2ETests
         await Task.Delay(500);
 
         // Server should still be running and accept new connections
-        await using var newPublisher = new TcpPublisher(HostAddress, port, 1000, 3, 5);
+        await using var newPublisher = new TcpPublisher(HostAddress, port, "test-topic", 1000, 3, 5);
         await newPublisher.CreateConnection();
         await newPublisher.PublishAsync(Encoding.UTF8.GetBytes("New publisher message"));
         await Task.Delay(100);
@@ -417,7 +417,7 @@ public class TcpServerEdgeCasesE2ETests
         await host.StartAsync();
         await Task.Delay(500);
 
-        await using var publisher = new TcpPublisher(HostAddress, port, 10000, 3, 5);
+        await using var publisher = new TcpPublisher(HostAddress, port, "test-topic", 10000, 3, 5);
         await publisher.CreateConnection();
 
         // Send large message (1MB)
@@ -442,7 +442,7 @@ public class TcpServerEdgeCasesE2ETests
         await host.StartAsync();
         await Task.Delay(500);
 
-        await using var publisher = new TcpPublisher(HostAddress, port, 10000, 3, 5);
+        await using var publisher = new TcpPublisher(HostAddress, port, "test-topic", 10000, 3, 5);
         await publisher.CreateConnection();
 
         var messageCount = 200;
@@ -477,7 +477,7 @@ public class TcpServerEdgeCasesE2ETests
         // Try to connect publisher during shutdown
         var exception = await Record.ExceptionAsync(async () =>
         {
-            await using var publisher = new TcpPublisher(HostAddress, port, 1000, 3, 5);
+            await using var publisher = new TcpPublisher(HostAddress, port, "test-topic", 1000, 3, 5);
             await publisher.CreateConnection();
         });
 
@@ -499,7 +499,7 @@ public class TcpServerEdgeCasesE2ETests
         await host.StartAsync();
         await Task.Delay(500);
 
-        await using var publisher = new TcpPublisher(HostAddress, port, 1000, 3, 5);
+        await using var publisher = new TcpPublisher(HostAddress, port, "test-topic", 1000, 3, 5);
         await publisher.CreateConnection();
 
         // Binary data with nulls
@@ -525,7 +525,7 @@ public class TcpServerEdgeCasesE2ETests
         await host.StartAsync();
         await Task.Delay(500);
 
-        await using var publisher = new TcpPublisher(HostAddress, port, 1000, 3, 5);
+        await using var publisher = new TcpPublisher(HostAddress, port, "test-topic", 1000, 3, 5);
         await publisher.CreateConnection();
         await publisher.PublishAsync(Encoding.UTF8.GetBytes("Before restart"));
         await Task.Delay(100);
