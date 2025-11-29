@@ -1,5 +1,5 @@
-using Reqnroll;
 using BddE2eTests.Configuration;
+using Reqnroll;
 
 namespace BddE2eTests.Steps.Subscriber.Then;
 
@@ -12,16 +12,16 @@ public class SubscriberThenStep(ScenarioContext scenarioContext)
     public async Task ThenASubscriberReceivesMessageFromTopic(string expectedMessage, string topic)
     {
         var receivedMessages = _context.ReceivedMessages;
-        
+
         await Task.Delay(1000);
-        
+
         var timeout = TimeSpan.FromSeconds(5);
         var cts = new CancellationTokenSource(timeout);
-        
+
         try
         {
             var received = await receivedMessages.Reader.ReadAsync(cts.Token);
-            Assert.That(received, Is.EqualTo(expectedMessage), 
+            Assert.That(received, Is.EqualTo(expectedMessage),
                 $"Expected to receive '{expectedMessage}' but got '{received}'");
         }
         catch (OperationCanceledException)
@@ -33,7 +33,7 @@ public class SubscriberThenStep(ScenarioContext scenarioContext)
     [AfterScenario]
     public async Task Cleanup()
     {
-        if (_context.TryGetSubscriber(out var subscriber) 
+        if (_context.TryGetSubscriber(out var subscriber)
             && subscriber is IAsyncDisposable subscriberDisposable)
         {
             await subscriberDisposable.DisposeAsync();
@@ -45,6 +45,3 @@ public class SubscriberThenStep(ScenarioContext scenarioContext)
         }
     }
 }
-
-
-
