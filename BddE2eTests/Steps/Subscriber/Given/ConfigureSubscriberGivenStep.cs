@@ -18,7 +18,6 @@ public class ConfigureSubscriberGivenStep(ScenarioContext scenarioContext)
     private const string MaxRetryAttemptsSetting = "max retry attempts";
     private const char BrokerSeparator = ':';
     private const string TopicRequiredError = "Topic must be specified in the configuration table";
-    private const int ConnectionEstablishmentDelayMs = 500;
 
     private readonly ScenarioTestContext _context = new(scenarioContext);
 
@@ -67,6 +66,8 @@ public class ConfigureSubscriberGivenStep(ScenarioContext scenarioContext)
         }
 
         var receivedMessages = Channel.CreateUnbounded<string>();
+        var connectionReadySignal = _context.ConnectionReadySignal;
+        var messageReceivedSignal = _context.MessageReceivedSignal;
         
         var subscriberOptions = builder
             .WithTopic(topic)
@@ -76,6 +77,7 @@ public class ConfigureSubscriberGivenStep(ScenarioContext scenarioContext)
         var subscriber = subscriberFactory.CreateSubscriber(subscriberOptions, async (message) =>
         {
             await receivedMessages.Writer.WriteAsync(message);
+            messageReceivedSignal.TrySetResult(message);
         });
 
         await subscriber.StartConnectionAsync();
@@ -83,12 +85,15 @@ public class ConfigureSubscriberGivenStep(ScenarioContext scenarioContext)
         // Start processing messages in background
         _ = Task.Run(async () => await subscriber.StartMessageProcessingAsync());
         
-        // Give time for connection to establish
-        await Task.Delay(ConnectionEstablishmentDelayMs);
+        // Signal that connection is ready
+        connectionReadySignal.SetResult();
 
         _context.Subscriber = subscriber;
         _context.ReceivedMessages = receivedMessages;
         _context.Topic = topic;
+        
+        // Wait for connection to be established
+        await connectionReadySignal.Task;
     }
 }
 

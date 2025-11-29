@@ -7,8 +7,6 @@ namespace BddE2eTests.Steps.Publisher.When;
 [Binding]
 public class PublishMessageWhenStep(ScenarioContext scenarioContext)
 {
-    private const int MessageProcessingDelayMs = 500;
-    
     private readonly ScenarioTestContext _context = new(scenarioContext);
 
     [When(@"the publisher sends message ""(.*)"" to topic ""(.*)""")]
@@ -22,9 +20,6 @@ public class PublishMessageWhenStep(ScenarioContext scenarioContext)
         
         _context.SentMessage = message;
         _context.Topic = topic;
-        
-        // Give some time for message to be processed
-        await Task.Delay(MessageProcessingDelayMs);
     }
 }
 

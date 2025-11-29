@@ -107,17 +107,17 @@ namespace BddE2eTests.Features
         
         private static global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages InitializeCucumberMessages()
         {
-            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/PublisherSubscriber.feature.ndjson", 3);
+            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/PublisherSubscriber.feature.ndjson", 5);
         }
         
         [global::NUnit.Framework.TestAttribute()]
-        [global::NUnit.Framework.DescriptionAttribute("Publisher sends message and subscriber receives it")]
-        public async global::System.Threading.Tasks.Task PublisherSendsMessageAndSubscriberReceivesIt()
+        [global::NUnit.Framework.DescriptionAttribute("Publisher sends message and subscriber receives it with default configuration")]
+        public async global::System.Threading.Tasks.Task PublisherSendsMessageAndSubscriberReceivesItWithDefaultConfiguration()
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
             string pickleIndex = "0";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Publisher sends message and subscriber receives it", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Publisher sends message and subscriber receives it with default configuration", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
 #line 6
@@ -130,11 +130,206 @@ namespace BddE2eTests.Features
             else
             {
                 await this.ScenarioStartAsync();
+                global::Reqnroll.Table table1 = new global::Reqnroll.Table(new string[] {
+                            "Setting",
+                            "Value"});
+                table1.AddRow(new string[] {
+                            "Topic",
+                            "test-topic"});
+                table1.AddRow(new string[] {
+                            "Broker",
+                            "127.0.0.1:9096"});
+                table1.AddRow(new string[] {
+                            "Queue Size",
+                            "1000"});
+                table1.AddRow(new string[] {
+                            "Max Retry Attempts",
+                            "3"});
+                table1.AddRow(new string[] {
+                            "Max Send Attempts",
+                            "3"});
 #line 7
-        await testRunner.GivenAsync("a publisher sends message \"Hello World\" to topic \"test-topic\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+        await testRunner.GivenAsync("a publisher is configured with the following options:", ((string)(null)), table1, "Given ");
 #line hidden
-#line 8
+                global::Reqnroll.Table table2 = new global::Reqnroll.Table(new string[] {
+                            "Setting",
+                            "Value"});
+                table2.AddRow(new string[] {
+                            "Topic",
+                            "test-topic"});
+                table2.AddRow(new string[] {
+                            "Broker",
+                            "127.0.0.1:9096"});
+                table2.AddRow(new string[] {
+                            "Min Message Length",
+                            "1"});
+                table2.AddRow(new string[] {
+                            "Max Message Length",
+                            "1024"});
+                table2.AddRow(new string[] {
+                            "Poll Interval",
+                            "100"});
+                table2.AddRow(new string[] {
+                            "Max Retry Attempts",
+                            "3"});
+#line 14
+        await testRunner.AndAsync("a subscriber is configured with the following options:", ((string)(null)), table2, "And ");
+#line hidden
+#line 22
+        await testRunner.WhenAsync("the publisher sends message \"Hello World\" to topic \"test-topic\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 23
         await testRunner.ThenAsync("a subscriber receives message \"Hello World\" from topic \"test-topic\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::NUnit.Framework.TestAttribute()]
+        [global::NUnit.Framework.DescriptionAttribute("Publisher sends message with custom queue size")]
+        public async global::System.Threading.Tasks.Task PublisherSendsMessageWithCustomQueueSize()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "1";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Publisher sends message with custom queue size", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 25
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+                global::Reqnroll.Table table3 = new global::Reqnroll.Table(new string[] {
+                            "Setting",
+                            "Value"});
+                table3.AddRow(new string[] {
+                            "Topic",
+                            "test-topic"});
+                table3.AddRow(new string[] {
+                            "Broker",
+                            "127.0.0.1:9096"});
+                table3.AddRow(new string[] {
+                            "Queue Size",
+                            "5000"});
+                table3.AddRow(new string[] {
+                            "Max Retry Attempts",
+                            "3"});
+                table3.AddRow(new string[] {
+                            "Max Send Attempts",
+                            "3"});
+#line 26
+        await testRunner.GivenAsync("a publisher is configured with the following options:", ((string)(null)), table3, "Given ");
+#line hidden
+                global::Reqnroll.Table table4 = new global::Reqnroll.Table(new string[] {
+                            "Setting",
+                            "Value"});
+                table4.AddRow(new string[] {
+                            "Topic",
+                            "test-topic"});
+                table4.AddRow(new string[] {
+                            "Broker",
+                            "127.0.0.1:9096"});
+                table4.AddRow(new string[] {
+                            "Min Message Length",
+                            "1"});
+                table4.AddRow(new string[] {
+                            "Max Message Length",
+                            "1024"});
+                table4.AddRow(new string[] {
+                            "Poll Interval",
+                            "100"});
+                table4.AddRow(new string[] {
+                            "Max Retry Attempts",
+                            "3"});
+#line 33
+        await testRunner.AndAsync("a subscriber is configured with the following options:", ((string)(null)), table4, "And ");
+#line hidden
+#line 41
+        await testRunner.WhenAsync("the publisher sends message \"Custom Config\" to topic \"test-topic\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 42
+        await testRunner.ThenAsync("a subscriber receives message \"Custom Config\" from topic \"test-topic\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::NUnit.Framework.TestAttribute()]
+        [global::NUnit.Framework.DescriptionAttribute("Communication with custom broker and retry attempts")]
+        public async global::System.Threading.Tasks.Task CommunicationWithCustomBrokerAndRetryAttempts()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "2";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Communication with custom broker and retry attempts", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 44
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+                global::Reqnroll.Table table5 = new global::Reqnroll.Table(new string[] {
+                            "Setting",
+                            "Value"});
+                table5.AddRow(new string[] {
+                            "Topic",
+                            "custom-topic"});
+                table5.AddRow(new string[] {
+                            "Broker",
+                            "127.0.0.1:9096"});
+                table5.AddRow(new string[] {
+                            "Queue Size",
+                            "1000"});
+                table5.AddRow(new string[] {
+                            "Max Retry Attempts",
+                            "5"});
+                table5.AddRow(new string[] {
+                            "Max Send Attempts",
+                            "3"});
+#line 45
+        await testRunner.GivenAsync("a publisher is configured with the following options:", ((string)(null)), table5, "Given ");
+#line hidden
+                global::Reqnroll.Table table6 = new global::Reqnroll.Table(new string[] {
+                            "Setting",
+                            "Value"});
+                table6.AddRow(new string[] {
+                            "Topic",
+                            "custom-topic"});
+                table6.AddRow(new string[] {
+                            "Broker",
+                            "127.0.0.1:9096"});
+                table6.AddRow(new string[] {
+                            "Min Message Length",
+                            "1"});
+                table6.AddRow(new string[] {
+                            "Max Message Length",
+                            "1024"});
+                table6.AddRow(new string[] {
+                            "Poll Interval",
+                            "100"});
+                table6.AddRow(new string[] {
+                            "Max Retry Attempts",
+                            "3"});
+#line 52
+        await testRunner.AndAsync("a subscriber is configured with the following options:", ((string)(null)), table6, "And ");
+#line hidden
+#line 60
+        await testRunner.WhenAsync("the publisher sends message \"Configured Message\" to topic \"custom-topic\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 61
+        await testRunner.ThenAsync("a subscriber receives message \"Configured Message\" from topic \"custom-topic\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
