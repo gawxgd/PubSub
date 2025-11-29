@@ -13,23 +13,19 @@ public class SubscriberThenStep(ScenarioContext scenarioContext)
     [Then(@"a subscriber receives message ""(.*)"" from topic ""(.*)""")]
     public async Task ThenASubscriberReceivesMessageFromTopic(string expectedMessage, string topic)
     {
-        var messageReceivedSignal = _context.MessageReceivedSignal;
+        var receivedMessages = _context.ReceivedMessages;
         
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(TimeoutSeconds));
         
         try
         {
-            var received = await messageReceivedSignal.Task.WaitAsync(cts.Token);
+            var received = await receivedMessages.Reader.ReadAsync(cts.Token);
             Assert.That(received, Is.EqualTo(expectedMessage),
                 $"Expected to receive '{expectedMessage}' but got '{received}'");
         }
-        catch (TimeoutException)
-        {
-            Assert.Fail($"Timeout after {TimeoutSeconds}s waiting for message. Expected: '{expectedMessage}'");
-        }
         catch (OperationCanceledException)
         {
-            Assert.Fail($"Operation canceled while waiting for message. Expected: '{expectedMessage}'");
+            Assert.Fail($"Timeout after {TimeoutSeconds}s waiting for message. Expected: '{expectedMessage}'");
         }
     }
 

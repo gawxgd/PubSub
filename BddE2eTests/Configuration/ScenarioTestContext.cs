@@ -15,8 +15,6 @@ public class ScenarioTestContext(ScenarioContext scenarioContext)
     private const string SentMessageKey = "SentMessage";
     private const string PublisherOptionsBuilderKey = "PublisherOptionsBuilder";
     private const string SubscriberOptionsBuilderKey = "SubscriberOptionsBuilder";
-    private const string ConnectionReadySignalKey = "ConnectionReadySignal";
-    private const string MessageReceivedSignalKey = "MessageReceivedSignal";
 
     public IPublisher Publisher
     {
@@ -46,32 +44,6 @@ public class ScenarioTestContext(ScenarioContext scenarioContext)
     {
         get => scenarioContext.Get<string>(SentMessageKey);
         set => scenarioContext.Set(value, SentMessageKey);
-    }
-
-    public TaskCompletionSource ConnectionReadySignal
-    {
-        get
-        {
-            if (!scenarioContext.TryGetValue(ConnectionReadySignalKey, out TaskCompletionSource signal))
-            {
-                signal = new TaskCompletionSource();
-                scenarioContext.Set(signal, ConnectionReadySignalKey);
-            }
-            return signal;
-        }
-    }
-
-    public TaskCompletionSource<string> MessageReceivedSignal
-    {
-        get
-        {
-            if (!scenarioContext.TryGetValue(MessageReceivedSignalKey, out TaskCompletionSource<string> signal))
-            {
-                signal = new TaskCompletionSource<string>();
-                scenarioContext.Set(signal, MessageReceivedSignalKey);
-            }
-            return signal;
-        }
     }
 
     public bool TryGetPublisher(out IPublisher? publisher)

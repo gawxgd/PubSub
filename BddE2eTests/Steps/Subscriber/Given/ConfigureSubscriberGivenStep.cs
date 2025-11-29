@@ -42,8 +42,9 @@ public class ConfigureSubscriberGivenStep(ScenarioContext scenarioContext)
                     if (brokerParts.Length == 2)
                     {
                         builder.WithBrokerHost(brokerParts[0])
-                               .WithBrokerPort(int.Parse(brokerParts[1]));
+                            .WithBrokerPort(int.Parse(brokerParts[1]));
                     }
+
                     break;
                 case MinMessageLengthSetting:
                     builder.WithMinMessageLength(int.Parse(value));
@@ -66,34 +67,26 @@ public class ConfigureSubscriberGivenStep(ScenarioContext scenarioContext)
         }
 
         var receivedMessages = Channel.CreateUnbounded<string>();
-        var connectionReadySignal = _context.ConnectionReadySignal;
-        var messageReceivedSignal = _context.MessageReceivedSignal;
-        
+        var connectionReady = new TaskCompletionSource();
+
         var subscriberOptions = builder
             .WithTopic(topic)
             .Build();
 
         var subscriberFactory = new SubscriberFactory();
-        var subscriber = subscriberFactory.CreateSubscriber(subscriberOptions, async (message) =>
-        {
-            await receivedMessages.Writer.WriteAsync(message);
-            messageReceivedSignal.TrySetResult(message);
-        });
+        var subscriber = subscriberFactory.CreateSubscriber(subscriberOptions,
+            async (message) => { await receivedMessages.Writer.WriteAsync(message); });
 
         await subscriber.StartConnectionAsync();
-        
-        // Start processing messages in background
+
         _ = Task.Run(async () => await subscriber.StartMessageProcessingAsync());
-        
-        // Signal that connection is ready
-        connectionReadySignal.SetResult();
+
+        connectionReady.SetResult();
 
         _context.Subscriber = subscriber;
         _context.ReceivedMessages = receivedMessages;
         _context.Topic = topic;
-        
-        // Wait for connection to be established
-        await connectionReadySignal.Task;
+
+        await connectionReady.Task;
     }
 }
-

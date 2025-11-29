@@ -1,0 +1,33 @@
+{
+  "Server": {
+    "Port": 9096,
+    "Address": "127.0.0.1",
+    "MaxRequestSizeBytes": 512,
+    "InlineCompletions": false,
+    "SocketPolling": false,
+    "Backlog": 4096
+  },
+  "CommitLog": {
+    "MaxSegmentBytes": 1024,
+    "IndexIntervalBytes": 128,
+    "TimeIndexIntervalMs": 1000,
+    "ReaderLogBufferSize": 65536,
+    "ReaderIndexBufferSize": 8192,
+    "FileBufferSize": 4096
+  },
+  "CommitLogTopics": [
+    {
+      "Name": "test-topic",
+      "BaseOffset": 0,
+      "FlushIntervalMs": 100,
+      "Directory": null
+    },
+    {
+      "Name": "custom-topic",
+      "BaseOffset": 0,
+      "FlushIntervalMs": 100,
+      "Directory": null
+    }
+  ]
+}
+
