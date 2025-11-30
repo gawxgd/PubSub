@@ -162,5 +162,4 @@ public sealed class TcpSubscriber(
         // 5. Cleanup
         _cts.Dispose();
     }
-
 }
