@@ -92,7 +92,6 @@ public class ConnectionManager(IConnectionRepository connectionRepository, IComm
             return;
         }
 
-
         connection.Dispose();
         connectionRepository.Remove(connectionId);
         Logger.LogInfo($"Unregistered connection with ID {connectionId} after thread finished");
