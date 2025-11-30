@@ -1,116 +1,113 @@
-using System.Collections.Concurrent;
-using LoggerLib.Domain.Enums;
-using LoggerLib.Domain.Port;
-using LoggerLib.Outbound.Adapter;
+using System.Threading.Channels;
 using MessageBroker.Domain.Entities.CommitLog;
 using MessageBroker.Domain.Port.CommitLog;
 using MessageBroker.Domain.Port.CommitLog.Segment;
-using MessageBroker.Domain.Port.CommitLog.TopicSegmentManager;
 
 namespace MessageBroker.Inbound.CommitLog;
 
-public sealed class BinaryCommitLogReader : ICommitLogReader
+public class BinaryCommitLogReader: ICommitLogReader
 {
-    private static readonly IAutoLogger Logger =
-        AutoLoggerFactory.CreateLogger<BinaryCommitLogReader>(LogSource.MessageBroker);
-
+    private LogSegment? _activeSegment;
     private readonly ILogSegmentFactory _segmentFactory;
-    private readonly ITopicSegmentRegistry _segmentRegistry;
-    private ILogSegmentReader? _activeSegmentReader;
-    private ulong _currentSegmentBaseOffset;
-    private readonly ConcurrentDictionary<ulong, ILogSegmentReader> _inactiveSegmentReaders = new();
+    private readonly string _topic;
+    private ulong _currentOffset;
+    private readonly string _directory;
 
-    public BinaryCommitLogReader(ILogSegmentFactory segmentFactory, ITopicSegmentRegistry segmentRegistry)
+    public BinaryCommitLogReader(ILogSegmentFactory segmentFactory, string topic, ulong offset)
     {
+        _topic = topic;
+        _currentOffset = offset;
         _segmentFactory = segmentFactory;
-        _segmentRegistry = segmentRegistry;
-        RefreshSegmentReader();
+        _activeSegment = FindFirst(topic, offset);
+        _directory = topic;
     }
-
-    private void RefreshSegmentReader()
+    public async Task ReadAsync(Channel<byte[]> channel)
     {
-        var activeSegment = _segmentRegistry.GetActiveSegment();
-
-        if (_activeSegmentReader == null || _currentSegmentBaseOffset != activeSegment.BaseOffset)
+        await Task.CompletedTask;
+        if (_activeSegment != null)
         {
-            _activeSegmentReader?.DisposeAsync().AsTask().Wait();
-            _activeSegmentReader = _segmentFactory.CreateReader(activeSegment);
-            _currentSegmentBaseOffset = activeSegment.BaseOffset;
+            var segmentReader = _segmentFactory.CreateReader(_activeSegment);
+            if (_activeSegment.BaseOffset != _currentOffset)
+            {
+                segmentReader.ReadFromOffset(_currentOffset, channel);
+            }
+            else
+            {
+                segmentReader.ReadAll(channel);
+            }
+            // Update active segment with NextOffset from reader
+            _activeSegment = segmentReader.GetSegment();
+            _activeSegment = FindNext();
+        }
+
+        while (_activeSegment is not null)
+        {
+            var segmentReader = _segmentFactory.CreateReader(_activeSegment);
+            // read all and send to channel 
+            segmentReader.ReadAll(channel);
+            
+            // Update active segment with NextOffset from reader
+            _activeSegment = segmentReader.GetSegment();
+            _activeSegment = FindNext();
         }
     }
 
-    public LogRecord? ReadRecord(ulong offset)
+    private LogSegment? FindFirst(string topic, ulong offset)
     {
-        var batch = ReadRecordBatch(offset);
-
-        if (batch == null)
+        if (!Directory.Exists(topic))
         {
-            Logger.LogWarning($"No log segments found for {offset}");
             return null;
         }
 
-        var record = batch.Records.FirstOrDefault(r => r.Offset == offset);
+        var logFiles = Directory.GetFiles(topic, "*.log");
+        
+        ulong? maxBaseOffset = null;
+        string? selectedLogPath = null;
 
-        if (record == null)
+        foreach (var logFile in logFiles)
         {
-            Logger.LogWarning($"Batch does not contain record with {offset}");
+            var fileName = Path.GetFileNameWithoutExtension(logFile);
+            
+            if (ulong.TryParse(fileName, out var baseOffset) && baseOffset <= offset)
+            {
+                if (maxBaseOffset == null || baseOffset > maxBaseOffset.Value)
+                {
+                    maxBaseOffset = baseOffset;
+                    selectedLogPath = logFile;
+                }
+            }
+        }
+
+        if (selectedLogPath == null || maxBaseOffset == null)
+        {
             return null;
         }
 
-        return record;
-    }
-
-    public LogRecordBatch? ReadRecordBatch(ulong baseOffset)
+        var indexPath = Path.ChangeExtension(selectedLogPath, ".index");
+        var timeIndexPath = Path.ChangeExtension(selectedLogPath, ".timeindex");
+        
+        return new LogSegment(selectedLogPath, indexPath, timeIndexPath, maxBaseOffset.Value, maxBaseOffset.Value);
+    } 
+    private LogSegment? FindNext()
     {
-        var segment = _segmentRegistry.GetSegmentContainingOffset(baseOffset);
-
-        if (segment == null)
+        if (_activeSegment == null || !Directory.Exists(_directory))
         {
-            Logger.LogWarning($"Cannot find segment containing offset {baseOffset}");
             return null;
         }
 
-        var segmentReader = GetOrCreateSegmentReader(segment);
-        var batch = segmentReader.ReadBatch(baseOffset);
+        var expectedBaseOffset = _activeSegment.NextOffset;
+        
+        var expectedFileName = $"{expectedBaseOffset:D20}.log";
+        var expectedLogPath = Path.Combine(_directory, expectedFileName);
 
-        if (batch == null)
+        if (!File.Exists(expectedLogPath))
         {
-            Logger.LogWarning($"Read batch for {baseOffset} returned null");
             return null;
         }
 
-        return batch;
-    }
-
-    public IEnumerable<LogRecord> ReadFromTimestamp(ulong timestamp)
-    {
-        // RefreshSegmentReader();
-        // using var enumerator = _activeSegmentReader!.ReadFromTimestamp(timestamp).GetEnumerator();
-        // if (!enumerator.MoveNext()) yield break;
-        // var batch = enumerator.Current;
-        // foreach (var record in batch.Records)
-        // {
-        //     if (record.Timestamp >= timestamp)
-        //     {
-        //         yield return record;
-        //     }
-        // }
-        throw new NotImplementedException();
-    }
-
-    public ulong GetHighWaterMark()
-    {
-        return _segmentRegistry.GetHighWaterMark();
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        if (_activeSegmentReader != null)
-            await _activeSegmentReader.DisposeAsync();
-    }
-
-    private ILogSegmentReader GetOrCreateSegmentReader(LogSegment segment)
-    {
-        return _inactiveSegmentReaders.GetOrAdd(segment.BaseOffset, (_) => _segmentFactory.CreateReader(segment));
-    }
+        var indexPath = Path.ChangeExtension(expectedLogPath, ".index");
+        var timeIndexPath = Path.ChangeExtension(expectedLogPath, ".timeindex");
+        
+        return new LogSegment(expectedLogPath, indexPath, timeIndexPath, expectedBaseOffset, expectedBaseOffset);
+    } 
 }

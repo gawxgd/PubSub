@@ -210,7 +210,7 @@ public class CommitLogFactoryTests : IDisposable
         r1.Should().BeSameAs(r2);
     }
 
-    private CommitLogFactory CreateFactory(
+    private CommitLogFactoryM CreateFactory(
         string topicName,
         ulong baseOffset = 0,
         uint flushIntervalMs = 100)
@@ -245,7 +245,7 @@ public class CommitLogFactoryTests : IDisposable
         _segmentFactory.CreateReader(Arg.Any<MessageBroker.Domain.Entities.CommitLog.LogSegment>())
             .Returns(segmentReader);
 
-        return new CommitLogFactory(_segmentFactory, _topicSegmentRegistryFactory, commitLogOptions, topicOptions);
+        return new CommitLogFactoryM(_segmentFactory, _topicSegmentRegistryFactory, commitLogOptions, topicOptions);
     }
 
     private CommitLogFactory CreateFactoryWithCustomDirectory(

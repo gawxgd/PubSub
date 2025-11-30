@@ -118,7 +118,7 @@ public class BinaryCommitLogAppenderTests : IDisposable
 
         // Assert - Read back and verify
         var activeSegment = _segmentRegistry.GetActiveSegment();
-        await using var reader = _segmentFactory.CreateReader(activeSegment);
+        await using var reader = _segmentFactory.CreateReaderM(activeSegment);
         var readBatch = reader.ReadBatch(0);
 
         // Create expected batch using timestamps from read batch for full comparison
@@ -140,7 +140,7 @@ public class BinaryCommitLogAppenderTests : IDisposable
 
         // Assert - Read back and verify all three payloads were batched together
         var activeSegment = _segmentRegistry.GetActiveSegment();
-        await using var reader = _segmentFactory.CreateReader(activeSegment);
+        await using var reader = _segmentFactory.CreateReaderM(activeSegment);
         var readBatch = reader.ReadBatch(0);
 
         // Create expected batch using timestamps from read batch for full comparison
@@ -182,7 +182,7 @@ public class BinaryCommitLogAppenderTests : IDisposable
 
         // Assert - Read back and verify sequential offsets
         var activeSegment = _segmentRegistry.GetActiveSegment();
-        await using var reader = _segmentFactory.CreateReader(activeSegment);
+        await using var reader = _segmentFactory.CreateReaderM(activeSegment);
         var readBatch = reader.ReadBatch(0);
 
         // Create expected batch using timestamps from read batch for full comparison
@@ -222,7 +222,7 @@ public class BinaryCommitLogAppenderTests : IDisposable
 
         // Assert - Read back and verify timestamp
         var activeSegment = _segmentRegistry.GetActiveSegment();
-        await using var reader = _segmentFactory.CreateReader(activeSegment);
+        await using var reader = _segmentFactory.CreateReaderM(activeSegment);
         var readBatch = reader.ReadBatch(0);
 
         // Create expected batch using timestamps from read batch for full comparison
@@ -246,7 +246,7 @@ public class BinaryCommitLogAppenderTests : IDisposable
 
         // Assert - Read back and verify payload
         var activeSegment = _segmentRegistry.GetActiveSegment();
-        await using var reader = _segmentFactory.CreateReader(activeSegment);
+        await using var reader = _segmentFactory.CreateReaderM(activeSegment);
         var readBatch = reader.ReadBatch(0);
 
         // Create expected batch using timestamps from read batch for full comparison

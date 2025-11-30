@@ -48,7 +48,7 @@ public class CommitLogPayloadEqualityIntegrationTests : IDisposable
     [Fact]
     public async Task Should_Preserve_Empty_And_Small_Payloads()
     {
-        var factory = _sp.GetRequiredService<ICommitLogFactory>();
+        var factory = _sp.GetRequiredService<ICommitLogFactoryM>();
         var app = factory.GetAppender("payload");
         var empty = Array.Empty<byte>();
         var small = new byte[] { 1, 2, 3, 4 };
@@ -70,7 +70,7 @@ public class CommitLogPayloadEqualityIntegrationTests : IDisposable
     public async Task Should_Preserve_Large_And_Mixed_Payloads()
     {
         var rnd = new Random(123);
-        var factory = _sp.GetRequiredService<ICommitLogFactory>();
+        var factory = _sp.GetRequiredService<ICommitLogFactoryM>();
         var app = factory.GetAppender("payload");
 
         byte[] Large(int size)

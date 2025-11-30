@@ -55,7 +55,7 @@ public class CommitLogMultiTopicIntegrationTests : IDisposable
     [Fact]
     public async Task Should_Append_And_Read_From_Multiple_Topics()
     {
-        var factory = _sp.GetRequiredService<ICommitLogFactory>();
+        var factory = _sp.GetRequiredService<ICommitLogFactoryM>();
 
         var appA = factory.GetAppender("topicA");
         var appB = factory.GetAppender("topicB");
@@ -93,7 +93,7 @@ public class CommitLogMultiTopicIntegrationTests : IDisposable
     [Fact]
     public async Task Readers_Should_See_Isolated_Offsets_Per_Topic()
     {
-        var factory = _sp.GetRequiredService<ICommitLogFactory>();
+        var factory = _sp.GetRequiredService<ICommitLogFactoryM>();
         var appA = factory.GetAppender("topicA");
         var appB = factory.GetAppender("topicB");
 

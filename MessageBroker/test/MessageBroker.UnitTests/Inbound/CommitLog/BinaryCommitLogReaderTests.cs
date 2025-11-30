@@ -40,12 +40,12 @@ public class BinaryCommitLogReaderTests
             },
             false);
 
-        var segReader = Substitute.For<ILogSegmentReader>();
+        var segReader = Substitute.For<ILogSegmentReaderM>();
         segReader.ReadBatch(10).Returns(batch);
 
-        _segmentFactory.CreateReader(segment).Returns(segReader);
+        _segmentFactory.CreateReaderM(segment).Returns(segReader);
 
-        var reader = new BinaryCommitLogReader(_segmentFactory, _registry);
+        var reader = new BinaryCommitLogReaderM(_segmentFactory, _registry);
 
         var records = reader.ReadRecordBatch(10)!.Records.ToList();
 
@@ -70,12 +70,12 @@ public class BinaryCommitLogReaderTests
             },
             false);
 
-        var segReader = Substitute.For<ILogSegmentReader>();
+        var segReader = Substitute.For<ILogSegmentReaderM>();
         segReader.ReadFromTimestamp(200).Returns(new[] { firstBatch });
 
-        _segmentFactory.CreateReader(segment).Returns(segReader);
+        _segmentFactory.CreateReaderM(segment).Returns(segReader);
 
-        var reader = new BinaryCommitLogReader(_segmentFactory, _registry);
+        var reader = new BinaryCommitLogReaderM(_segmentFactory, _registry);
 
         var records = reader.ReadFromTimestamp(200).ToList();
 
@@ -90,14 +90,14 @@ public class BinaryCommitLogReaderTests
         var seg1 = new LogSegment("a.log", "a.index", "a.timeindex", 0, 0);
         var seg2 = new LogSegment("b.log", "b.index", "b.timeindex", 100, 100);
 
-        var segReader1 = Substitute.For<ILogSegmentReader>();
-        var segReader2 = Substitute.For<ILogSegmentReader>();
+        var segReader1 = Substitute.For<ILogSegmentReaderM>();
+        var segReader2 = Substitute.For<ILogSegmentReaderM>();
 
         _registry.GetActiveSegment().Returns(seg1, seg2);
-        _segmentFactory.CreateReader(seg1).Returns(segReader1);
-        _segmentFactory.CreateReader(seg2).Returns(segReader2);
+        _segmentFactory.CreateReaderM(seg1).Returns(segReader1);
+        _segmentFactory.CreateReaderM(seg2).Returns(segReader2);
 
-        var reader = new BinaryCommitLogReader(_segmentFactory, _registry);
+        var reader = new BinaryCommitLogReaderM(_segmentFactory, _registry);
 
         reader.ReadRecordBatch(0);
 

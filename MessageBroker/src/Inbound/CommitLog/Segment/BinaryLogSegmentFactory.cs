@@ -38,6 +38,13 @@ public sealed class BinaryLogSegmentFactory(
     {
         var opt = options.Value;
         return new BinaryLogSegmentReader(
+            segment);
+    }
+
+    public ILogSegmentReaderM CreateReaderM(LogSegment segment)
+    {
+        var opt = options.Value;
+        return new BinaryLogSegmentReaderM(
             batchReader,
             segment,
             offsetIndexReader,

@@ -49,7 +49,7 @@ public class CommitLogSegmentRollingIntegrationTests : IDisposable
     public async Task Should_Create_Multiple_Segments_And_Preserve_Offset_Continuity()
     {
         //ToDo add method to handle reading many batches
-        var factory = _sp.GetRequiredService<ICommitLogFactory>();
+        var factory = _sp.GetRequiredService<ICommitLogFactoryM>();
         var app = factory.GetAppender("roll");
 
         for (int i = 0; i < 1000; i++)

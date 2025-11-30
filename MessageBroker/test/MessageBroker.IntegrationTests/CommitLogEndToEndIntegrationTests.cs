@@ -48,7 +48,7 @@ public class CommitLogEndToEndIntegrationTests : IDisposable
     [Fact]
     public async Task Should_Write_And_Read_Single_Message()
     {
-        var factory = _sp.GetRequiredService<ICommitLogFactory>();
+        var factory = _sp.GetRequiredService<ICommitLogFactoryM>();
         var appender = factory.GetAppender("default");
 
         var payload = "Hello World"u8.ToArray();

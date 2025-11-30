@@ -3,7 +3,7 @@ using System.Threading.Channels;
 
 namespace MessageBroker.Domain.Port.CommitLog;
 
-public interface ICommitLogReader : IAsyncDisposable
+public interface ICommitLogReaderM : IAsyncDisposable
 {
     /// <summary>
     /// Read a single record at the specified offset.
@@ -24,5 +24,9 @@ public interface ICommitLogReader : IAsyncDisposable
     /// Get the current highest offset in the log.
     /// </summary>
     ulong GetHighWaterMark();
+}
+
+public interface ICommitLogReader
+{
     Task ReadAsync(Channel<byte[]> channel);
 }

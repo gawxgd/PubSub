@@ -430,9 +430,9 @@ public class BinaryLogSegmentWriterTests : IDisposable
         );
     }
 
-    private BinaryLogSegmentReader CreateReader(LogSegment segment)
+    private BinaryLogSegmentReaderM CreateReader(LogSegment segment)
     {
-        return new BinaryLogSegmentReader(
+        return new BinaryLogSegmentReaderM(
             _batchReader,
             segment,
             _offsetIndexReader,
