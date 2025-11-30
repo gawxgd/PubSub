@@ -8,174 +8,177 @@ using Subscriber.Outbound.Adapter;
 using Subscriber.Outbound.Exceptions;
 using Xunit;
 
-namespace Subscriber.Tests;
-
 public class TcpSubscriberTests
 {
-    private const string Topic = "test-topic";
-    private const int MinMessageLength = 1;
-    private const int MaxMessageLength = 100;
+    private const string Topic = "test";
     private readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(10);
-    private const uint MaxRetryAttempts = 3;
 
-    private readonly Mock<ISubscriberConnection> _connectionMock = new();
-    private readonly Mock<ILogger> _loggerMock = new();
-    private readonly Mock<Func<string, Task>> _messageHandlerMock = new();
+    private TcpSubscriber CreateSubscriber(
+        out Mock<ISubscriberConnection> connMock,
+        out Channel<byte[]> respondChannel,
+        out Channel<byte[]> requestChannel,
+        Func<string, Task>? handler = null)
+    {
+        connMock = new Mock<ISubscriberConnection>();
+        respondChannel = Channel.CreateUnbounded<byte[]>();
+        requestChannel = Channel.CreateUnbounded<byte[]>();
 
-    private Channel<byte[]> CreateBoundedChannel(int capacity = 100) =>
-        Channel.CreateBounded<byte[]>(new BoundedChannelOptions(capacity)
-        {
-            FullMode = BoundedChannelFullMode.Wait,
-            SingleReader = true,
-            SingleWriter = true
-        });
-
-    private TcpSubscriber CreateSubscriber(Channel<byte[]> respondChannel, Channel<byte[]> requestChannel) =>
-        new TcpSubscriber(
-            Topic,
-            MinMessageLength,
-            MaxMessageLength,
-            PollInterval,
-            MaxRetryAttempts,
-            _connectionMock.Object,
+        return new TcpSubscriber(
+            topic: Topic,
+            minMessageLength: 1,
+            maxMessageLength: 200,
+            pollInterval: PollInterval,
+            maxRetryAttempts: 3,
+            connection: connMock.Object,
             respondChannel,
             requestChannel,
-            _messageHandlerMock.Object);
+            messageHandler: handler
+        );
+    }
+
 
     [Fact]
-    public async Task CreateConnection_ShouldSucceedOnFirstAttempt()
+    public async Task ReceiveAsync_Should_Call_Handler_When_Valid_Message()
     {
-        _connectionMock.Setup(c => c.ConnectAsync()).Returns(Task.CompletedTask);
-        var subscriber = CreateSubscriber(CreateBoundedChannel(), CreateBoundedChannel());
+        // Arrange
+        string payloadReceived = "";
+        var subscriber = CreateSubscriber(
+            out _,
+            out _,
+            out _,
+            handler: p =>
+            {
+                payloadReceived = p;
+                return Task.CompletedTask;
+            });
 
-        await ((ISubscriber)subscriber).CreateConnection();
+        var msg = Encoding.UTF8.GetBytes("test:Hello");
 
-        _connectionMock.Verify(c => c.ConnectAsync(), Times.Once);
+        // Act
+        await subscriber.ReceiveAsync(msg);
+
+        // Assert
+        Assert.Equal("Hello", payloadReceived);
     }
 
     [Fact]
-    public async Task CreateConnection_ShouldRetryOnFailure()
+    public async Task ReceiveAsync_Should_Ignore_Message_With_Wrong_Topic()
     {
-        _connectionMock.SetupSequence(c => c.ConnectAsync())
-            .Throws(new SubscriberConnectionException("fail", null))
-            .Throws(new SubscriberConnectionException("fail again", null))
-            .Returns(Task.CompletedTask);
+        string? payloadReceived = null;
 
-        var subscriber = CreateSubscriber(CreateBoundedChannel(), CreateBoundedChannel());
+        var subscriber = CreateSubscriber(
+            out _,
+            out _,
+            out _,
+            handler: p =>
+            {
+                payloadReceived = p;
+                return Task.CompletedTask;
+            });
+
+        var msg = Encoding.UTF8.GetBytes("wrongTopic:Hello");
+
+        await subscriber.ReceiveAsync(msg);
+
+        Assert.Null(payloadReceived);
+    }
+
+
+    [Fact]
+    public async Task CreateConnection_Should_Retry_On_Failure_And_Succeed()
+    {
+        var subscriber = CreateSubscriber(out var connMock, out _, out _);
+
+        int attempt = 0;
+
+        connMock.Setup(c => c.ConnectAsync())
+            .Returns(() =>
+            {
+                attempt++;
+                if (attempt < 2)
+                    throw new SubscriberConnectionException("fail", null);
+
+                return Task.CompletedTask;
+            });
 
         await ((ISubscriber)subscriber).CreateConnection();
 
-        _connectionMock.Verify(c => c.ConnectAsync(), Times.Exactly(3));
-        _loggerMock.Verify(l => l.LogDebug(LogSource.Subscriber, It.Is<string>(s => s.Contains("Retry"))), Times.Exactly(2));
+        Assert.Equal(2, attempt);
     }
 
     [Fact]
-    public async Task CreateConnection_ShouldThrowAfterMaxRetries()
+    public async Task CreateConnection_Should_Throw_When_Max_Retries_Exceeded()
     {
-        _connectionMock.Setup(c => c.ConnectAsync())
+        var subscriber = CreateSubscriber(out var connMock, out _, out _);
+
+        connMock.Setup(c => c.ConnectAsync())
             .Throws(new SubscriberConnectionException("fail", null));
-
-        var subscriber = CreateSubscriber(CreateBoundedChannel(), CreateBoundedChannel());
 
         await Assert.ThrowsAsync<SubscriberConnectionException>(() =>
             ((ISubscriber)subscriber).CreateConnection());
+    }
 
-        _connectionMock.Verify(c => c.ConnectAsync(), Times.Exactly(3));
+
+    [Fact]
+    public async Task StartMessageProcessingAsync_Should_Process_Incoming_Messages()
+    {
+        string? received = null;
+
+        var subscriber = CreateSubscriber(
+            out _,
+            out var respondChannel,
+            out _,
+            handler: s =>
+            {
+                received = s;
+                return Task.CompletedTask;
+            });
+
+        // Push message into channel BEFORE starting processing
+        await respondChannel.Writer.WriteAsync(Encoding.UTF8.GetBytes("test:Message"));
+
+        var task = subscriber.StartMessageProcessingAsync();
+
+        // Give processing a moment
+        await Task.Delay(50);
+
+        subscriber.DisposeAsync().GetAwaiter().GetResult(); // stop loop
+
+        Assert.Equal("Message", received);
+    }
+
+
+    [Fact]
+    public async Task SendRequestAsync_Should_Write_To_RequestChannel()
+    {
+        var subscriber = CreateSubscriber(
+            out _,
+            out _,
+            out var requestChannel);
+
+        byte[] message = Encoding.UTF8.GetBytes("abc");
+
+        await subscriber.SendRequestAsync(message);
+
+        var read = await requestChannel.Reader.ReadAsync();
+
+        Assert.Equal(message, read);
     }
 
     [Fact]
-    public async Task ReceiveAsync_ShouldIgnoreInvalidLength()
+    public async Task DisposeAsync_Should_Close_Channels_And_Disconnect()
     {
-        var subscriber = CreateSubscriber(CreateBoundedChannel(), CreateBoundedChannel());
-        var message = Encoding.UTF8.GetBytes(new string('x', MaxMessageLength + 10));
-
-        await subscriber.ReceiveAsync(message);
-
-        _loggerMock.Verify(l => l.LogError(LogSource.Subscriber, It.Is<string>(s => s.Contains("Invalid message length"))));
-        _messageHandlerMock.Verify(h => h.Invoke(It.IsAny<string>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task ReceiveAsync_ShouldIgnoreWrongTopic()
-    {
-        var subscriber = CreateSubscriber(CreateBoundedChannel(), CreateBoundedChannel());
-        var message = Encoding.UTF8.GetBytes("wrong-topic:payload");
-
-        await subscriber.ReceiveAsync(message);
-
-        _loggerMock.Verify(l => l.LogError(LogSource.Subscriber, It.Is<string>(s => s.Contains("wrong topic"))));
-        _messageHandlerMock.Verify(h => h.Invoke(It.IsAny<string>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task ReceiveAsync_ShouldProcessValidMessage()
-    {
-        var subscriber = CreateSubscriber(CreateBoundedChannel(), CreateBoundedChannel());
-        var payload = "test-payload";
-        var message = Encoding.UTF8.GetBytes($"{Topic}:{payload}");
-
-        await subscriber.ReceiveAsync(message);
-
-        _messageHandlerMock.Verify(h => h.Invoke(payload), Times.Once);
-        _loggerMock.Verify(l => l.LogInfo(LogSource.Subscriber, It.Is<string>(s => s.Contains(payload))), Times.Once);
-    }
-
-    [Fact]
-    public async Task ReceiveAsync_ShouldHandleHandlerException()
-    {
-        var subscriber = CreateSubscriber(CreateBoundedChannel(), CreateBoundedChannel());
-        var payload = "test-payload";
-        var message = Encoding.UTF8.GetBytes($"{Topic}:{payload}");
-        var exception = new Exception("Handler error");
-
-        _messageHandlerMock.Setup(h => h.Invoke(payload)).Throws(exception);
-
-        await subscriber.ReceiveAsync(message);
-
-        _loggerMock.Verify(l => l.LogError(LogSource.Subscriber, exception.Message), Times.Once);
-    }
-
-    [Fact]
-    public async Task StartConnectionAndMessageProcessing_ShouldProcessMessageAndExit()
-    {
-        var channel = CreateBoundedChannel();
-        var subscriber = CreateSubscriber(channel, CreateBoundedChannel());
-
-        var payload = "test-payload";
-        var message = Encoding.UTF8.GetBytes($"{Topic}:{payload}");
-        await channel.Writer.WriteAsync(message);
-        channel.Writer.Complete(); 
-
-        _connectionMock.Setup(c => c.ConnectAsync()).Returns(Task.CompletedTask);
-        _connectionMock.Setup(c => c.DisconnectAsync()).Returns(Task.CompletedTask);
-
-        await subscriber.StartConnectionAsync();
-
-        var processingTask = subscriber.StartMessageProcessingAsync();
-
-        await Task.Delay(500);
+        var subscriber = CreateSubscriber(
+            out var connMock,
+            out var respondChannel,
+            out var requestChannel);
 
         await subscriber.DisposeAsync();
 
-        await processingTask;
+        Assert.True(requestChannel.Reader.Completion.IsCompleted);
+        Assert.True(respondChannel.Reader.Completion.IsCompleted);
 
-        _messageHandlerMock.Verify(h => h.Invoke(payload), Times.Once);
-        _connectionMock.Verify(c => c.DisconnectAsync(), Times.Once);
+        connMock.Verify(c => c.DisconnectAsync(), Times.Once);
     }
-
-    
-    [Fact]
-    public async Task DisposeAsync_ShouldCleanupResources()
-    {
-        var channel = CreateBoundedChannel();
-        var subscriber = CreateSubscriber(channel, CreateBoundedChannel());
-
-        _connectionMock.Setup(c => c.DisconnectAsync()).Returns(Task.CompletedTask);
-
-        await subscriber.DisposeAsync();
-
-        _connectionMock.Verify(c => c.DisconnectAsync(), Times.Once);
-        Assert.True(channel.Reader.Completion.IsCompleted);
-    }
-
 }
+

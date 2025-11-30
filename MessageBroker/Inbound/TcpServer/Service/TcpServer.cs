@@ -2,15 +2,16 @@ using System.Net.Sockets;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
+using MessageBroker.Domain.Enums;
 using MessageBroker.Domain.Logic.TcpServer.UseCase;
 using MessageBroker.Domain.Port;
 
 namespace MessageBroker.Inbound.TcpServer.Service;
 
-public class TcpServer(CreateSocketUseCase createSocketUseCase, IConnectionManager connectionManager)
+public abstract class TcpServer(ConnectionType connectionType, CreateSocketUseCase createSocketUseCase, IConnectionManager connectionManager)
     : BackgroundService
 {
-    private readonly Socket _socket = createSocketUseCase.CreateSocket();
+    private readonly Socket _socket = createSocketUseCase.CreateSocket(connectionType);
     private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<TcpServer>(LogSource.MessageBroker);
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
@@ -25,7 +26,7 @@ public class TcpServer(CreateSocketUseCase createSocketUseCase, IConnectionManag
                 Logger.LogInfo($"Accepted client: {acceptedSocket.RemoteEndPoint}");
 
                 var linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                connectionManager.RegisterConnection(acceptedSocket, linkedTokenSource);
+                connectionManager.RegisterConnection(connectionType, acceptedSocket, linkedTokenSource);
             }
             catch (SocketException ex)
             {

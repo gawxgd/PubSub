@@ -4,6 +4,7 @@ using FluentAssertions;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
 using MessageBroker.Domain.Entities;
+using MessageBroker.Domain.Enums;
 using MessageBroker.Domain.Port;
 using MessageBroker.Domain.Port.CommitLog;
 using MessageBroker.Inbound.Adapter;
@@ -20,8 +21,10 @@ public class ConnectionManagerTests
         AutoLoggerFactory.Initialize(logger);
     }
 
-    [Fact]
-    public void RegisterConnection_Should_Generate_Id_And_Add_Connection()
+    [Theory]
+    [InlineData(ConnectionType.Publisher)]
+    [InlineData(ConnectionType.Subscriber)]
+    public void RegisterConnection_Should_Generate_Id_And_Add_Connection(ConnectionType connectionType)
     {
         // Arrange
         var repository = Substitute.For<IConnectionRepository>();
@@ -32,7 +35,7 @@ public class ConnectionManagerTests
         var cts = new CancellationTokenSource();
 
         // Act
-        manager.RegisterConnection(socket, cts);
+        manager.RegisterConnection(connectionType, socket, cts);
 
         // Wait a bit for Task.Run to execute
         Thread.Sleep(100);

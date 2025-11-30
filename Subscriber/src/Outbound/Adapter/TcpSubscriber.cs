@@ -151,7 +151,6 @@ public sealed class TcpSubscriber(
         // 2. Stop TCP read/write loops
         await connection.DisconnectAsync();
         
-        
         // 3. Signal no more outbound messages (requests to broker)
         requestChannel.Writer.TryComplete();
         await requestChannel.Reader.Completion;  // wait until producer finishes
