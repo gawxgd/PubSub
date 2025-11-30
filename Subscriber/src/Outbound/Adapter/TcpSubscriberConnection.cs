@@ -72,7 +72,7 @@ public sealed class TcpSubscriberConnection(
             }
             
             await _cancellationSource.CancelAsync();
-            
+
             if (_writeLoopTask != null)
                 await _writeLoopTask;
 
@@ -154,7 +154,7 @@ public sealed class TcpSubscriberConnection(
         Logger.LogInfo( "Received message");
         return true;
     }
-    
+
     private async Task WriteLoopAsync(CancellationToken cancellationToken)
     {
         try

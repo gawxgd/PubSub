@@ -54,3 +54,5 @@ TestResults/
 *.coverage
 *.coveragexml
 *.pdb
+SchemaRegistry/tests/SchemaRegistry.Tests/Folder.DotSettings.user
+SchemaRegistry/tests/SchemaRegistry.Tests/Folder.DotSettings.user

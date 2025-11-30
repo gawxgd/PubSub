@@ -6,8 +6,10 @@ var connection = new HubConnectionBuilder()
     .WithAutomaticReconnect()
     .Build();
 
-connection.On<string, string, string>("ReceiveLog",
-    (level, source, message) => { Console.WriteLine($"[{level}] {source}: {message}"); });
+connection.On<string, string, string>("ReceiveLog", (level, source, message) =>
+{
+    Console.WriteLine($"[{level}] {source}: {message}");
+});
 
 await connection.StartAsync();
 Console.WriteLine("Connected. Listening for logs. Press Ctrl+C to exit.");

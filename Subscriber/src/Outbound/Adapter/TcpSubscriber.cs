@@ -136,7 +136,7 @@ public sealed class TcpSubscriber(
             throw;
         }
     }
-
+    
     public async Task SendRequestAsync(byte[] message)
     {
         await requestChannel.Writer.WriteAsync(message, _cts.Token);
