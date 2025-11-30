@@ -17,7 +17,7 @@ public class ProcessSubscriberRequestUseCase(Socket socket, ICommitLogFactory co
     public async Task ProcessRequestAsync(ReadOnlyMemory<byte> message, CancellationToken cancellationToken)
     {
         // TODO read topic and offset from message
-        var topic = string.Empty;
+        var topic = "default";
         ulong offset = 0;
         
         Logger.LogDebug($"Processing subscriber request: {message.Length} bytes");

@@ -34,13 +34,6 @@ public sealed class TcpSubscriberConnection(
             _pipeReader = PipeReader.Create(stream);
             _pipeWriter = PipeWriter.Create(stream);
             
-            // Send first message with connection type byte (0x02 = Subscriber)
-            var connectionTypeMessage = new byte[] { 0x02 };
-            var buffer = _pipeWriter.GetMemory(connectionTypeMessage.Length);
-            connectionTypeMessage.CopyTo(buffer);
-            _pipeWriter.Advance(connectionTypeMessage.Length);
-            await _pipeWriter.FlushAsync(_cancellationSource.Token);
-            
             _readLoopTask = Task.Run(() => ReadLoopAsync( _cancellationSource.Token));
             _writeLoopTask = Task.Run(() => WriteLoopAsync(_cancellationSource.Token));
             Logger.LogInfo($"Connected to broker at {_client.Client.RemoteEndPoint} and sent subscriber handshake");

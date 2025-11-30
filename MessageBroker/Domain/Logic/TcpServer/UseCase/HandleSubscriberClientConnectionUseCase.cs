@@ -11,9 +11,6 @@ public class HandleSubscriberClientConnectionUseCase(Socket socket, Action onCon
     {
         Logger.LogInfo(
             $"Consuming message channel, connected to client {ConnectedClientEndpoint}");
-
-        ConnectionType connectionType = await new RecognizeConnectionTypeUseCase(MessageChannel.Reader)
-            .RecognizeConnectionTypeAsync(cancellationToken);
         
         await foreach (var message in MessageChannel.Reader.ReadAllAsync(cancellationToken))
         {
@@ -21,18 +18,8 @@ public class HandleSubscriberClientConnectionUseCase(Socket socket, Action onCon
 
             try
             {
-                switch (connectionType)
-                {
-                    case ConnectionType.Publisher:
-                        await new ProcessReceivedPublisherMessageUseCase(commitLogFactory, "default")
-                            .ProcessMessageAsync(message, cancellationToken);
-                        break;
-                    case ConnectionType.Subscriber:
-                        await new ProcessSubscriberRequestUseCase(Socket, commitLogFactory)
-                            .ProcessRequestAsync(message, cancellationToken);
-                        break;
-                    
-                }
+                await new ProcessSubscriberRequestUseCase(Socket, commitLogFactory)
+                    .ProcessRequestAsync(message, cancellationToken);
             }
             catch (Exception ex)
             {
