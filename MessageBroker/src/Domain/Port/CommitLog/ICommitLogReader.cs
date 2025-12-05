@@ -1,4 +1,5 @@
-using MessageBroker.Domain.Entities.CommitLog;
+﻿using MessageBroker.Domain.Entities.CommitLog;
+using System.Threading.Channels;
 
 namespace MessageBroker.Domain.Port.CommitLog;
 

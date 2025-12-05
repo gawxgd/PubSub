@@ -141,7 +141,7 @@ public class BinaryLogSegmentWriterTests : IDisposable
         // Arrange
         var segment = CreateSegment(baseOffset: 100);
         var writer = CreateWriter(segment, indexIntervalBytes: 100);
-        var batch = CreateTestBatch(baseOffset: 105, recordCount: 2,100);
+        var batch = CreateTestBatch(baseOffset: 105, recordCount: 2, 100);
 
         // Act
         await writer.AppendAsync(batch);
