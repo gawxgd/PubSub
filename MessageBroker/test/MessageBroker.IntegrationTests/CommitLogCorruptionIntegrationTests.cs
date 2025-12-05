@@ -48,7 +48,7 @@ public class CommitLogCorruptionIntegrationTests : IDisposable
     [Fact]
     public async Task Reader_Should_Throw_On_Corrupted_Log_Content()
     {
-        var factory = _sp.GetRequiredService<ICommitLogFactoryM>();
+        var factory = _sp.GetRequiredService<ICommitLogFactory>();
         var app = factory.GetAppender("corr");
 
         for (int i = 0; i < 10; i++)

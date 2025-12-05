@@ -6,6 +6,5 @@ public interface ILogSegmentFactory
 {
     ILogSegmentWriter CreateWriter(LogSegment segment);
     ILogSegmentReader CreateReader(LogSegment segment);
-    ILogSegmentReaderM CreateReaderM(LogSegment segment);
     LogSegment CreateLogSegment(string directory, ulong baseOffset);
 }
