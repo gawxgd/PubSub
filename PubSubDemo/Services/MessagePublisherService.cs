@@ -10,16 +10,16 @@ namespace PubSubDemo.Services;
 /// </summary>
 public sealed class MessagePublisherService : IAsyncDisposable
 {
-    private readonly IPublisher _publisher;
+    private readonly ITransportPublisher _transportPublisher;
     private readonly DemoOptions _options;
     private readonly CancellationTokenSource _cts;
     private Task? _publishTask;
     private long _messagesSent;
     private long _messagesFailed;
 
-    public MessagePublisherService(IPublisher publisher, DemoOptions options)
+    public MessagePublisherService(ITransportPublisher transportPublisher, DemoOptions options)
     {
-        _publisher = publisher ?? throw new ArgumentNullException(nameof(publisher));
+        _transportPublisher = transportPublisher ?? throw new ArgumentNullException(nameof(transportPublisher));
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _cts = new CancellationTokenSource();
     }
@@ -32,7 +32,7 @@ public sealed class MessagePublisherService : IAsyncDisposable
         Console.WriteLine("Starting Message Publisher Service...");
         
         // Connect to the broker
-        await _publisher.CreateConnection();
+        await _transportPublisher.CreateConnection();
         Console.WriteLine("Connected to message broker successfully!");
 
         // Start publishing messages
@@ -86,7 +86,7 @@ public sealed class MessagePublisherService : IAsyncDisposable
                 var bytes = Encoding.UTF8.GetBytes(json);
 
                 // Publish to broker
-                await _publisher.PublishAsync(bytes);
+                await _transportPublisher.PublishAsync(bytes);
                 
                 Interlocked.Increment(ref _messagesSent);
 
@@ -138,7 +138,7 @@ public sealed class MessagePublisherService : IAsyncDisposable
                 var json = JsonSerializer.Serialize(message);
                 var bytes = Encoding.UTF8.GetBytes(json);
 
-                await _publisher.PublishAsync(bytes);
+                await _transportPublisher.PublishAsync(bytes);
                 Interlocked.Increment(ref _messagesSent);
             }
             catch (Exception ex)
@@ -162,7 +162,7 @@ public sealed class MessagePublisherService : IAsyncDisposable
         await StopAsync();
         _cts.Dispose();
 
-        if (_publisher is IAsyncDisposable disposable)
+        if (_transportPublisher is IAsyncDisposable disposable)
         {
             await disposable.DisposeAsync();
         }
