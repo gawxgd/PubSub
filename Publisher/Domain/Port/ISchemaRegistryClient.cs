@@ -1,6 +1,8 @@
+using Publisher.Domain.Model;
+
 namespace Publisher.Domain.Port;
 
 public interface ISchemaRegistryClient
 {
-    // schema getSchema(topic)
+    public Task<SchemaInfo> GetSchemaAsync(string topic);
 }
