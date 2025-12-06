@@ -4,5 +4,5 @@ namespace Publisher.Domain.Port;
 
 public interface IPublisherFactory
 {
-    IPublisher CreatePublisher(PublisherOptions options);
+    ITransportPublisher CreatePublisher(PublisherOptions options);
 }

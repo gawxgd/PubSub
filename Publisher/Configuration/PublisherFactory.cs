@@ -13,11 +13,11 @@ public sealed class PublisherFactory : IPublisherFactory
     private const string AllowedUriScheme = "messageBroker";
 
 
-    public IPublisher CreatePublisher(PublisherOptions options)
+    public ITransportPublisher CreatePublisher(PublisherOptions options)
     {
         var (host, port, maxQueueSize, maxSendAttempts, maxRetryAttempts) = ValidateOptions(options);
 
-        return new TcpPublisher(host, port, maxQueueSize, maxSendAttempts, maxRetryAttempts);
+        return new TcpTransportPublisher(host, port, maxQueueSize, maxSendAttempts, maxRetryAttempts);
     }
 
     private static (string host, int port, uint maxQueueSize, uint maxSendAttempts, uint maxRetryAttempts)
@@ -49,7 +49,7 @@ public sealed class PublisherFactory : IPublisherFactory
         if (options.MaxPublisherQueueSize > MaxPublisherQueueSize)
         {
             throw new PublisherFactoryException(
-                $"Max publisher queue size '{options.MaxPublisherQueueSize}' exceeds limit of {MaxPublisherQueueSize}.",
+                $"Max transportPublisher queue size '{options.MaxPublisherQueueSize}' exceeds limit of {MaxPublisherQueueSize}.",
                 PublisherFactoryErrorCode.QueueSizeExceeded);
         }
 

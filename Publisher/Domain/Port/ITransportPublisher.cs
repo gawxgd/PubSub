@@ -1,6 +1,6 @@
 namespace Publisher.Domain.Port;
 
-public interface IPublisher
+public interface ITransportPublisher
 {
     Task CreateConnection();
     Task PublishAsync(byte[] message);
