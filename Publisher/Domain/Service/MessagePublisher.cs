@@ -13,6 +13,9 @@ public class MessagePublisher(
 
     public async Task PublishAsync<T>(T message)
     {
+        if (message == null)
+            throw new ArgumentNullException(nameof(message));
+        
         // fetch the avro schema from the schema registry using the _schemaRegistryClient
         var schema = await schemaRegistryClient.GetSchemaAsync(topic);
         

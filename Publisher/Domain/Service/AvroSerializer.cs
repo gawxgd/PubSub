@@ -7,20 +7,44 @@ using Publisher.Domain.Port;
 
 namespace Publisher.Domain.Service;
 
-public sealed class AvroSerializer() : IAvroSerializer
+public sealed class AvroSerializer : IAvroSerializer
 {
     public async Task<byte[]> SerializeAsync<T>(T message, SchemaInfo schemaInfo, string topic)
     {
-        if (message == null)
-            throw new ArgumentNullException(nameof(message));
-        
         // convert the object to json
-        var json = JsonSerializer.Serialize(message);
+        string json;
+        try
+        {
+            // convert the object to json
+            json = JsonSerializer.Serialize(message);
+        }
+        catch (JsonException ex)
+        {
+            throw new InvalidOperationException("Error during JSON serialization.", ex);
+        }
         
-        using var jsonDoc = JsonDocument.Parse(json);
+        JsonDocument jsonDoc;
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            jsonDoc = doc;
+        }
+        catch (JsonException ex)
+        {
+            throw new InvalidOperationException("Error parsing JSON.", ex);
+        }
         
         // parse avro schemaInfo: json -> Apache.Avro.SchemaInfo
-        var avroSchema = Avro.Schema.Parse(schemaInfo.Json);
+        Schema avroSchema;
+        try
+        {
+            // parse avro schemaInfo: json -> Apache.Avro.SchemaInfo
+            avroSchema = Avro.Schema.Parse(schemaInfo.Json);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException("Error parsing Avro scheme.", ex);
+        }
 
         if (avroSchema is not RecordSchema recordSchema)
             throw new InvalidOperationException("Avro schemaInfo must be a record at the top level.");
@@ -31,16 +55,23 @@ public sealed class AvroSerializer() : IAvroSerializer
         
         // use avro library methods to serialize the generic record according to the avro schemaInfo 
         byte[] avroBytes;
-        using (var ms = new MemoryStream())
+        try
         {
-            var encoder = new Avro.IO.BinaryEncoder(ms);
-            var writer = new GenericWriter<GenericRecord>(recordSchema);
-            writer.Write(genericRecord, encoder);
-            encoder.Flush();
+            using (var ms = new MemoryStream())
+            {
+                var encoder = new Avro.IO.BinaryEncoder(ms);
+                var writer = new GenericWriter<GenericRecord>(recordSchema);
+                writer.Write(genericRecord, encoder);
+                encoder.Flush();
 
-            avroBytes = ms.ToArray();
+                avroBytes = ms.ToArray();
+            }
         }
-        
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException("Error serializing a record.", ex);
+        }
+
         // wrap the message like: topic:message\n
         var topicBytes = Encoding.UTF8.GetBytes(topic);
         var separator = Encoding.UTF8.GetBytes(":");
