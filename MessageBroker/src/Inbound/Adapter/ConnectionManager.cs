@@ -26,7 +26,7 @@ public class ConnectionManager(IConnectionRepository connectionRepository, IComm
         {
             Logger.LogDebug(
                 $"Started handler thread for connection {connectionId} with client: {acceptedSocket.RemoteEndPoint}");
-            HandleClientConnectionUseCase handleClientConnectionUseCase = connectionType switch
+            IHandleClientConnectionUseCase handleClientConnectionUseCase = connectionType switch
             {
                 ConnectionType.Publisher => new HandlePublisherClientConnectionUseCase(
                     acceptedSocket,
