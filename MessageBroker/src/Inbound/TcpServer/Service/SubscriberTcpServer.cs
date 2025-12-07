@@ -1,8 +1,10 @@
-﻿using MessageBroker.Domain.Enums;
+using MessageBroker.Domain.Enums;
 using MessageBroker.Domain.Logic.TcpServer.UseCase;
 using MessageBroker.Domain.Port;
+using MessageBroker.Infrastructure.Configuration.Options;
+using Microsoft.Extensions.Options;
 
 namespace MessageBroker.Inbound.TcpServer.Service;
 
-public class SubscriberTcpServer(CreateSocketUseCase createSocketUseCase, IConnectionManager connectionManager)
-    : TcpServer(ConnectionType.Subscriber, createSocketUseCase, connectionManager);
+public class SubscriberTcpServer(CreateSocketUseCase createSocketUseCase, IConnectionManager connectionManager, IOptionsMonitor<TcpServerOptions> optionsMonitor)
+    : TcpServer(ConnectionType.Subscriber, optionsMonitor.CurrentValue.SubscriberPort, createSocketUseCase, connectionManager);

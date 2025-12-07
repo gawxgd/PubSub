@@ -8,10 +8,10 @@ using MessageBroker.Domain.Port;
 
 namespace MessageBroker.Inbound.TcpServer.Service;
 
-public abstract class TcpServer(ConnectionType connectionType, CreateSocketUseCase createSocketUseCase, IConnectionManager connectionManager)
+public abstract class TcpServer(ConnectionType connectionType, int port, CreateSocketUseCase createSocketUseCase, IConnectionManager connectionManager)
     : BackgroundService
 {
-    private readonly Socket _socket = createSocketUseCase.CreateSocket(connectionType);
+    private readonly Socket _socket = createSocketUseCase.CreateSocket(port);
     private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<TcpServer>(LogSource.MessageBroker);
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
