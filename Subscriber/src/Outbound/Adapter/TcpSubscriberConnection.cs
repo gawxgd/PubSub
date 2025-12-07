@@ -36,7 +36,7 @@ public sealed class TcpSubscriberConnection(
             
             _readLoopTask = Task.Run(() => ReadLoopAsync( _cancellationSource.Token));
             _writeLoopTask = Task.Run(() => WriteLoopAsync(_cancellationSource.Token));
-            Logger.LogInfo($"Connected to broker at {_client.Client.RemoteEndPoint} and sent subscriber handshake");
+            Logger.LogInfo($"Connected to broker at {_client.Client.RemoteEndPoint}");
         }
         catch (OperationCanceledException ex)
         {
