@@ -9,7 +9,7 @@ using MessageBroker.Domain.Port;
 
 namespace MessageBroker.Domain.Logic.TcpServer.UseCase;
 
-public class HandleClientConnectionUseCase(Socket socket, Action onConnectionClosed, IConsumeMessageChannelUseCase consumeMessageChannelUseCase) : IHandleClientConnectionUseCase
+public class HandleClientConnectionUseCase(Socket socket, Action onConnectionClosed, IMessageProcessorUseCase messageProcessorUseCase) : IHandleClientConnectionUseCase
 {
     private readonly string _connectedClientEndpoint = socket.RemoteEndPoint?.ToString() ?? "Unknown";
 
@@ -156,7 +156,7 @@ public class HandleClientConnectionUseCase(Socket socket, Action onConnectionClo
         {
             Logger.LogInfo($"[{_connectedClientEndpoint}] Received {message.Length} bytes");
 
-            await consumeMessageChannelUseCase.ConsumeMessageAsync(message, Socket, cancellationToken);
+            await messageProcessorUseCase.ProcessAsync(message, Socket, cancellationToken);
         }
 
         Logger.LogInfo($"ConsumeMessageChannel completed for {_connectedClientEndpoint}");

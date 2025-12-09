@@ -1,37 +1,20 @@
+using System.Net.Sockets;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
-using MessageBroker.Domain.Enums;
+using MessageBroker.Domain.Port;
 using MessageBroker.Domain.Port.CommitLog;
-using MessageBroker.Inbound.CommitLog;
-using MessageBroker.Inbound.CommitLog.Record;
-using MessageBroker.Inbound.CommitLog.Segment;
 
 namespace MessageBroker.Domain.Logic.TcpServer.UseCase;
 
-public class ProcessReceivedPublisherMessageUseCase
+public class ProcessReceivedPublisherMessageUseCase(ICommitLogFactory commitLogFactory, string topic) : IMessageProcessorUseCase
 {
     private static readonly IAutoLogger Logger =
         AutoLoggerFactory.CreateLogger<ProcessReceivedPublisherMessageUseCase>(LogSource.MessageBroker);
 
-    private readonly ICommitLogAppender _commitLogAppender;
+    private readonly ICommitLogAppender _commitLogAppender = commitLogFactory.GetAppender(topic);
 
-    public ProcessReceivedPublisherMessageUseCase(ICommitLogFactory commitLogFactory, string topic)
-    {
-        try
-        {
-            _commitLogAppender = commitLogFactory.GetAppender(topic);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError("Failed to get commit log appender", ex);
-            throw;
-        }
-    }
-    
-
-    public async Task ProcessMessageAsync(ReadOnlyMemory<byte> message,
-        CancellationToken cancellationToken)
+    public async Task ProcessAsync(ReadOnlyMemory<byte> message, Socket socket, CancellationToken cancellationToken)
     {
         Logger.LogDebug($"Processing message {message.Length} bytes");
         

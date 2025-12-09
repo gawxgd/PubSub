@@ -2,16 +2,17 @@
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
+using MessageBroker.Domain.Port;
 using MessageBroker.Domain.Port.CommitLog;
 
 namespace MessageBroker.Domain.Logic.TcpServer.UseCase;
 
-public class ProcessSubscriberRequestUseCase(Socket socket, ICommitLogFactory commitLogFactory)
+public class ProcessSubscriberRequestUseCase(ICommitLogFactory commitLogFactory) : IMessageProcessorUseCase
 {
     private static readonly IAutoLogger Logger =
         AutoLoggerFactory.CreateLogger<ProcessSubscriberRequestUseCase>(LogSource.MessageBroker);
     
-    public async Task ProcessRequestAsync(ReadOnlyMemory<byte> message, CancellationToken cancellationToken)
+    public async Task ProcessAsync(ReadOnlyMemory<byte> message, Socket socket, CancellationToken cancellationToken)
     {
         // TODO read topic and offset from message
         var topic = "default";
