@@ -4,7 +4,7 @@ using MessageBroker.Domain.Port;
 using MessageBroker.Infrastructure.Configuration.Options;
 using Microsoft.Extensions.Options;
 
-namespace MessageBroker.Inbound.TcpServer.Service;
+namespace MessageBroker.Outbound.TcpServer.Service;
 
 public class SubscriberTcpServer(CreateSocketUseCase createSocketUseCase, IConnectionManager connectionManager, IOptionsMonitor<TcpServerOptions> optionsMonitor)
-    : TcpServer(ConnectionType.Subscriber, optionsMonitor.CurrentValue.SubscriberPort, createSocketUseCase, connectionManager);
+    : Inbound.TcpServer.Service.TcpServer(ConnectionType.Subscriber, optionsMonitor.CurrentValue.SubscriberPort, createSocketUseCase, connectionManager);

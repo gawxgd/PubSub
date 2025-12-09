@@ -21,6 +21,7 @@ using MessageBroker.Inbound.CommitLog.TopicSegmentManager;
 using MessageBroker.Inbound.TcpServer.Service;
 using MessageBroker.Infrastructure.Configuration.Options;
 using MessageBroker.Infrastructure.Configuration.Options.CommitLog;
+using MessageBroker.Outbound.TcpServer.Service;
 using Microsoft.Extensions.Options;
 
 namespace MessageBroker.Infrastructure.DependencyInjection;
