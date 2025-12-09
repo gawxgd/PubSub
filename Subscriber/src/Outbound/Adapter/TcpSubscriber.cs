@@ -1,5 +1,4 @@
-﻿using System.Text;
-using System.Threading.Channels;
+﻿using System.Threading.Channels;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
@@ -23,9 +22,12 @@ public sealed class TcpSubscriber(
 {
     private readonly CancellationTokenSource _cts = new();
     private CancellationToken CancellationToken => _cts.Token;
-    private ulong _lastOffset = 0; // TODO: track offset from received messages
 
     private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<TcpSubscriber>(LogSource.MessageBroker);
+
+    private readonly MessageValidator _messageValidator = new(topic, minMessageLength, maxMessageLength);
+    private MessageReceiver? _messageReceiver;
+    private RequestSender? _requestSender;
 
     async Task ISubscriber.CreateConnection()
     {
@@ -52,66 +54,39 @@ public sealed class TcpSubscriber(
 
     public async Task ReceiveAsync(byte[] message)
     {
-        //TODO: change topic checking and reading message to avro
+        // This method is kept for backward compatibility
+        // The actual processing is now done by MessageReceiver
+        var validationResult = _messageValidator.Validate(message);
         
-        var text = Encoding.UTF8.GetString(message);
-
-        if (text.Length < minMessageLength || text.Length > maxMessageLength)
+        if (!validationResult.IsValid)
         {
-            Logger.LogError($"Invalid message length: {text.Length}");
             return;
         }
-
-        if (!text.StartsWith($"{topic}:"))
-        {
-            Logger.LogError( $"Ignored message (wrong topic): {text}");
-            return;
-        }
-
-        var payload = text.Substring(topic.Length + 1);
 
         try
         {
             if (messageHandler != null)
             {
-                await messageHandler(payload);    
+                await messageHandler(validationResult.Payload!);
             }
-            Logger.LogInfo( $"Received message: {payload}");
+            Logger.LogInfo($"Received message: {validationResult.Payload}");
         }
         catch (Exception ex)
-        { 
-            Logger.LogError( ex.Message);
+        {
+            Logger.LogError($"Error handling message: {ex.Message}", ex);
         }
     }
     
     public async Task StartMessageProcessingAsync()
     {
-        while (!CancellationToken.IsCancellationRequested)
-        {
-            try
-            {
-                if (await respondChannel.Reader.WaitToReadAsync(CancellationToken))
-                {
-                    while (respondChannel.Reader.TryRead(out var message))
-                    {
-                        await ReceiveAsync(message);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError($"Error while processing message: {ex.Message}");
-            }
+        _messageReceiver = new MessageReceiver(
+            respondChannel,
+            _messageValidator,
+            messageHandler,
+            pollInterval,
+            CancellationToken);
 
-            try
-            {
-                await Task.Delay(pollInterval, CancellationToken);
-            }
-            catch (TaskCanceledException)
-            {
-                Logger.LogWarning("Message processing task cancelled");
-            }
-        }
+        await _messageReceiver.StartReceivingAsync();
     }
     
     public async Task StartConnectionAsync()
@@ -120,8 +95,14 @@ public sealed class TcpSubscriber(
         {
             await ((ISubscriber)this).CreateConnection();
             
-            // Start automatic request polling after connection is established
-            _ = Task.Run(() => StartRequestPollingAsync(CancellationToken), CancellationToken);
+            // Start automatic request sender after connection is established
+            _requestSender = new RequestSender(
+                requestChannel,
+                topic,
+                pollInterval,
+                CancellationToken);
+            
+            _ = Task.Run(() => _requestSender.StartSendingAsync(), CancellationToken);
         }
         catch (SubscriberConnectionException ex) when (ex.IsRetriable)
         {
@@ -139,48 +120,6 @@ public sealed class TcpSubscriber(
             Logger.LogError($"Unexpected error: {ex.Message}");
             throw;
         }
-    }
-    
-    private async Task StartRequestPollingAsync(CancellationToken cancellationToken)
-    {
-        Logger.LogInfo($"Starting automatic request polling for topic: {topic}");
-        
-        while (!cancellationToken.IsCancellationRequested)
-        {
-            try
-            {
-                // Create request message: "topic:offset" format
-                // TODO: Update format when ProcessSubscriberRequestUseCase implements proper parsing
-                var requestMessage = $"{topic}:{_lastOffset}\n";
-                var requestBytes = Encoding.UTF8.GetBytes(requestMessage);
-                
-                await requestChannel.Writer.WriteAsync(requestBytes, cancellationToken);
-                Logger.LogDebug($"Sent automatic request for topic: {topic}, offset: {_lastOffset}");
-                
-                // Wait before sending next request
-                await Task.Delay(pollInterval, cancellationToken);
-            }
-            catch (OperationCanceledException)
-            {
-                Logger.LogInfo("Request polling cancelled");
-                break;
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError($"Error in request polling: {ex.Message}", ex);
-                // Continue polling even if there's an error
-                try
-                {
-                    await Task.Delay(pollInterval, cancellationToken);
-                }
-                catch (OperationCanceledException)
-                {
-                    break;
-                }
-            }
-        }
-        
-        Logger.LogInfo("Request polling stopped");
     }
 
 
