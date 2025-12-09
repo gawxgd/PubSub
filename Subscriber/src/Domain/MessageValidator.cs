@@ -2,7 +2,7 @@ using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
 
-namespace Subscriber.Outbound.Adapter;
+namespace Subscriber.Domain;
 
 public class MessageValidator(string topic, int minMessageLength, int maxMessageLength)
 {

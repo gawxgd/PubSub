@@ -2,8 +2,9 @@ using System.Threading.Channels;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
+using Subscriber.Domain;
 
-namespace Subscriber.Outbound.Adapter;
+namespace Subscriber.Inbound.Adapter;
 
 public class MessageReceiver(
     Channel<byte[]> responseChannel,

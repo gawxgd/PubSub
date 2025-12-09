@@ -65,4 +65,3 @@ public class RequestSender(
         Logger.LogDebug($"Updated last offset to: {offset}");
     }
 }
-
