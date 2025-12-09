@@ -23,6 +23,7 @@ public sealed class TcpSubscriber(
 {
     private readonly CancellationTokenSource _cts = new();
     private CancellationToken CancellationToken => _cts.Token;
+    private ulong _lastOffset = 0; // TODO: track offset from received messages
 
     private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<TcpSubscriber>(LogSource.MessageBroker);
 
@@ -118,6 +119,9 @@ public sealed class TcpSubscriber(
         try
         {
             await ((ISubscriber)this).CreateConnection();
+            
+            // Start automatic request polling after connection is established
+            _ = Task.Run(() => StartRequestPollingAsync(CancellationToken), CancellationToken);
         }
         catch (SubscriberConnectionException ex) when (ex.IsRetriable)
         {
@@ -137,9 +141,46 @@ public sealed class TcpSubscriber(
         }
     }
     
-    public async Task SendRequestAsync(byte[] message)
+    private async Task StartRequestPollingAsync(CancellationToken cancellationToken)
     {
-        await requestChannel.Writer.WriteAsync(message, _cts.Token);
+        Logger.LogInfo($"Starting automatic request polling for topic: {topic}");
+        
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            try
+            {
+                // Create request message: "topic:offset" format
+                // TODO: Update format when ProcessSubscriberRequestUseCase implements proper parsing
+                var requestMessage = $"{topic}:{_lastOffset}\n";
+                var requestBytes = Encoding.UTF8.GetBytes(requestMessage);
+                
+                await requestChannel.Writer.WriteAsync(requestBytes, cancellationToken);
+                Logger.LogDebug($"Sent automatic request for topic: {topic}, offset: {_lastOffset}");
+                
+                // Wait before sending next request
+                await Task.Delay(pollInterval, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                Logger.LogInfo("Request polling cancelled");
+                break;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Error in request polling: {ex.Message}", ex);
+                // Continue polling even if there's an error
+                try
+                {
+                    await Task.Delay(pollInterval, cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+            }
+        }
+        
+        Logger.LogInfo("Request polling stopped");
     }
 
 

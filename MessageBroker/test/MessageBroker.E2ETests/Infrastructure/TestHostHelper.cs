@@ -24,12 +24,13 @@ public static class TestHostHelper
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 // TCP Server options
-                ["Port"] = actualPort.ToString(),
-                ["Address"] = address,
-                ["MaxRequestSizeInByte"] = "512",
-                ["InlineCompletions"] = "false",
-                ["SocketPolling"] = "false",
-                ["Backlog"] = "100",
+                ["Server:PublisherPort"] = actualPort.ToString(),
+                ["Server:SubscriberPort"] = (actualPort + 1).ToString(),
+                ["Server:Address"] = address,
+                ["Server:MaxRequestSizeInByte"] = "512",
+                ["Server:InlineCompletions"] = "false",
+                ["Server:SocketPolling"] = "false",
+                ["Server:Backlog"] = "100",
 
                 // Commit Log options
                 ["CommitLog:Directory"] = Path.Combine(Path.GetTempPath(), "e2e-commit-log-" + Guid.NewGuid()),
@@ -50,11 +51,8 @@ public static class TestHostHelper
             .ConfigureServices(services =>
             {
                 // TCP services
-                services.AddSingleton<IConnectionRepository, InMemoryConnectionRepository>();
-                services.AddSingleton<IConnectionManager, ConnectionManager>();
-                services.AddSingleton<CreateSocketUseCase>();
-                services.AddHostedService<TcpServer>();
-                services.Configure<TcpServerOptions>(configuration);
+                services.AddTcpServices();
+                services.AddBrokerOptions(configuration);
 
                 // Commit Log services - THIS WAS MISSING!
                 services.AddCommitLogServices();

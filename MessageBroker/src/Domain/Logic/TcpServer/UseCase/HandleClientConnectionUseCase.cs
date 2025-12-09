@@ -1,23 +1,20 @@
-﻿using System.Buffers;
+using System.Buffers;
 using System.IO.Pipelines;
 using System.Net.Sockets;
 using System.Threading.Channels;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
-using MessageBroker.Domain.Enums;
 using MessageBroker.Domain.Port;
-using MessageBroker.Domain.Port.CommitLog;
-using MessageBroker.Inbound.Adapter;
 
 namespace MessageBroker.Domain.Logic.TcpServer.UseCase;
 
-public class HandlePublisherClientConnectionUseCase(Socket socket, Action onConnectionClosed, ICommitLogFactory commitLogFactory) : IHandleClientConnectionUseCase
+public class HandleClientConnectionUseCase(Socket socket, Action onConnectionClosed, IConsumeMessageChannelUseCase consumeMessageChannelUseCase) : IHandleClientConnectionUseCase
 {
     private readonly string _connectedClientEndpoint = socket.RemoteEndPoint?.ToString() ?? "Unknown";
 
     private static readonly IAutoLogger Logger =
-        AutoLoggerFactory.CreateLogger<HandlePublisherClientConnectionUseCase>(LogSource.MessageBroker);
+        AutoLoggerFactory.CreateLogger<HandleClientConnectionUseCase>(LogSource.MessageBroker);
 
     private readonly Channel<ReadOnlyMemory<byte>> _messageChannel =
         Channel.CreateBounded<ReadOnlyMemory<byte>>(new BoundedChannelOptions(100)
@@ -159,19 +156,10 @@ public class HandlePublisherClientConnectionUseCase(Socket socket, Action onConn
         {
             Logger.LogInfo($"[{_connectedClientEndpoint}] Received {message.Length} bytes");
 
-            try
-            {
-                await new ProcessReceivedPublisherMessageUseCase(commitLogFactory, "default")
-                    .ProcessMessageAsync(message, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError($"Consume message channel exception for {_connectedClientEndpoint}", ex);
-            }
-
-            await Socket.SendAsync(message, SocketFlags.None, cancellationToken);
+            await consumeMessageChannelUseCase.ConsumeMessageAsync(message, Socket, cancellationToken);
         }
 
         Logger.LogInfo($"ConsumeMessageChannel completed for {_connectedClientEndpoint}");
     }
 }
+

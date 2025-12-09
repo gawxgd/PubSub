@@ -26,19 +26,17 @@ public class ConnectionManager(IConnectionRepository connectionRepository, IComm
         {
             Logger.LogDebug(
                 $"Started handler thread for connection {connectionId} with client: {acceptedSocket.RemoteEndPoint}");
-            IHandleClientConnectionUseCase handleClientConnectionUseCase = connectionType switch
+            IConsumeMessageChannelUseCase consumeMessageChannelUseCase = connectionType switch
             {
-                ConnectionType.Publisher => new HandlePublisherClientConnectionUseCase(
-                    acceptedSocket,
-                    () => UnregisterConnectionAfterThreadFinish(connectionId),
-                    commitLogFactory),
-                ConnectionType.Subscriber => new HandleSubscriberClientConnectionUseCase(
-                    acceptedSocket,
-                    () => UnregisterConnectionAfterThreadFinish(connectionId),
-                    commitLogFactory),
-
+                ConnectionType.Publisher => new PublisherMessageChannelConsumer(commitLogFactory, "default"),
+                ConnectionType.Subscriber => new SubscriberMessageChannelConsumer(commitLogFactory),
                 _ => throw new ArgumentOutOfRangeException(nameof(connectionType), connectionType, null),
             };
+
+            IHandleClientConnectionUseCase handleClientConnectionUseCase = new HandleClientConnectionUseCase(
+                acceptedSocket,
+                () => UnregisterConnectionAfterThreadFinish(connectionId),
+                consumeMessageChannelUseCase);
             
             return handleClientConnectionUseCase.HandleConnection(cancellationTokenSource.Token);
         }, cancellationTokenSource.Token);
