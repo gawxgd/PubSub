@@ -44,8 +44,8 @@ public sealed class SubscriberFactory() : ISubscriberFactory
             poll,
             retry,
             connection,
-            requestChannel,
-            responseChannel,
+            responseChannel,  // respondChannel in TcpSubscriber
+            requestChannel,   // requestChannel in TcpSubscriber
             messageHandler);
 
     }
