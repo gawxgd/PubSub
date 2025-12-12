@@ -71,6 +71,7 @@ public sealed class TcpPublisherConnection(
         {
             await _client.ConnectAsync(host, port, _cancellationSource.Token);
             _pipeWriter = PipeWriter.Create(_client.GetStream());
+            
             Logger.LogInfo($"Connected to broker on {_client.Client.RemoteEndPoint}");
         }
         catch (SocketException ex) when (CanRetrySocketException(ex))

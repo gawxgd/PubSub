@@ -1,9 +1,9 @@
-﻿using System.Text;
-using System.Threading.Channels;
+﻿using System.Threading.Channels;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
 using Subscriber.Domain;
+using Subscriber.Inbound.Adapter;
 using Subscriber.Outbound.Exceptions;
 
 namespace Subscriber.Outbound.Adapter;
@@ -15,7 +15,8 @@ public sealed class TcpSubscriber(
     TimeSpan pollInterval,
     uint maxRetryAttempts,
     ISubscriberConnection connection,
-    Channel<byte[]> inboundChannel,
+    Channel<byte[]> respondChannel,
+    Channel<byte[]> requestChannel,
     Func<string, Task>? messageHandler,
     Func<Exception, Task>? errorHandler = null)
     : ISubscriber, IAsyncDisposable
@@ -24,6 +25,10 @@ public sealed class TcpSubscriber(
     private CancellationToken CancellationToken => _cts.Token;
 
     private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<TcpSubscriber>(LogSource.MessageBroker);
+
+    private readonly MessageValidator _messageValidator = new(topic, minMessageLength, maxMessageLength);
+    private MessageReceiver? _messageReceiver;
+    private RequestSender? _requestSender;
 
     async Task ISubscriber.CreateConnection()
     {
@@ -50,66 +55,39 @@ public sealed class TcpSubscriber(
 
     public async Task ReceiveAsync(byte[] message)
     {
-        //TODO: change topic checking and reading message to avro
+        // This method is kept for backward compatibility
+        // The actual processing is now done by MessageReceiver
+        var validationResult = _messageValidator.Validate(message);
         
-        var text = Encoding.UTF8.GetString(message);
-
-        if (text.Length < minMessageLength || text.Length > maxMessageLength)
+        if (!validationResult.IsValid)
         {
-            Logger.LogError($"Invalid message length: {text.Length}");
             return;
         }
-
-        if (!text.StartsWith($"{topic}:"))
-        {
-            Logger.LogError( $"Ignored message (wrong topic): {text}");
-            return;
-        }
-
-        var payload = text.Substring(topic.Length + 1);
 
         try
         {
             if (messageHandler != null)
             {
-                await messageHandler(payload);    
+                await messageHandler(validationResult.Payload!);
             }
-            Logger.LogInfo( $"Received message: {payload}");
+            Logger.LogInfo($"Received message: {validationResult.Payload}");
         }
         catch (Exception ex)
-        { 
-            Logger.LogError( ex.Message);
+        {
+            Logger.LogError($"Error handling message: {ex.Message}", ex);
         }
     }
     
     public async Task StartMessageProcessingAsync()
     {
-        while (!CancellationToken.IsCancellationRequested)
-        {
-            try
-            {
-                if (await inboundChannel.Reader.WaitToReadAsync(CancellationToken))
-                {
-                    while (inboundChannel.Reader.TryRead(out var message))
-                    {
-                        await ReceiveAsync(message);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError($"Error while processing message: {ex.Message}");
-            }
+        _messageReceiver = new MessageReceiver(
+            respondChannel,
+            _messageValidator,
+            messageHandler,
+            pollInterval,
+            CancellationToken);
 
-            try
-            {
-                await Task.Delay(pollInterval, CancellationToken);
-            }
-            catch (TaskCanceledException)
-            {
-                Logger.LogWarning("Message processing task cancelled");
-            }
-        }
+        await _messageReceiver.StartReceivingAsync();
     }
     
     public async Task StartConnectionAsync()
@@ -117,6 +95,15 @@ public sealed class TcpSubscriber(
         try
         {
             await ((ISubscriber)this).CreateConnection();
+            
+            // Start automatic request sender after connection is established
+            _requestSender = new RequestSender(
+                requestChannel,
+                topic,
+                pollInterval,
+                CancellationToken);
+            
+            _ = Task.Run(() => _requestSender.StartSendingAsync(), CancellationToken);
         }
         catch (SubscriberConnectionException ex) when (ex.IsRetriable)
         {
@@ -135,15 +122,24 @@ public sealed class TcpSubscriber(
             throw;
         }
     }
-    
+
 
     public async ValueTask DisposeAsync()
     {
-        await _cts.CancelAsync();      // 1. Cancel internal operations
-        await connection.DisconnectAsync();                // 2. Stop TCP read loop / producer
-        inboundChannel.Writer.TryComplete();               // 3. Signal no more messages
-        await inboundChannel.Reader.Completion;            // 4. Wait for consumer to finish
-        _cts.Dispose();                // 5. Cleanup
+        // 1. Cancel internal operations
+        await _cts.CancelAsync();
 
+        // 2. Signal no more outbound messages (requests to broker)
+        requestChannel.Writer.TryComplete();
+        await requestChannel.Reader.Completion;  // wait until producer finishes
+
+        // 3. Stop TCP read/write loops
+        await connection.DisconnectAsync();
+        // 4. Signal no more inbound messages (responses from broker)
+        respondChannel.Writer.TryComplete();
+        await respondChannel.Reader.Completion;   // wait until consumer finishes
+
+        // 5. Cleanup
+        _cts.Dispose();
     }
 }

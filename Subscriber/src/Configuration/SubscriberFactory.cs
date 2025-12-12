@@ -19,14 +19,23 @@ public sealed class SubscriberFactory() : ISubscriberFactory
     public ISubscriber CreateSubscriber(SubscriberOptions options, Func<string, Task>? messageHandler = null)
     {
         var (host, port, topic, minLen, maxLen, poll, retry) = ValidateOptions(options);
-        var channel = Channel.CreateBounded<byte[]>(
+        var requestChannel = Channel.CreateBounded<byte[]>(
+            new BoundedChannelOptions(options.MaxQueueSize)
+            {
+                FullMode = BoundedChannelFullMode.Wait,
+                SingleReader = false,
+                SingleWriter = true
+            });
+
+        var responseChannel = Channel.CreateBounded<byte[]>(
             new BoundedChannelOptions(options.MaxQueueSize)
             {
                 FullMode = BoundedChannelFullMode.Wait,
                 SingleReader = true,
                 SingleWriter = false
             });
-        var connection = new TcpSubscriberConnection(host, port, channel.Writer);
+
+        var connection = new TcpSubscriberConnection(host, port, requestChannel, responseChannel);
 
         return new TcpSubscriber(
             topic,
@@ -35,7 +44,8 @@ public sealed class SubscriberFactory() : ISubscriberFactory
             poll,
             retry,
             connection,
-            channel,
+            responseChannel,  // respondChannel in TcpSubscriber
+            requestChannel,   // requestChannel in TcpSubscriber
             messageHandler);
 
     }

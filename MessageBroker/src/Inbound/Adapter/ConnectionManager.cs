@@ -3,6 +3,7 @@ using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
 using MessageBroker.Domain.Entities;
+using MessageBroker.Domain.Enums;
 using MessageBroker.Domain.Logic.TcpServer.UseCase;
 using MessageBroker.Domain.Port;
 using MessageBroker.Domain.Port.CommitLog;
@@ -15,7 +16,7 @@ public class ConnectionManager(IConnectionRepository connectionRepository, IComm
     private static readonly IAutoLogger Logger =
         AutoLoggerFactory.CreateLogger<ConnectionManager>(LogSource.MessageBroker);
 
-    public void RegisterConnection(Socket acceptedSocket, CancellationTokenSource cancellationTokenSource)
+    public void RegisterConnection(ConnectionType connectionType, Socket acceptedSocket, CancellationTokenSource cancellationTokenSource)
     {
         var connectionId = connectionRepository.GenerateConnectionId();
 
@@ -25,13 +26,26 @@ public class ConnectionManager(IConnectionRepository connectionRepository, IComm
         {
             Logger.LogDebug(
                 $"Started handler thread for connection {connectionId} with client: {acceptedSocket.RemoteEndPoint}");
-            return new HandleClientConnectionUseCase(acceptedSocket,
-                    () => UnregisterConnectionAfterThreadFinish(connectionId), commitLogFactory)
-                .HandleConnection(cancellationTokenSource.Token);
+            IMessageProcessorUseCase messageProcessorUseCase = connectionType switch
+            {
+                ConnectionType.Publisher => new ProcessReceivedPublisherMessageUseCase(commitLogFactory, "default"),
+                ConnectionType.Subscriber => new ProcessSubscriberRequestUseCase(commitLogFactory),
+                _ => throw new ArgumentOutOfRangeException(nameof(connectionType), connectionType, null),
+            };
+
+            IHandleClientConnectionUseCase handleClientConnectionUseCase = new HandleClientConnectionUseCase(
+                acceptedSocket,
+                () => UnregisterConnectionAfterThreadFinish(connectionId),
+                messageProcessorUseCase);
+            
+            return handleClientConnectionUseCase.HandleConnection(cancellationTokenSource.Token);
         }, cancellationTokenSource.Token);
 
-        var connection = new Connection(connectionId, acceptedSocket.RemoteEndPoint?.ToString() ?? "Unknown",
-            cancellationTokenSource, handlerTask);
+        var connection = new Connection(
+            connectionId,
+            acceptedSocket.RemoteEndPoint?.ToString() ?? "Unknown",
+            cancellationTokenSource,
+            handlerTask);
         connectionRepository.Add(connection);
 
         Logger.LogInfo($"Connection registered with ID: {connectionId}");
@@ -75,7 +89,6 @@ public class ConnectionManager(IConnectionRepository connectionRepository, IComm
             Logger.LogWarning($"Connection with id {connectionId} was not found");
             return;
         }
-
 
         connection.Dispose();
         connectionRepository.Remove(connectionId);

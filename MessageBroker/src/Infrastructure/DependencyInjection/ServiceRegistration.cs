@@ -21,6 +21,7 @@ using MessageBroker.Inbound.CommitLog.TopicSegmentManager;
 using MessageBroker.Inbound.TcpServer.Service;
 using MessageBroker.Infrastructure.Configuration.Options;
 using MessageBroker.Infrastructure.Configuration.Options.CommitLog;
+using MessageBroker.Outbound.TcpServer.Service;
 using Microsoft.Extensions.Options;
 
 namespace MessageBroker.Infrastructure.DependencyInjection;
@@ -37,7 +38,8 @@ public static class ServiceRegistration
         services.AddSingleton<IConnectionManager, ConnectionManager>();
         // TCP server
         services.AddSingleton<CreateSocketUseCase>();
-        services.AddHostedService<TcpServer>();
+        services.AddHostedService<SubscriberTcpServer>();
+        services.AddHostedService<PublisherTcpServer>();
     }
 
     public static void AddCommitLogServices(this IServiceCollection services)
