@@ -34,7 +34,7 @@ public sealed class AvroSerializer : IAvroSerializer
         FillRecord(record, message);
 
         // Serialize: filled avro GenericRecord --> byte[]
-        byte[] serializedContent;
+        byte[] serializedMessage;
         using (var ms = new MemoryStream())
         {
             var encoder = new Avro.IO.BinaryEncoder(ms);
@@ -50,14 +50,8 @@ public sealed class AvroSerializer : IAvroSerializer
                 throw new InvalidOperationException("Avro serialization failed", ex);
             }
 
-            serializedContent = ms.ToArray();
+            serializedMessage = ms.ToArray();
         }
-        
-        // Add the separator [avro serialized message][separator]
-        var serializedMessage = new byte[serializedContent.Length + Separator.Length];
-        
-        Buffer.BlockCopy(serializedContent, 0, serializedMessage, 0, serializedContent.Length);
-        Buffer.BlockCopy(Separator, 0, serializedMessage, serializedContent.Length, Separator.Length);
 
         return serializedMessage;
     }
