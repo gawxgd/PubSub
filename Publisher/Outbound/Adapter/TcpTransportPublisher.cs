@@ -7,7 +7,7 @@ using Publisher.Outbound.Exceptions;
 
 namespace Publisher.Outbound.Adapter;
 
-public sealed class TcpTransportPublisher(string host, int port, uint maxSendAttempts, uint maxQueueSize, uint maxRetryAttempts)
+public sealed class TcpTransportPublisher(string host, int port, string topic, uint maxSendAttempts, uint maxQueueSize, uint maxRetryAttempts)
     : ITransportPublisher, IAsyncDisposable
 {
     private static readonly IAutoLogger Logger =  AutoLoggerFactory.CreateLogger<TcpTransportPublisher>(LogSource.Publisher);

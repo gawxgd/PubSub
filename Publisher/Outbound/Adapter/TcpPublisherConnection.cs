@@ -14,6 +14,7 @@ public sealed class TcpPublisherConnection(
     string host,
     int port,
     uint maxSendAttempts,
+    string topic,   
     ChannelReader<byte[]> channelReader,
     Channel<byte[]> deadLetterChannel)
     : IPublisherConnection, IAsyncDisposable

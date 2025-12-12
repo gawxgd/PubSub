@@ -1,7 +1,10 @@
+using System.Collections.Concurrent;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using Avro;
 using Avro.Generic;
+using Microsoft.AspNetCore.Routing.Patterns;
 using Publisher.Domain.Model;
 using Publisher.Domain.Port;
 
@@ -9,176 +12,205 @@ namespace Publisher.Domain.Service;
 
 public sealed class AvroSerializer : IAvroSerializer
 {
-    public async Task<byte[]> SerializeAsync<T>(T message, SchemaInfo schemaInfo, string topic)
+    private static readonly byte[] Separator = Encoding.UTF8.GetBytes("\n");
+    
+    public async Task<byte[]> SerializeAsync<T>(T message, SchemaInfo schemaInfo)
     {
-        // convert the object to json
-        string json;
+        Schema schema;
         try
         {
-            // convert the object to json
-            json = JsonSerializer.Serialize(message);
-        }
-        catch (JsonException ex)
-        {
-            throw new InvalidOperationException("Error during JSON serialization.", ex);
-        }
-        
-        JsonDocument jsonDoc;
-        try
-        {
-            using var doc = JsonDocument.Parse(json);
-            jsonDoc = doc;
-        }
-        catch (JsonException ex)
-        {
-            throw new InvalidOperationException("Error parsing JSON.", ex);
-        }
-        
-        // parse avro schemaInfo: json -> Apache.Avro.SchemaInfo
-        Schema avroSchema;
-        try
-        {
-            // parse avro schemaInfo: json -> Apache.Avro.SchemaInfo
-            avroSchema = Avro.Schema.Parse(schemaInfo.Json);
+            schema = Schema.Parse(schemaInfo.Json);
         }
         catch (Exception ex)
         {
-            throw new InvalidOperationException("Error parsing Avro scheme.", ex);
+            throw new InvalidOperationException("Failed to parse Avro schema", ex);
         }
-
-        if (avroSchema is not RecordSchema recordSchema)
-            throw new InvalidOperationException("Avro schemaInfo must be a record at the top level.");
-
-        // convert the json to GenericRecord
-        var genericRecord = new GenericRecord(recordSchema);
-        FillGenericRecord(genericRecord, jsonDoc.RootElement);
         
-        // use avro library methods to serialize the generic record according to the avro schemaInfo 
-        byte[] avroBytes;
-        try
+        if (schema is not RecordSchema recordSchema)
+            throw new InvalidOperationException("Top-level Avro schema must be a record.");
+        
+        // POCO object --> avro GenericRecord
+        var record = new GenericRecord(recordSchema);
+        FillRecord(record, message);
+
+        // Serialize: filled avro GenericRecord --> byte[]
+        byte[] serializedContent;
+        using (var ms = new MemoryStream())
         {
-            using (var ms = new MemoryStream())
+            var encoder = new Avro.IO.BinaryEncoder(ms);
+            var writer = new GenericWriter<GenericRecord>(recordSchema);
+
+            try
             {
-                var encoder = new Avro.IO.BinaryEncoder(ms);
-                var writer = new GenericWriter<GenericRecord>(recordSchema);
-                writer.Write(genericRecord, encoder);
+                writer.Write(record, encoder);
                 encoder.Flush();
-
-                avroBytes = ms.ToArray();
             }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("Avro serialization failed", ex);
+            }
+
+            serializedContent = ms.ToArray();
         }
-        catch (Exception ex)
-        {
-            throw new InvalidOperationException("Error serializing a record.", ex);
-        }
+        
+        // Add the separator [avro serialized message][separator]
+        var serializedMessage = new byte[serializedContent.Length + Separator.Length];
+        
+        Buffer.BlockCopy(serializedContent, 0, serializedMessage, 0, serializedContent.Length);
+        Buffer.BlockCopy(Separator, 0, serializedMessage, serializedContent.Length, Separator.Length);
 
-        // wrap the message like: topic:message\n
-        var topicBytes = Encoding.UTF8.GetBytes(topic);
-        var separator = Encoding.UTF8.GetBytes(":");
-        var newline = Encoding.UTF8.GetBytes("\n");
-
-        var finalBytes = new byte[
-            topicBytes.Length +
-            separator.Length +
-            avroBytes.Length +
-            newline.Length
-        ];
-
-        int offset = 0;
-
-        Buffer.BlockCopy(topicBytes, 0, finalBytes, offset, topicBytes.Length);
-        offset += topicBytes.Length;
-
-        Buffer.BlockCopy(separator, 0, finalBytes, offset, separator.Length);
-        offset += separator.Length;
-
-        Buffer.BlockCopy(avroBytes, 0, finalBytes, offset, avroBytes.Length);
-        offset += avroBytes.Length;
-
-        Buffer.BlockCopy(newline, 0, finalBytes, offset, newline.Length);
-
-        return finalBytes;
+        return serializedMessage;
     }
     
-    // -------------------------------------------------------------------------
-    // Recursively fill GenericRecord according to Avro schemaInfo fields
-    // -------------------------------------------------------------------------
-    private static void FillGenericRecord(GenericRecord record, JsonElement json)
+    // EVERYTHING BELOW IS AI GENERATED TODO: read it
+    
+    // ---------------------------------------------------------
+    // OBJECT → GenericRecord conversion
+    // ---------------------------------------------------------
+
+    private static void FillRecord(GenericRecord record, object obj)
     {
+        var type = obj.GetType();
+        var props = type.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+
         foreach (var field in record.Schema.Fields)
         {
-            var fieldName = field.Name;
+            var prop = props.FirstOrDefault(p => 
+                string.Equals(p.Name, field.Name, StringComparison.OrdinalIgnoreCase));
 
-            if (!json.TryGetProperty(fieldName, out var jsonField))
+            if (prop == null)
             {
-                // optional field → use default
-                record.Add(fieldName, field.DefaultValue);
+                // optional field → schema default
+                record.Add(field.Name, field.DefaultValue);
                 continue;
             }
 
-            record.Add(fieldName, ConvertJsonToAvro(jsonField, field.Schema));
+            var value = prop.GetValue(obj);
+            record.Add(field.Name, ConvertToAvroValue(value, field.Schema));
         }
     }
 
-    private static object? ConvertJsonToAvro(JsonElement json, Avro.Schema schema)
+    private static object? ConvertToAvroValue(object? value, Schema schema)
     {
-        switch (schema)
+        if (schema is UnionSchema union)
+            return ConvertUnion(value, union);
+
+        if (value == null)
+            return null;
+
+        return schema switch
         {
-            case PrimitiveSchema primitive:
-                return ConvertPrimitive(json, primitive);
-
-            case RecordSchema recordSchema:
-                var nested = new GenericRecord(recordSchema);
-                FillGenericRecord(nested, json);
-                return nested;
-
-            case ArraySchema arraySchema:
-                var list = new List<object?>();
-                foreach (var el in json.EnumerateArray())
-                    list.Add(ConvertJsonToAvro(el, arraySchema.ItemSchema));
-                return list;
-
-            case MapSchema mapSchema:
-                var dict = new Dictionary<string, object?>();
-                foreach (var prop in json.EnumerateObject())
-                    dict[prop.Name] = ConvertJsonToAvro(prop.Value, mapSchema.ValueSchema);
-                return dict;
-
-            case UnionSchema unionSchema:
-                // pick first matching branch
-                foreach (var branch in unionSchema.Schemas)
-                {
-                    try { return ConvertJsonToAvro(json, branch); }
-                    catch { /* ignore */ }
-                }
-                throw new InvalidOperationException("No matching union type found.");
-
-            default:
-                throw new NotSupportedException($"Unsupported Avro schemaInfo type: {schema.Tag}");
-        }
-    }
-
-    private static object? ConvertPrimitive(JsonElement json, PrimitiveSchema schema)
-    {
-        return schema.Tag switch
-        {
-            Avro.Schema.Type.Boolean => json.GetBoolean(),
-            Avro.Schema.Type.Int => json.GetInt32(),
-            Avro.Schema.Type.Long => json.GetInt64(),
-            Avro.Schema.Type.Float => json.GetSingle(),
-            Avro.Schema.Type.Double => json.GetDouble(),
-            Avro.Schema.Type.String => json.GetString(),
-            Avro.Schema.Type.Bytes => json.GetBytesFromBase64(),
-            _ => throw new NotSupportedException($"Unsupported primitive type: {schema.Tag}")
+            PrimitiveSchema primitive => ConvertPrimitive(value, primitive),
+            RecordSchema recordSchema => ConvertRecord(value, recordSchema),
+            ArraySchema arraySchema => ConvertArray(value, arraySchema),
+            MapSchema mapSchema => ConvertMap(value, mapSchema),
+            EnumSchema enumSchema => ConvertEnum(value, enumSchema),
+            FixedSchema fixedSchema => ConvertFixed(value, fixedSchema),
+            _ => throw new NotSupportedException($"Unsupported schema: {schema.Tag}")
         };
     }
+
+    // ---------------------------------------------------------
+    // Union handling
+    // ---------------------------------------------------------
+
+    private static object? ConvertUnion(object? value, UnionSchema union)
+    {
+        if (value == null)
+        {
+            var nullSchema = union.Schemas.FirstOrDefault(s => s.Tag == Schema.Type.Null);
+            if (nullSchema != null) return null;
+            throw new InvalidOperationException("Union does not accept null.");
+        }
+
+        foreach (var branch in union.Schemas)
+        {
+            try
+            {
+                return ConvertToAvroValue(value, branch);
+            }
+            catch
+            {
+                // continue trying
+            }
+        }
+
+        throw new InvalidOperationException(
+            $"Value '{value}' does not match any union branch.");
+    }
+
+    // ---------------------------------------------------------
+    // Primitive types + logical types
+    // ---------------------------------------------------------
+
+    private static object ConvertPrimitive(object value, PrimitiveSchema schema)
+    {
+        switch (schema.Tag)
+        {
+            case Schema.Type.Boolean: return (bool)value;
+            case Schema.Type.Int:
+                // logical date?
+                if (value is DateTime dt)
+                    return (dt.Date - DateTime.UnixEpoch.Date).Days;
+                return Convert.ToInt32(value);
+
+            case Schema.Type.Long:
+                // timestamp-millis?
+                if (value is DateTime dt2)
+                    return (long)(dt2 - DateTime.UnixEpoch).TotalMilliseconds;
+                return Convert.ToInt64(value);
+
+            case Schema.Type.Float: return Convert.ToSingle(value);
+            case Schema.Type.Double: return Convert.ToDouble(value);
+            case Schema.Type.String: return value.ToString();
+            case Schema.Type.Bytes:
+                if (value is byte[] bytes) return bytes;
+                throw new InvalidOperationException("Expected byte[].");
+            default:
+                throw new NotSupportedException($"Unsupported primitive: {schema.Tag}");
+        }
+    }
+
+    // ---------------------------------------------------------
+    // Complex types
+    // ---------------------------------------------------------
+
+    private static object ConvertRecord(object value, RecordSchema schema)
+    {
+        var record = new GenericRecord(schema);
+        FillRecord(record, value);
+        return record;
+    }
+
+    private static object ConvertArray(object value, ArraySchema schema)
+    {
+        var list = new List<object?>();
+        foreach (var item in (IEnumerable<object>)value)
+            list.Add(ConvertToAvroValue(item, schema.ItemSchema));
+        return list;
+    }
+
+    private static object ConvertMap(object value, MapSchema schema)
+    {
+        var dict = new Dictionary<string, object?>();
+        foreach (var kv in (IDictionary<string, object>)value)
+            dict[kv.Key] = ConvertToAvroValue(kv.Value, schema.ValueSchema);
+        return dict;
+    }
+
+    private static object ConvertEnum(object value, EnumSchema schema)
+    {
+        var str = value.ToString();
+        if (!schema.Symbols.Contains(str))
+            throw new InvalidOperationException($"Invalid enum value '{str}' for Avro enum.");
+        return str;
+    }
+
+    private static object ConvertFixed(object value, FixedSchema schema)
+    {
+        var bytes = (byte[])value;
+        if (bytes.Length != schema.Size)
+            throw new InvalidOperationException("Fixed size mismatch.");
+        return new GenericFixed(schema, bytes);
+    }
 }
-
-
-
-    
-
-    
-// wrap the serialized message like this: topic-message-separator
-    
-// return byte[]
