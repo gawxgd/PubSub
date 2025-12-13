@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Apache.Avro" Version="1.12.1" />
     <PackageReference Include="Chr.Avro" Version="10.11.1" />
     <PackageReference Include="Chr.Avro.Json" Version="10.11.1" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.8" />

@@ -7,10 +7,10 @@ using Publisher.Outbound.Exceptions;
 
 namespace Publisher.Outbound.Adapter;
 
-public sealed class TcpPublisher(string host, int port, uint maxSendAttempts, uint maxQueueSize, uint maxRetryAttempts)
-    : IPublisher, IAsyncDisposable
+public sealed class TcpTransportPublisher(string host, int port, string topic, uint maxSendAttempts, uint maxQueueSize, uint maxRetryAttempts, int batchMaxBytes, TimeSpan batchMaxDelay)
+    : ITransportPublisher, IAsyncDisposable
 {
-    private static readonly IAutoLogger Logger =  AutoLoggerFactory.CreateLogger<TcpPublisher>(LogSource.Publisher);
+    private static readonly IAutoLogger Logger =  AutoLoggerFactory.CreateLogger<TcpTransportPublisher>(LogSource.Publisher);
     private static readonly TimeSpan BaseRetryDelay = TimeSpan.FromSeconds(1);
     private readonly CancellationTokenSource _cancellationTokenSource = new();
 
@@ -70,7 +70,7 @@ public sealed class TcpPublisher(string host, int port, uint maxSendAttempts, ui
             try
             {
                 _currentPublisherConnection =
-                    new TcpPublisherConnection(host, port, maxSendAttempts, _channel.Reader, _deadLetterChannel);
+                    new TcpPublisherConnection(host, port, topic, maxSendAttempts, batchMaxBytes, batchMaxDelay, _channel.Reader, _deadLetterChannel);
                 await _currentPublisherConnection.ConnectAsync();
                 break;
             }

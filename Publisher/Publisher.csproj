@@ -7,11 +7,11 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Folder Include="Inbound\"/>
+        <ProjectReference Include="..\LoggerLib\LoggerLib.csproj"/>
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\LoggerLib\LoggerLib.csproj"/>
+      <PackageReference Include="Apache.Avro" Version="1.12.1" />
     </ItemGroup>
 
 </Project>
