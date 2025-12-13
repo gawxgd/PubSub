@@ -144,8 +144,9 @@ public sealed class TcpPublisherConnection(
             return;
 
         var batch = BuildBatchBytes(topic, messages);
-
-        await SendWithRetries(batch);
+        
+        if (!await SendWithRetries(batch))
+            SendToDeadLetterNoBlocking(batch); // TODO maybe deconstruct batch and put separate messages there
     }
 
     /// <summary>
@@ -157,6 +158,7 @@ public sealed class TcpPublisherConnection(
     /// </summary>
     private byte[] BuildBatchBytes(string topic, List<byte[]> messages)
     {
+        // TODO: check if we need to set endianees explicitely
         var topicBytes = Encoding.UTF8.GetBytes(topic);
         
         int batchContentSize =
@@ -191,21 +193,18 @@ public sealed class TcpPublisherConnection(
     }
 
 
-    private async Task SendWithRetries(byte[] payload)
+    private async Task<bool> SendWithRetries(byte[] payload)
     {
-        var attempts = 0;
-        var sent = false;
-
-        while (!sent && attempts < maxSendAttempts && !_cancellationSource.Token.IsCancellationRequested)
+        for (int attempt = 1;
+             attempt <= maxSendAttempts && !_cancellationSource.Token.IsCancellationRequested;
+             attempt++)
         {
-            attempts++;
-
             try
             {
                 var mem = PipeWriter.GetMemory(payload.Length);
                 payload.AsSpan().CopyTo(mem.Span);
                 PipeWriter.Advance(payload.Length);
-
+                
                 var result = await PipeWriter.FlushAsync(_cancellationSource.Token);
 
                 if (result.IsCompleted)
@@ -217,20 +216,27 @@ public sealed class TcpPublisherConnection(
                     break;
                 }
 
-                sent = true;
+                return true;
             }
-            catch (IOException)
+            catch (OperationCanceledException)
             {
-                throw new PublisherConnectionException("Connection to broker failed");
+                Logger.LogInfo("Send canceled");
+                break;
+            }
+            catch (IOException ex)
+            {
+                Logger.LogWarning($"IO error on attempt {attempt}", ex);
             }
             catch (SocketException ex) when (CanRetrySocketException(ex))
             {
-                throw new PublisherConnectionException("Connection to broker failed");
+                Logger.LogWarning($"Socket error on attempt {attempt}", ex);
             }
+
+            // backoff
+            await Task.Delay(TimeSpan.FromMilliseconds(100 * attempt), _cancellationSource.Token);
         }
 
-        if (!sent)
-            SendToDeadLetterNoBlocking(payload);
+        return false;
     }
 
 
