@@ -34,7 +34,7 @@ public sealed class AvroSerializer : IAvroSerializer
         FillRecord(record, message);
 
         // Serialize: filled avro GenericRecord --> byte[]
-        byte[] serializedMessage;
+        byte[] serializedContent;
         using (var ms = new MemoryStream())
         {
             var encoder = new Avro.IO.BinaryEncoder(ms);
@@ -50,10 +50,20 @@ public sealed class AvroSerializer : IAvroSerializer
                 throw new InvalidOperationException("Avro serialization failed", ex);
             }
 
-            serializedMessage = ms.ToArray();
+            serializedContent = ms.ToArray();
         }
 
-        return serializedMessage;
+        // Wrap serialized content with schema ID at the beginning
+        byte[] wrappedSerializedMessage;
+        using (var wrapperStream = new MemoryStream())
+        using (var binaryWriter = new BinaryWriter(wrapperStream))
+        {
+            binaryWriter.Write(schemaInfo.SchemaId);
+            binaryWriter.Write(serializedContent);
+            wrappedSerializedMessage = wrapperStream.ToArray();
+        }
+        
+        return wrappedSerializedMessage;
     }
     
     // EVERYTHING BELOW IS AI GENERATED TODO: read it

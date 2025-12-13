@@ -30,6 +30,7 @@ public class SchemaRegistryClient(HttpClient http) : ISchemaRegistryClient
         
         // Map DTO → Domain model
         var schema = new SchemaInfo(
+            id: dto.Id,
             json: dto.SchemaJson.GetRawText(),
             version: dto.Version
         );

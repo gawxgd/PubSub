@@ -19,7 +19,7 @@ public class MessagePublisher(
         // fetch the avro schema from the schema registry using the _schemaRegistryClient
         var schema = await schemaRegistryClient.GetSchemaAsync(topic);
         
-        // serialize using IAvroSerializer - this returns a byte payload
+        // serialize using IAvroSerializer - this returns a byte payload - [schemaId][message]
         var payload = await serializer.SerializeAsync(message, schema);
         
         // TODO: check if _transportPublisher is already connected?
