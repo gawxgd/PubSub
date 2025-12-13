@@ -1,5 +1,4 @@
 using Publisher.Domain.Port;
-using Publisher.Outbound.Adapter;
 
 namespace Publisher.Domain.Service;
 

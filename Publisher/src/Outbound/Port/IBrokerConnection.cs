@@ -1,0 +1,1 @@
+namespace Publisher.Outbound.Port;

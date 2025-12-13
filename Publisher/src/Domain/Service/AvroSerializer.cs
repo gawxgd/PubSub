@@ -1,10 +1,7 @@
-using System.Collections.Concurrent;
 using System.Reflection;
 using System.Text;
-using System.Text.Json;
 using Avro;
 using Avro.Generic;
-using Microsoft.AspNetCore.Routing.Patterns;
 using Publisher.Domain.Model;
 using Publisher.Domain.Port;
 

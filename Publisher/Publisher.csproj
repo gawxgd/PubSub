@@ -14,4 +14,8 @@
       <PackageReference Include="Apache.Avro" Version="1.12.1" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="test\" />
+    </ItemGroup>
+
 </Project>
