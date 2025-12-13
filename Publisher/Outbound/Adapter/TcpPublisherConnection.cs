@@ -160,9 +160,9 @@ public sealed class TcpPublisherConnection(
         var topicBytes = Encoding.UTF8.GetBytes(topic);
         
         int batchContentSize =
-            sizeof(int) + topicBytes.Length + messages.Sum(m => sizeof(int) + m.Length);
+            messages.Sum(m => sizeof(int) + m.Length);
         
-        var result = new byte[sizeof(int) + batchContentSize];
+        var result = new byte[2*sizeof(int) + topicBytes.Length + batchContentSize];
         int offset = 0;
         
         // [batchContentSize]
@@ -170,8 +170,8 @@ public sealed class TcpPublisherConnection(
         offset += sizeof(int);
 
         // [topicSize]
-        BitConverter.GetBytes((ushort)topicBytes.Length).CopyTo(result, offset);
-        offset += sizeof(ushort);
+        BitConverter.GetBytes((int)topicBytes.Length).CopyTo(result, offset);
+        offset += sizeof(int);
 
         // [topic]
         Buffer.BlockCopy(topicBytes, 0, result, offset, topicBytes.Length);
