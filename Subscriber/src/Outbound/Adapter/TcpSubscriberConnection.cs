@@ -1,6 +1,7 @@
 ﻿using System.Buffers;
 using System.IO.Pipelines;
 using System.Net.Sockets;
+using System.Text;
 using System.Threading.Channels;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
@@ -97,9 +98,12 @@ public sealed class TcpSubscriberConnection(
                 var result = await _pipeReader!.ReadAsync(cancellationToken);
                 var buffer = result.Buffer;
 
-                while (TryReadMessage(ref buffer, out var message))
+                while (TryReadBatch(ref buffer, out var batch))
                 {
-                    await messageChannelWriter.WriteAsync(message, cancellationToken);
+                    foreach (var message in UnpackBatch(batch))
+                    {
+                        await messageChannelWriter.WriteAsync(message, cancellationToken);
+                    }
                 }
 
                 _pipeReader.AdvanceTo(buffer.Start, buffer.End);
@@ -123,22 +127,98 @@ public sealed class TcpSubscriberConnection(
         }
     }
 
-
-    private bool TryReadMessage(ref ReadOnlySequence<byte> buffer, out byte[] message)
+    
+    /// <summary>Isolates a single batch from the buffer.</summary>
+    private bool TryReadBatch(ref ReadOnlySequence<byte> buffer, out ReadOnlySequence<byte> batch)
     {
-        var newline = buffer.PositionOf((byte)'\n');
-        if (newline == null)
+        batch = default;
+        
+        // Minimum: contentSize + topicSize
+        if (buffer.Length < 2 * sizeof(int))
         {
-            message = [];
             return false;
         }
+        
+        var reader = new SequenceReader<byte>(buffer);
+        
+        if (!reader.TryReadBigEndian(out int batchContentSize))
+        {
+            return false;
+        }
+        
+        if (!reader.TryReadBigEndian(out int topicSize))
+        {
+            return false;
+        }
+        
+        long totalBatchSize = 2 * sizeof(int) + topicSize + batchContentSize;
+    
+        if (buffer.Length < totalBatchSize)
+        {
+            // We don't have the whole batch yet
+            return false;
+        }
+        
+        batch = buffer.Slice(0, totalBatchSize);
+        
+        buffer = buffer.Slice(totalBatchSize);
+        
+        Logger.LogDebug($"Read batch: contentSize={batchContentSize}, topicSize={topicSize}, totalSize={totalBatchSize}");
 
-        var slice = buffer.Slice(0, newline.Value);
-        message = slice.ToArray();
-
-        buffer = buffer.Slice(buffer.GetPosition(1, newline.Value));
-        Logger.LogInfo( "Received message");
         return true;
+    }
+    
+    /// <summary>Takes the batch apart</summary>
+    /// <returns>messages serialized with avro as byte[] still wrapped with their SchemaId but already without
+    /// their size prefixes</returns>
+    private IEnumerable<byte[]> UnpackBatch(ReadOnlySequence<byte> batch)
+    {
+        var reader = new SequenceReader<byte>(batch);
+        
+        reader.Advance(4); //Skip batchContentSize
+        
+        if (!reader.TryReadBigEndian(out int topicSize))
+        {
+            Logger.LogError("Failed to read topicSize");
+            yield break;
+        }
+        
+        Span<byte> topicBytes = stackalloc byte[topicSize];
+        if (!reader.TryCopyTo(topicBytes))
+        {
+            Logger.LogError("Failed to read topic");
+            yield break;
+        }
+        reader.Advance(topicSize);
+        
+        var topicName = Encoding.UTF8.GetString(topicBytes);
+        Logger.LogDebug($"Unpacking batch for topic: {topicName}");
+        
+        // Read messages right now they look like [msgSize][schemaId][message]
+        while (reader.Remaining > 0)
+        {
+            if (!reader.TryReadBigEndian(out int messageSize))
+            {
+                Logger.LogError("Failed to read message size");
+                yield break;
+            }
+            
+            if (messageSize <= 0 || messageSize > reader.Remaining)
+            {
+                Logger.LogError($"Invalid message size: {messageSize}, remaining: {reader.Remaining}");
+                yield break;
+            }
+            
+            var messageBytes = new byte[messageSize];
+            if (!reader.TryCopyTo(messageBytes))
+            {
+                Logger.LogError("Failed to read message content");
+                yield break;
+            }
+            reader.Advance(messageSize);
+            
+            yield return messageBytes;
+        }
     }
 
     private bool IsRetriable(SocketException ex)
