@@ -2,10 +2,17 @@ using Microsoft.Extensions.Configuration;
 using Publisher.Outbound.Adapter;
 using PubSubDemo.Configuration;
 using PubSubDemo.Services;
+using Subscriber.Configuration;
+using Subscriber.Configuration.Options;
+using LoggerLib.Outbound.Adapter;
+using ILogger = LoggerLib.Domain.Port.ILogger;
+
+// Initialize logger
+var logger = new LoggerLib.Outbound.Adapter.ConsoleLogger();
+AutoLoggerFactory.Initialize(logger);
 
 Console.WriteLine("╔════════════════════════════════════════════╗");
-Console.WriteLine("║   PubSub Demo - Message Publisher         ║");
-Console.WriteLine("║   Demonstrates TcpPublisher Usage          ║");
+Console.WriteLine("║   PubSub Full Demo - Publisher & Subscriber ║");
 Console.WriteLine("╚════════════════════════════════════════════╝");
 Console.WriteLine();
 
@@ -52,10 +59,35 @@ try
     // Create publishing service
     await using var publisherService = new MessagePublisherService(publisher, demoOptions);
 
-    // Start the service
-    await publisherService.StartAsync(cts.Token);
+    // Create subscriber
+    var subscriberOptions = new SubscriberOptions
+    {
+        MessageBrokerConnectionUri = new Uri($"messageBroker://{brokerOptions.Host}:{brokerOptions.Port}"),
+        Topic = "default",
+        MinMessageLength = 1,
+        MaxMessageLength = 1000,
+        PollInterval = TimeSpan.FromMilliseconds(100),
+        MaxRetryAttempts = 3
+        // MaxQueueSize is read-only, uses default value 65536
+    };
 
-    Console.WriteLine("🚀 Publishing messages... Press Ctrl+C to stop.\n");
+    var subscriberFactory = new SubscriberFactory();
+    var subscriber = subscriberFactory.CreateSubscriber(subscriberOptions, async (message) =>
+    {
+        Console.WriteLine($"📨 Subscriber otrzymał: {message}");
+        await Task.CompletedTask;
+    });
+
+    // Start everything
+    Console.WriteLine("🚀 Uruchamianie Publisher i Subscriber...\n");
+    
+    // MessagePublisherService.StartAsync() already calls CreateConnection() internally
+    await publisherService.StartAsync(cts.Token);
+    await subscriber.StartConnectionAsync();
+    await subscriber.StartMessageProcessingAsync();
+
+    Console.WriteLine("✅ Wszystko działa! Sprawdź frontend na http://localhost:3000");
+    Console.WriteLine("   Naciśnij Ctrl+C aby zatrzymać.\n");
 
     // Wait for cancellation
     await Task.Delay(Timeout.Infinite, cts.Token);
