@@ -8,7 +8,6 @@
 
     <ItemGroup>
       <Folder Include="Inbound\" />
-      <Folder Include="src\" />
     </ItemGroup>
 
     <ItemGroup>

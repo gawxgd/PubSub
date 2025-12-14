@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Buffers.Binary;
+using System.Text;
 using System.Threading.Channels;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
@@ -10,13 +11,13 @@ namespace Subscriber.Outbound.Adapter;
 
 public sealed class TcpSubscriber(
     string topic,
-    int minMessageLength,
-    int maxMessageLength,
     TimeSpan pollInterval,
     uint maxRetryAttempts,
     ISubscriberConnection connection,
+    ISchemaRegistryClient schemaRegistryClient,
+    IDeserializer deserializer,
     Channel<byte[]> inboundChannel,
-    Func<string, Task>? messageHandler,
+    Func<object, Task>? messageHandler,
     Func<Exception, Task>? errorHandler = null)
     : ISubscriber, IAsyncDisposable
 {
@@ -50,35 +51,40 @@ public sealed class TcpSubscriber(
 
     public async Task ReceiveAsync(byte[] message)
     {
-        //TODO: change topic checking and reading message to avro
+        if (message.Length < 4)
+        {
+            Logger.LogError($"Message too short: {message.Length} bytes (minimum 4 for schemaId)");
+            return;
+        }
         
-        var text = Encoding.UTF8.GetString(message);
+        var schemaId = BinaryPrimitives.ReadInt32BigEndian(message.AsSpan(0, 4));
 
-        if (text.Length < minMessageLength || text.Length > maxMessageLength)
-        {
-            Logger.LogError($"Invalid message length: {text.Length}");
-            return;
-        }
+        var avroData = message.AsSpan(4).ToArray();
 
-        if (!text.StartsWith($"{topic}:"))
-        {
-            Logger.LogError( $"Ignored message (wrong topic): {text}");
-            return;
-        }
+        var writerSchema = await schemaRegistryClient.GetSchemaByIdAsync(schemaId);
 
-        var payload = text.Substring(topic.Length + 1);
-
+        var readerSchema = await schemaRegistryClient.GetLatestSchemaByTopicAsync(topic);
+        
+        var deserializedEvent = await deserializer.DeserializeAsync(
+            avroData, 
+            writerSchema, 
+            readerSchema);
+        
         try
         {
             if (messageHandler != null)
             {
-                await messageHandler(payload);    
+                await messageHandler(deserializedEvent);
             }
-            Logger.LogInfo( $"Received message: {payload}");
         }
         catch (Exception ex)
         { 
             Logger.LogError( ex.Message);
+            
+            if (errorHandler != null)
+            {
+                await errorHandler(ex);
+            }
         }
     }
     

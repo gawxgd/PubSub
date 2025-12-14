@@ -4,5 +4,5 @@ namespace Publisher.Domain.Port;
 
 public interface ISchemaRegistryClient
 {
-    public Task<SchemaInfo> GetSchemaAsync(string topic);
+    public Task<SchemaInfo?> GetSchemaAsync(string topic);
 }

@@ -16,7 +16,7 @@ public sealed class SubscriberFactory() : ISubscriberFactory
     private const string AllowedUriScheme = "messageBroker";
     private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<SubscriberFactory>(LogSource.MessageBroker);
 
-    public ISubscriber CreateSubscriber(SubscriberOptions options, Func<string, Task>? messageHandler = null)
+    public ISubscriber CreateSubscriber(SubscriberOptions options, Func<object, Task>? messageHandler = null)
     {
         var (host, port, topic, minLen, maxLen, poll, retry) = ValidateOptions(options);
         var channel = Channel.CreateBounded<byte[]>(
@@ -27,14 +27,21 @@ public sealed class SubscriberFactory() : ISubscriberFactory
                 SingleWriter = false
             });
         var connection = new TcpSubscriberConnection(host, port, channel.Writer);
+        var httpClient = new HttpClient
+        {
+            BaseAddress = options.SchemaRegistryConnectionUri,
+            Timeout = TimeSpan.FromSeconds(10)
+        };
+        var schemaRegistryClient = new SchemaRegistryClient(httpClient);
+        var deserializer = new AvroDeserializer();
 
         return new TcpSubscriber(
             topic,
-            minLen,
-            maxLen,
             poll,
             retry,
             connection,
+            schemaRegistryClient,
+            deserializer,
             channel,
             messageHandler);
 
