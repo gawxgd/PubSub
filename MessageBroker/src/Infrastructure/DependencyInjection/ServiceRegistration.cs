@@ -36,6 +36,8 @@ public static class ServiceRegistration
         // Connection management
         services.AddSingleton<IConnectionRepository, InMemoryConnectionRepository>();
         services.AddSingleton<IConnectionManager, ConnectionManager>();
+        // Statistics
+        services.AddSingleton<MessageBroker.Domain.Port.IStatisticsService, MessageBroker.Inbound.Adapter.StatisticsService>();
         // TCP server
         services.AddSingleton<CreateSocketUseCase>();
         services.AddHostedService<SubscriberTcpServer>();

@@ -45,7 +45,8 @@ public class ConnectionManager(IConnectionRepository connectionRepository, IComm
             connectionId,
             acceptedSocket.RemoteEndPoint?.ToString() ?? "Unknown",
             cancellationTokenSource,
-            handlerTask);
+            handlerTask,
+            connectionType);
         connectionRepository.Add(connection);
 
         Logger.LogInfo($"Connection registered with ID: {connectionId}");
