@@ -1,4 +1,5 @@
 using Publisher.Domain.Port;
+using SchemaRegistryClient;
 
 namespace Publisher.Domain.Service;
 
@@ -16,7 +17,7 @@ public class MessagePublisher(
             throw new ArgumentNullException(nameof(message));
         
         // fetch the avro schema from the schema registry using the _schemaRegistryClient
-        var schema = await schemaRegistryClient.GetSchemaAsync(topic);
+        var schema = await schemaRegistryClient.GetLatestSchemaByTopicAsync(topic);
         
         // serialize using IAvroSerializer - this returns a byte payload - [schemaId][message]
         var payload = await serializer.SerializeAsync(message, schema);

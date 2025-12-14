@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace Publisher.Inbound.DTOs;
+namespace SchemaRegistryClient;
 
 public class SchemaDto
 {

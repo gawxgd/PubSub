@@ -6,6 +6,7 @@ using Subscriber.Configuration.Exceptions;
 using Subscriber.Configuration.Options;
 using Subscriber.Domain;
 using Subscriber.Outbound.Adapter;
+using SchemaRegistryClient;
 
 namespace Subscriber.Configuration;
 
@@ -27,12 +28,13 @@ public sealed class SubscriberFactory() : ISubscriberFactory
                 SingleWriter = false
             });
         var connection = new TcpSubscriberConnection(host, port, channel.Writer);
-        var httpClient = new HttpClient
+        var schemaRegistryOptions = new SchemaRegistryClientOptions
         {
             BaseAddress = options.SchemaRegistryConnectionUri,
             Timeout = TimeSpan.FromSeconds(10)
         };
-        var schemaRegistryClient = new SchemaRegistryClient(httpClient);
+        ISchemaRegistryClient schemaRegistryClient =
+            new SchemaRegistryClient.SchemaRegistryClient(schemaRegistryOptions);
         var deserializer = new AvroDeserializer();
 
         return new TcpSubscriber(

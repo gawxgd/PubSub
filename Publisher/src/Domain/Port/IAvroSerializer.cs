@@ -1,4 +1,4 @@
-using Publisher.Domain.Model;
+using SchemaRegistryClient;
 
 namespace Publisher.Domain.Port;
 

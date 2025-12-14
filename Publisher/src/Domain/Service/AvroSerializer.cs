@@ -2,8 +2,8 @@ using System.Reflection;
 using System.Text;
 using Avro;
 using Avro.Generic;
-using Publisher.Domain.Model;
 using Publisher.Domain.Port;
+using SchemaRegistryClient;
 
 namespace Publisher.Domain.Service;
 

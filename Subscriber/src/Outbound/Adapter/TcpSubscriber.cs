@@ -4,6 +4,7 @@ using System.Threading.Channels;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
+using SchemaRegistryClient;
 using Subscriber.Domain;
 using Subscriber.Outbound.Exceptions;
 

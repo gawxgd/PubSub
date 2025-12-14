@@ -1,6 +1,6 @@
 using Avro.Generic;
 using Avro.IO;
-using Subscriber.Domain.Model;
+using SchemaRegistryClient;
 using Subscriber.Domain;
 
 namespace Subscriber.Outbound.Adapter;

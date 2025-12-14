@@ -1,4 +1,4 @@
-using Subscriber.Domain.Model;
+using SchemaRegistryClient;
 
 namespace Subscriber.Domain;
 

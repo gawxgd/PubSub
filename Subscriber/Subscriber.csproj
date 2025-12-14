@@ -8,10 +8,12 @@
 
     <ItemGroup>
       <Folder Include="Inbound\" />
+      <Folder Include="src\Inbound\" />
     </ItemGroup>
 
     <ItemGroup>
       <ProjectReference Include="..\LoggerLib\LoggerLib.csproj" />
+        <ProjectReference Include="..\SchemaRegistryClient\SchemaRegistryClient.csproj" />
     </ItemGroup>
 
 

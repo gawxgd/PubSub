@@ -1,4 +1,4 @@
-namespace Publisher.Domain.Model;
+namespace SchemaRegistryClient;
 
 public sealed record SchemaInfo
 {
