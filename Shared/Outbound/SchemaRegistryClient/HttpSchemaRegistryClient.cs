@@ -14,10 +14,12 @@ public sealed class HttpSchemaRegistryClient : ISchemaRegistryClient
 {
     private const string IdEndpoint = "schema/id/";
     private const string TopicEndpoint = "schema/topic/";
-    
+
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
-    private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<HttpSchemaRegistryClient>(LogSource.Other);
-    
+
+    private static readonly IAutoLogger Logger =
+        AutoLoggerFactory.CreateLogger<HttpSchemaRegistryClient>(LogSource.Other);
+
     private readonly HttpClient _httpClient;
     private readonly ISchemaCache _cache;
 
@@ -44,7 +46,8 @@ public sealed class HttpSchemaRegistryClient : ISchemaRegistryClient
         return schema;
     }
 
-    public async Task<SchemaInfo> GetLatestSchemaByTopicAsync(string topic, CancellationToken cancellationToken = default)
+    public async Task<SchemaInfo> GetLatestSchemaByTopicAsync(string topic,
+        CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(topic);
 
@@ -63,53 +66,33 @@ public sealed class HttpSchemaRegistryClient : ISchemaRegistryClient
 
     private async Task<SchemaInfo> FetchSchemaAsync(string endpoint, CancellationToken cancellationToken)
     {
-        HttpResponseMessage response;
-
         try
         {
-            response = await _httpClient.GetAsync(endpoint, cancellationToken);
-        }
-        catch (HttpRequestException ex)
-        {
-            Logger.LogError($"HTTP request failed for endpoint: {endpoint}", ex);
-            throw new SchemaRegistryException(endpoint, ex);
-        }
-        catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
-        {
-            Logger.LogError($"Request timeout for endpoint: {endpoint}", ex);
-            throw new SchemaRegistryException(endpoint, ex);
-        }
+            var response = await _httpClient.GetAsync(endpoint, cancellationToken);
 
-        if (response.StatusCode == HttpStatusCode.NotFound)
-        {
-            Logger.LogWarning($"Schema not found at endpoint: {endpoint}");
-            throw new SchemaNotFoundException(endpoint);
-        }
-
-        if (!response.IsSuccessStatusCode)
-        {
-            Logger.LogError($"Unexpected status code {response.StatusCode} for endpoint: {endpoint}");
-            throw new SchemaRegistryException(endpoint, response.StatusCode);
-        }
-
-        try
-        {
-            var content = await response.Content.ReadAsStringAsync(cancellationToken);
-            var dto = JsonSerializer.Deserialize<SchemaDto>(content, JsonOptions);
-
-            if (dto is null)
+            if (response.StatusCode == HttpStatusCode.NotFound)
             {
-                Logger.LogError($"Failed to deserialize schema response from endpoint: {endpoint}");
-                throw new SchemaDeserializationException(endpoint);
+                Logger.LogError($"Schema not found: {endpoint}");
+                throw new SchemaNotFoundException(endpoint);
             }
 
-            Logger.LogDebug($"Successfully fetched schema from endpoint: {endpoint}");
-            return new SchemaInfo(dto.Id, dto.SchemaJson.GetRawText(), dto.Version);
+            response.EnsureSuccessStatusCode();
+
+            var content = await response.Content.ReadAsStringAsync(cancellationToken);
+
+            var dto = JsonSerializer.Deserialize<SchemaDto>(content, JsonOptions);
+
+            Logger.LogInfo($"Successfully fetched the schema from: {endpoint}");
+            return new SchemaInfo(dto!.Id, dto.SchemaJson.GetRawText(), dto.Version);
         }
-        catch (JsonException ex)
+        catch (SchemaNotFoundException)
         {
-            Logger.LogError($"JSON deserialization failed for endpoint: {endpoint}", ex);
-            throw new SchemaDeserializationException(endpoint, ex);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError($"Failed to fetch schema from endpoint: {endpoint}", ex);
+            throw new SchemaRegistryClientException(endpoint, ex);
         }
     }
 }
