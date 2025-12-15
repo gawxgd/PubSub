@@ -31,7 +31,7 @@ public sealed class SubscriberFactory() : ISubscriberFactory
         var schemaRegistryOptions = new SchemaRegistryClientOptions
         {
             BaseAddress = options.SchemaRegistryConnectionUri,
-            Timeout = TimeSpan.FromSeconds(10)
+            Timeout = options.SchemaRegistryTimeout
         };
         ISchemaRegistryClient schemaRegistryClient =
             new SchemaRegistryClient.SchemaRegistryClient(schemaRegistryOptions);

@@ -16,4 +16,6 @@ public class SubscriberOptions
     
     public int MaxQueueSIze { get; set; }
     public int MaxQueueSize { get; } = 65536; // Analize the value here
+    
+    public TimeSpan SchemaRegistryTimeout { get; set; } = TimeSpan.FromSeconds(10);
 }
