@@ -10,24 +10,24 @@ using Subscriber.Outbound.Exceptions;
 
 namespace Subscriber.Outbound.Adapter;
 
-public sealed class TcpSubscriber(
+public sealed class TcpSubscriber<T>(
     string topic,
     TimeSpan pollInterval,
     uint maxRetryAttempts,
     ISubscriberConnection connection,
     ISchemaRegistryClient schemaRegistryClient,
-    IDeserializer deserializer,
+    IDeserializer<T> deserializer,
     Channel<byte[]> inboundChannel,
-    Func<object, Task>? messageHandler,
+    Func<T, Task>? messageHandler,
     Func<Exception, Task>? errorHandler = null)
-    : ISubscriber, IAsyncDisposable
+    : ISubscriber<T>, IAsyncDisposable where T : new()
 {
     private readonly CancellationTokenSource _cts = new();
     private CancellationToken CancellationToken => _cts.Token;
 
-    private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<TcpSubscriber>(LogSource.MessageBroker);
+    private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<TcpSubscriber<T>>(LogSource.MessageBroker);
 
-    async Task ISubscriber.CreateConnection()
+    async Task ISubscriber<T>.CreateConnection()
     {
         var retryCount = 0;
 
@@ -123,7 +123,7 @@ public sealed class TcpSubscriber(
     {
         try
         {
-            await ((ISubscriber)this).CreateConnection();
+            await ((ISubscriber<T>)this).CreateConnection();
         }
         catch (SubscriberConnectionException ex) when (ex.IsRetriable)
         {

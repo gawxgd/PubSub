@@ -3,7 +3,7 @@ using Subscriber.Configuration.Options;
 
 namespace Subscriber.Domain;
 
-public interface ISubscriberFactory
+public interface ISubscriberFactory<T>
 {
-    ISubscriber CreateSubscriber(SubscriberOptions options, Func<object, Task>? messageHandler);
+    ISubscriber<T> CreateSubscriber(SubscriberOptions options, Func<T, Task>? messageHandler);
 }

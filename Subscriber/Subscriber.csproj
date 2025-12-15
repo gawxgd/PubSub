@@ -8,6 +8,7 @@
 
     <ItemGroup>
       <Folder Include="Inbound\" />
+      <Folder Include="src\Domain\Service\" />
       <Folder Include="src\Inbound\" />
     </ItemGroup>
 

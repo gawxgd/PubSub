@@ -10,14 +10,14 @@ using SchemaRegistryClient;
 
 namespace Subscriber.Configuration;
 
-public sealed class SubscriberFactory() : ISubscriberFactory
+public sealed class SubscriberFactory<T>() : ISubscriberFactory<T> where T : new()
 {
     private const int MinPort = 1;
     private const int MaxPort = 65535;
     private const string AllowedUriScheme = "messageBroker";
-    private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<SubscriberFactory>(LogSource.MessageBroker);
+    private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<SubscriberFactory<T>>(LogSource.MessageBroker);
 
-    public ISubscriber CreateSubscriber(SubscriberOptions options, Func<object, Task>? messageHandler = null)
+    public ISubscriber<T> CreateSubscriber(SubscriberOptions options, Func<T, Task>? messageHandler = null)
     {
         var (host, port, topic, minLen, maxLen, poll, retry) = ValidateOptions(options);
         var channel = Channel.CreateBounded<byte[]>(
@@ -35,9 +35,9 @@ public sealed class SubscriberFactory() : ISubscriberFactory
         };
         ISchemaRegistryClient schemaRegistryClient =
             new SchemaRegistryClient.SchemaRegistryClient(schemaRegistryOptions);
-        var deserializer = new AvroDeserializer();
+        var deserializer = new AvroDeserializer<T>();
 
-        return new TcpSubscriber(
+        return new TcpSubscriber<T>(
             topic,
             poll,
             retry,
