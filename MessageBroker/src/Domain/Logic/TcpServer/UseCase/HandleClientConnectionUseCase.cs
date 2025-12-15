@@ -6,13 +6,15 @@ using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
 using MessageBroker.Domain.Port.CommitLog;
+using MessageBroker.Domain.Port.CommitLog.RecordBatch;
 
 namespace MessageBroker.Domain.Logic.TcpServer.UseCase;
 
 public class HandleClientConnectionUseCase(
     Socket socket,
     Action onConnectionClosed,
-    ICommitLogFactory commitLogFactory)
+    ICommitLogFactory commitLogFactory,
+    ILogRecordBatchReader batchReader)
 {
     private readonly string _connectedClientEndpoint = socket.RemoteEndPoint?.ToString() ?? "Unknown";
 
@@ -133,7 +135,7 @@ public class HandleClientConnectionUseCase(
 
             try
             {
-                await new ProcessReceivedMessageUseCase(commitLogFactory, "default")
+                await new ProcessReceivedMessageUseCase(commitLogFactory, batchReader, "default")
                     .ProcessMessageAsync(message, cancellationToken);
             }
             catch (Exception ex)
@@ -160,7 +162,6 @@ public class HandleClientConnectionUseCase(
 
         socket.Dispose();
 
-        // Ensure pipe is fully completed
         await _pipe.Reader.CompleteAsync();
         await _pipe.Writer.CompleteAsync();
 

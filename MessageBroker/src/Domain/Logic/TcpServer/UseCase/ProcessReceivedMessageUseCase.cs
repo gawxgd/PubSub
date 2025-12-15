@@ -2,9 +2,7 @@ using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
 using MessageBroker.Domain.Port.CommitLog;
-using MessageBroker.Inbound.CommitLog;
-using MessageBroker.Inbound.CommitLog.Record;
-using MessageBroker.Inbound.CommitLog.Segment;
+using MessageBroker.Domain.Port.CommitLog.RecordBatch;
 
 namespace MessageBroker.Domain.Logic.TcpServer.UseCase;
 
@@ -14,9 +12,15 @@ public class ProcessReceivedMessageUseCase
         AutoLoggerFactory.CreateLogger<ProcessReceivedMessageUseCase>(LogSource.MessageBroker);
 
     private readonly ICommitLogAppender _commitLogAppender;
+    private readonly ILogRecordBatchReader _batchReader;
 
-    public ProcessReceivedMessageUseCase(ICommitLogFactory commitLogFactory, string topic)
+    public ProcessReceivedMessageUseCase(
+        ICommitLogFactory commitLogFactory,
+        ILogRecordBatchReader batchReader,
+        string topic)
     {
+        _batchReader = batchReader;
+
         try
         {
             _commitLogAppender = commitLogFactory.GetAppender(topic);
@@ -32,7 +36,24 @@ public class ProcessReceivedMessageUseCase
     {
         Logger.LogDebug($"Processing message {message.Length} bytes");
 
-        await _commitLogAppender.AppendAsync(message);
-        Logger.LogInfo("Appended message to commit log");
+        try
+        {
+            using var stream = new MemoryStream(message.ToArray());
+            var batch = _batchReader.ReadBatch(stream);
+
+            Logger.LogDebug($"Parsed batch with {batch.Records.Count} records");
+
+            foreach (var record in batch.Records)
+            {
+                await _commitLogAppender.AppendAsync(record.Payload);
+            }
+
+            Logger.LogInfo($"Appended {batch.Records.Count} records to commit log");
+        }
+        catch (InvalidDataException ex)
+        {
+            Logger.LogError($"Failed to parse batch: {ex.Message}", ex);
+            throw;
+        }
     }
 }

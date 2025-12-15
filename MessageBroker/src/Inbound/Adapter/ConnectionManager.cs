@@ -6,10 +6,14 @@ using MessageBroker.Domain.Entities;
 using MessageBroker.Domain.Logic.TcpServer.UseCase;
 using MessageBroker.Domain.Port;
 using MessageBroker.Domain.Port.CommitLog;
+using MessageBroker.Domain.Port.CommitLog.RecordBatch;
 
 namespace MessageBroker.Inbound.Adapter;
 
-public class ConnectionManager(IConnectionRepository connectionRepository, ICommitLogFactory commitLogFactory)
+public class ConnectionManager(
+    IConnectionRepository connectionRepository,
+    ICommitLogFactory commitLogFactory,
+    ILogRecordBatchReader batchReader)
     : IConnectionManager
 {
     private static readonly IAutoLogger Logger =
@@ -25,8 +29,11 @@ public class ConnectionManager(IConnectionRepository connectionRepository, IComm
         {
             Logger.LogDebug(
                 $"Started handler thread for connection {connectionId} with client: {acceptedSocket.RemoteEndPoint}");
-            return new HandleClientConnectionUseCase(acceptedSocket,
-                    () => UnregisterConnectionAfterThreadFinish(connectionId), commitLogFactory)
+            return new HandleClientConnectionUseCase(
+                    acceptedSocket,
+                    () => UnregisterConnectionAfterThreadFinish(connectionId),
+                    commitLogFactory,
+                    batchReader)
                 .HandleConnection(cancellationTokenSource.Token);
         }, cancellationTokenSource.Token);
 
