@@ -7,6 +7,7 @@ using Subscriber.Configuration.Options;
 using Subscriber.Domain;
 using Subscriber.Outbound.Adapter;
 using SchemaRegistryClient;
+using SchemaRegistryClient.Domain.Port.SchemaRegistry;
 
 namespace Subscriber.Configuration;
 
@@ -34,7 +35,7 @@ public sealed class SubscriberFactory<T>() : ISubscriberFactory<T> where T : new
             Timeout = options.SchemaRegistryTimeout
         };
         ISchemaRegistryClient schemaRegistryClient =
-            new SchemaRegistryClient.SchemaRegistryClient(schemaRegistryOptions);
+            new SchemaRegistryClient.HttpSchemaRegistryClient(schemaRegistryOptions);
         var deserializer = new AvroDeserializer<T>();
 
         return new TcpSubscriber<T>(

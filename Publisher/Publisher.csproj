@@ -8,7 +8,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\LoggerLib\LoggerLib.csproj"/>
-        <ProjectReference Include="..\SchemaRegistryClient\SchemaRegistryClient.csproj" />
+        <ProjectReference Include="..\Shared\Shared.csproj" />
     </ItemGroup>
 
     <ItemGroup>

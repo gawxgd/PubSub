@@ -2,7 +2,7 @@ using Publisher.Configuration.Options;
 
 namespace Publisher.Domain.Port;
 
-public interface IPublisherFactory
+public interface IPublisherFactory<in T>
 {
-    ITransportPublisher CreatePublisher(PublisherOptions options);
+    IPublisher<T> CreatePublisher(PublisherOptions options);
 }

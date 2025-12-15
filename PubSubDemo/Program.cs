@@ -44,7 +44,7 @@ Console.CancelKeyPress += (sender, eventArgs) =>
 try
 {
     // Create transportPublisher
-    await using var publisher = new TcpTransportPublisher(
+    await using var publisher = new TcpPublisher(
         brokerOptions.Host,
         brokerOptions.Port,
         demoOptions.Topic ?? "demo-topic", // topic
@@ -86,4 +86,3 @@ catch (Exception ex)
 
 Console.WriteLine("\n👋 PubSub Demo finished.");
 return 0;
-

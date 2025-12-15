@@ -1,13 +1,14 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
 using SchemaRegistryClient;
+using SchemaRegistryClient.Domain.Port.SchemaRegistry;
 
 namespace SchemaRegistryClient;
 
 /// <summary>
 /// HTTP-based client for the Schema Registry service
 /// </summary>
-public sealed class SchemaRegistryClient : ISchemaRegistryClient, IDisposable
+public sealed class HttpSchemaRegistryClient : ISchemaRegistryClient, IDisposable
 {
     private readonly HttpClient _http;
     private readonly SchemaRegistryClientOptions _options;
@@ -18,7 +19,7 @@ public sealed class SchemaRegistryClient : ISchemaRegistryClient, IDisposable
     /// <summary>
     /// Creates a new SchemaRegistryClient with a new HttpClient (client will be disposed)
     /// </summary>
-    public SchemaRegistryClient(SchemaRegistryClientOptions options)
+    public HttpSchemaRegistryClient(SchemaRegistryClientOptions options)
     {
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _http = new HttpClient
@@ -33,7 +34,7 @@ public sealed class SchemaRegistryClient : ISchemaRegistryClient, IDisposable
     /// Creates a new SchemaRegistryClient with an existing HttpClient (client will NOT be disposed)
     /// Use this when using IHttpClientFactory
     /// </summary>
-    public SchemaRegistryClient(HttpClient httpClient, SchemaRegistryClientOptions options)
+    public HttpSchemaRegistryClient(HttpClient httpClient, SchemaRegistryClientOptions options)
     {
         _http = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _options = options ?? throw new ArgumentNullException(nameof(options));

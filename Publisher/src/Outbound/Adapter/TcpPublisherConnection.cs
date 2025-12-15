@@ -5,6 +5,7 @@ using System.Threading.Channels;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
+using Publisher.Configuration.Options;
 using Publisher.Domain.Port;
 using Publisher.Outbound.Exceptions;
 
@@ -12,12 +13,7 @@ namespace Publisher.Outbound.Adapter;
 
 //ToDo what should be a case for reconnection creating a new connection instance and what not
 public sealed class TcpPublisherConnection(
-    string host,
-    int port,
-    string topic,
-    uint maxSendAttempts,
-    int batchMaxBytes,
-    TimeSpan batchMaxDelay,
+    PublisherOptions options,
     ChannelReader<byte[]> channelReader,
     Channel<byte[]> deadLetterChannel)
     : IPublisherConnection, IAsyncDisposable
@@ -77,7 +73,8 @@ public sealed class TcpPublisherConnection(
     {
         try
         {
-            await _client.ConnectAsync(host, port, _cancellationSource.Token);
+            await _client.ConnectAsync(options.MessageBrokerConnectionUri.Host, options.MessageBrokerConnectionUri.Port,
+                _cancellationSource.Token);
             _pipeWriter = PipeWriter.Create(_client.GetStream());
             Logger.LogInfo($"Connected to broker on {_client.Client.RemoteEndPoint}");
         }
@@ -111,7 +108,8 @@ public sealed class TcpPublisherConnection(
 
                 var now = DateTime.UtcNow;
 
-                var full = currentBatchBytes >= batchMaxBytes; // TODO: think about this - this means that the batch can actually be a little bit bigger than batchMaxSize
+                var full = currentBatchBytes >=
+                           batchMaxBytes; // TODO: think about this - this means that the batch can actually be a little bit bigger than batchMaxSize
                 var timeout = now - lastFlush >= batchMaxDelay;
 
                 if (full || timeout)
@@ -144,7 +142,7 @@ public sealed class TcpPublisherConnection(
             return;
 
         var batch = BuildBatchBytes(topic, messages);
-        
+
         if (!await SendWithRetries(batch))
             SendToDeadLetterNoBlocking(batch); // TODO maybe deconstruct batch and put separate messages there
     }
@@ -160,13 +158,13 @@ public sealed class TcpPublisherConnection(
     {
         // TODO: check if we need to set endianees explicitely
         var topicBytes = Encoding.UTF8.GetBytes(topic);
-        
+
         int batchContentSize =
             messages.Sum(m => sizeof(int) + m.Length);
-        
-        var result = new byte[2*sizeof(int) + topicBytes.Length + batchContentSize];
+
+        var result = new byte[2 * sizeof(int) + topicBytes.Length + batchContentSize];
         int offset = 0;
-        
+
         // [batchContentSize]
         BitConverter.GetBytes(batchContentSize).CopyTo(result, offset);
         offset += sizeof(int);
@@ -178,7 +176,7 @@ public sealed class TcpPublisherConnection(
         // [topic]
         Buffer.BlockCopy(topicBytes, 0, result, offset, topicBytes.Length);
         offset += topicBytes.Length;
-        
+
         //[size1][message1][size2][message2]...
         foreach (var msg in messages)
         {
@@ -204,7 +202,7 @@ public sealed class TcpPublisherConnection(
                 var mem = PipeWriter.GetMemory(payload.Length);
                 payload.AsSpan().CopyTo(mem.Span);
                 PipeWriter.Advance(payload.Length);
-                
+
                 var result = await PipeWriter.FlushAsync(_cancellationSource.Token);
 
                 if (result.IsCompleted)

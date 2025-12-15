@@ -41,7 +41,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LoggerLib", "LoggerLib\Logg
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FrontendForLoggerTest", "FrontendForLoggerTest\FrontendForLoggerTest.csproj", "{78DCF74F-0013-4FB5-973D-D365245BCC3D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SchemaRegistryClient", "SchemaRegistryClient\SchemaRegistryClient.csproj", "{3198E5DC-F753-4B3A-9F23-3C5C3DE9EA6B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shared", "Shared\Shared.csproj", "{3198E5DC-F753-4B3A-9F23-3C5C3DE9EA6B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

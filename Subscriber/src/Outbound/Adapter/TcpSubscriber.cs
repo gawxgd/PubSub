@@ -5,6 +5,7 @@ using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
 using SchemaRegistryClient;
+using SchemaRegistryClient.Domain.Port.SchemaRegistry;
 using Subscriber.Domain;
 using Subscriber.Outbound.Exceptions;
 

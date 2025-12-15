@@ -10,16 +10,16 @@ namespace PubSubDemo.Services;
 /// </summary>
 public sealed class MessagePublisherService : IAsyncDisposable
 {
-    private readonly ITransportPublisher _transportPublisher;
+    private readonly IPublisher _publisher;
     private readonly DemoOptions _options;
     private readonly CancellationTokenSource _cts;
     private Task? _publishTask;
     private long _messagesSent;
     private long _messagesFailed;
 
-    public MessagePublisherService(ITransportPublisher transportPublisher, DemoOptions options)
+    public MessagePublisherService(IPublisher publisher, DemoOptions options)
     {
-        _transportPublisher = transportPublisher ?? throw new ArgumentNullException(nameof(transportPublisher));
+        _publisher = publisher ?? throw new ArgumentNullException(nameof(publisher));
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _cts = new CancellationTokenSource();
     }
@@ -30,9 +30,9 @@ public sealed class MessagePublisherService : IAsyncDisposable
     public async Task StartAsync(CancellationToken cancellationToken = default)
     {
         Console.WriteLine("Starting Message Publisher Service...");
-        
+
         // Connect to the broker
-        await _transportPublisher.CreateConnection();
+        await _publisher.CreateConnection();
         Console.WriteLine("Connected to message broker successfully!");
 
         // Start publishing messages
@@ -45,7 +45,7 @@ public sealed class MessagePublisherService : IAsyncDisposable
     public async Task StopAsync()
     {
         Console.WriteLine("\nStopping Message Publisher Service...");
-        
+
         await _cts.CancelAsync();
 
         if (_publishTask != null)
@@ -86,12 +86,13 @@ public sealed class MessagePublisherService : IAsyncDisposable
                 var bytes = Encoding.UTF8.GetBytes(json);
 
                 // Publish to broker
-                await _transportPublisher.PublishAsync(bytes);
-                
+                await _publisher.PublishAsync(bytes);
+
                 Interlocked.Increment(ref _messagesSent);
 
                 // Console output with status
-                Console.Write($"\r[{DateTime.Now:HH:mm:ss}] Sent: {_messagesSent} | Failed: {_messagesFailed} | Last: {message.MessageType,-15}");
+                Console.Write(
+                    $"\r[{DateTime.Now:HH:mm:ss}] Sent: {_messagesSent} | Failed: {_messagesFailed} | Last: {message.MessageType,-15}");
 
                 // Wait before sending next message
                 await Task.Delay(_options.MessageInterval, cancellationToken);
@@ -111,7 +112,7 @@ public sealed class MessagePublisherService : IAsyncDisposable
             {
                 Interlocked.Increment(ref _messagesFailed);
                 Console.WriteLine($"\nError publishing message: {ex.Message}");
-                
+
                 // Wait a bit before retrying
                 await Task.Delay(1000, cancellationToken);
             }
@@ -138,7 +139,7 @@ public sealed class MessagePublisherService : IAsyncDisposable
                 var json = JsonSerializer.Serialize(message);
                 var bytes = Encoding.UTF8.GetBytes(json);
 
-                await _transportPublisher.PublishAsync(bytes);
+                await _publisher.PublishAsync(bytes);
                 Interlocked.Increment(ref _messagesSent);
             }
             catch (Exception ex)
@@ -162,7 +163,7 @@ public sealed class MessagePublisherService : IAsyncDisposable
         await StopAsync();
         _cts.Dispose();
 
-        if (_transportPublisher is IAsyncDisposable disposable)
+        if (_publisher is IAsyncDisposable disposable)
         {
             await disposable.DisposeAsync();
         }
@@ -180,6 +181,3 @@ public sealed class DemoMessage
     public string Source { get; set; } = string.Empty;
     public string MessageType { get; set; } = string.Empty;
 }
-
-
-
