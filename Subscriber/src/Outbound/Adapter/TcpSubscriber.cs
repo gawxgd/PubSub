@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-using System.Threading.Channels;
-=======
 ﻿using System.Threading.Channels;
->>>>>>> main
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;

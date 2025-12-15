@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-using System.Buffers;
-=======
-﻿﻿using System.Buffers;
->>>>>>> main
+﻿using System.Buffers;
 using System.IO.Pipelines;
 using System.Net.Sockets;
 using System.Threading.Channels;
