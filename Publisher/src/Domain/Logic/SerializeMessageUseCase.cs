@@ -1,6 +1,5 @@
 using Publisher.Domain.Port;
-using SchemaRegistryClient;
-using SchemaRegistryClient.Domain.Port.SchemaRegistry;
+using Shared.Domain.Port.SchemaRegistryClient;
 
 namespace Publisher.Domain.Logic;
 

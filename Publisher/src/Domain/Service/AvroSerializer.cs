@@ -3,7 +3,7 @@ using System.Text;
 using Avro;
 using Avro.Generic;
 using Publisher.Domain.Port;
-using SchemaRegistryClient;
+using Shared.Domain.Entities.SchemaRegistryClient;
 
 namespace Publisher.Domain.Service;
 

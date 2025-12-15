@@ -5,9 +5,9 @@ using Avro;
 using Avro.Generic;
 using Avro.IO;
 using FluentAssertions;
-using Publisher.Domain.Model;
 using Publisher.Domain.Port;
 using Publisher.Domain.Service;
+using Shared.Domain.Entities.SchemaRegistryClient;
 using Xunit;
 
 namespace Publisher.Test;

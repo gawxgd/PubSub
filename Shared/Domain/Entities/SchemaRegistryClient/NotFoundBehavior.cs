@@ -1,4 +1,4 @@
-namespace SchemaRegistryClient;
+namespace Shared.Domain.Entities.SchemaRegistryClient;
 
 public enum NotFoundBehavior
 {

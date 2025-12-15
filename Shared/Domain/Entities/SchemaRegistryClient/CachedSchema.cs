@@ -1,4 +1,4 @@
-namespace Shared.Domain.Entities;
+namespace Shared.Domain.Entities.SchemaRegistryClient;
 
 public sealed record CachedSchema(SchemaInfo schemaInfo, DateTime cachedAt)
 {

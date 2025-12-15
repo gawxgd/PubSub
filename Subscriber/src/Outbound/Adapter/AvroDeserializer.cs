@@ -2,7 +2,7 @@ using Avro;
 using Avro.Generic;
 using Avro.IO;
 using Microsoft.Extensions.Logging;
-using SchemaRegistryClient;
+using Shared.Domain.Entities.SchemaRegistryClient;
 using Subscriber.Domain;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;

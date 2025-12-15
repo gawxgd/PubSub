@@ -6,8 +6,9 @@ using Subscriber.Configuration.Exceptions;
 using Subscriber.Configuration.Options;
 using Subscriber.Domain;
 using Subscriber.Outbound.Adapter;
-using SchemaRegistryClient;
-using SchemaRegistryClient.Domain.Port.SchemaRegistry;
+using Shared.Configuration.SchemaRegistryClient.Options;
+using Shared.Domain.Port.SchemaRegistryClient;
+using Shared.Outbound.SchemaRegistryClient;
 
 namespace Subscriber.Configuration;
 
@@ -16,7 +17,9 @@ public sealed class SubscriberFactory<T>() : ISubscriberFactory<T> where T : new
     private const int MinPort = 1;
     private const int MaxPort = 65535;
     private const string AllowedUriScheme = "messageBroker";
-    private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<SubscriberFactory<T>>(LogSource.MessageBroker);
+
+    private static readonly IAutoLogger Logger =
+        AutoLoggerFactory.CreateLogger<SubscriberFactory<T>>(LogSource.MessageBroker);
 
     public ISubscriber<T> CreateSubscriber(SubscriberOptions options, Func<T, Task>? messageHandler = null)
     {
@@ -35,7 +38,7 @@ public sealed class SubscriberFactory<T>() : ISubscriberFactory<T> where T : new
             Timeout = options.SchemaRegistryTimeout
         };
         ISchemaRegistryClient schemaRegistryClient =
-            new SchemaRegistryClient.HttpSchemaRegistryClient(schemaRegistryOptions);
+            new HttpSchemaRegistryClient(schemaRegistryOptions);
         var deserializer = new AvroDeserializer<T>();
 
         return new TcpSubscriber<T>(
@@ -47,7 +50,6 @@ public sealed class SubscriberFactory<T>() : ISubscriberFactory<T> where T : new
             deserializer,
             channel,
             messageHandler);
-
     }
 
     private (string host, int port, string topic, int minLen, int maxLen, TimeSpan poll, uint retry)
@@ -57,25 +59,26 @@ public sealed class SubscriberFactory<T>() : ISubscriberFactory<T> where T : new
 
         if (!uri.IsAbsoluteUri)
         {
-            Logger.LogError( $"{options.MessageBrokerConnectionUri} is not an absolute URI.");
+            Logger.LogError($"{options.MessageBrokerConnectionUri} is not an absolute URI.");
             throw new SubscriberFactoryException("URI must be absolute", SubscriberFactoryErrorCode.InvalidUri);
         }
 
         if (!string.Equals(uri.Scheme, AllowedUriScheme, StringComparison.OrdinalIgnoreCase))
         {
             Logger.LogError($"{options.MessageBrokerConnectionUri.Scheme} is not a valid scheme.");
-            throw new SubscriberFactoryException("Unsupported URI scheme", SubscriberFactoryErrorCode.UnsupportedScheme);
+            throw new SubscriberFactoryException("Unsupported URI scheme",
+                SubscriberFactoryErrorCode.UnsupportedScheme);
         }
 
         if (uri.Port is < MinPort or > MaxPort)
         {
-            Logger.LogError( $"{options.Port} is not a valid port.");
+            Logger.LogError($"{options.Port} is not a valid port.");
             throw new SubscriberFactoryException("Invalid port", SubscriberFactoryErrorCode.InvalidPort);
         }
 
         if (string.IsNullOrWhiteSpace(options.Topic))
         {
-            Logger.LogError( $"{options.Topic} is not a topic.");
+            Logger.LogError($"{options.Topic} is not a topic.");
             throw new SubscriberFactoryException("Topic is required", SubscriberFactoryErrorCode.MissingTopic);
         }
 

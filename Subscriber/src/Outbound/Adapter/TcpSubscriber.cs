@@ -4,8 +4,7 @@ using System.Threading.Channels;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
-using SchemaRegistryClient;
-using SchemaRegistryClient.Domain.Port.SchemaRegistry;
+using Shared.Domain.Port.SchemaRegistryClient;
 using Subscriber.Domain;
 using Subscriber.Outbound.Exceptions;
 
@@ -26,7 +25,8 @@ public sealed class TcpSubscriber<T>(
     private readonly CancellationTokenSource _cts = new();
     private CancellationToken CancellationToken => _cts.Token;
 
-    private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<TcpSubscriber<T>>(LogSource.MessageBroker);
+    private static readonly IAutoLogger Logger =
+        AutoLoggerFactory.CreateLogger<TcpSubscriber<T>>(LogSource.MessageBroker);
 
     async Task ISubscriber<T>.CreateConnection()
     {
@@ -58,7 +58,7 @@ public sealed class TcpSubscriber<T>(
             Logger.LogError($"Message too short: {message.Length} bytes (minimum 4 for schemaId)");
             return;
         }
-        
+
         var schemaId = BinaryPrimitives.ReadInt32BigEndian(message.AsSpan(0, 4));
 
         var avroData = message.AsSpan(4).ToArray();
@@ -66,12 +66,12 @@ public sealed class TcpSubscriber<T>(
         var writerSchema = await schemaRegistryClient.GetSchemaByIdAsync(schemaId);
 
         var readerSchema = await schemaRegistryClient.GetLatestSchemaByTopicAsync(topic);
-        
+
         var deserializedEvent = await deserializer.DeserializeAsync(
-            avroData, 
-            writerSchema, 
+            avroData,
+            writerSchema,
             readerSchema);
-        
+
         try
         {
             if (messageHandler != null)
@@ -80,16 +80,16 @@ public sealed class TcpSubscriber<T>(
             }
         }
         catch (Exception ex)
-        { 
-            Logger.LogError( ex.Message);
-            
+        {
+            Logger.LogError(ex.Message);
+
             if (errorHandler != null)
             {
                 await errorHandler(ex);
             }
         }
     }
-    
+
     public async Task StartMessageProcessingAsync()
     {
         while (!CancellationToken.IsCancellationRequested)
@@ -119,7 +119,7 @@ public sealed class TcpSubscriber<T>(
             }
         }
     }
-    
+
     public async Task StartConnectionAsync()
     {
         try
@@ -130,7 +130,7 @@ public sealed class TcpSubscriber<T>(
         {
             Logger.LogWarning($"Retriable connection error: {ex.Message}");
             await Task.Delay(pollInterval, CancellationToken);
-            await StartConnectionAsync(); 
+            await StartConnectionAsync();
         }
         catch (SubscriberConnectionException ex)
         {
@@ -143,15 +143,14 @@ public sealed class TcpSubscriber<T>(
             throw;
         }
     }
-    
+
 
     public async ValueTask DisposeAsync()
     {
-        await _cts.CancelAsync();      // 1. Cancel internal operations
-        await connection.DisconnectAsync();                // 2. Stop TCP read loop / producer
-        inboundChannel.Writer.TryComplete();               // 3. Signal no more messages
-        await inboundChannel.Reader.Completion;            // 4. Wait for consumer to finish
-        _cts.Dispose();                // 5. Cleanup
-
+        await _cts.CancelAsync(); // 1. Cancel internal operations
+        await connection.DisconnectAsync(); // 2. Stop TCP read loop / producer
+        inboundChannel.Writer.TryComplete(); // 3. Signal no more messages
+        await inboundChannel.Reader.Completion; // 4. Wait for consumer to finish
+        _cts.Dispose(); // 5. Cleanup
     }
 }

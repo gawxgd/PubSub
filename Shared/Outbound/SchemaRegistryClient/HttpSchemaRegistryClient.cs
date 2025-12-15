@@ -1,9 +1,11 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
-using SchemaRegistryClient;
-using SchemaRegistryClient.Domain.Port.SchemaRegistry;
+using Shared.Configuration.SchemaRegistryClient.Options;
+using Shared.Domain.Entities.SchemaRegistryClient;
+using Shared.Domain.Exceptions.SchemaRegistryClient;
+using Shared.Domain.Port.SchemaRegistryClient;
 
-namespace SchemaRegistryClient;
+namespace Shared.Outbound.SchemaRegistryClient;
 
 /// <summary>
 /// HTTP-based client for the Schema Registry service
@@ -60,14 +62,14 @@ public sealed class HttpSchemaRegistryClient : ISchemaRegistryClient, IDisposabl
 
         // Fetch from registry
         var response = await _http.GetAsync($"schema/id/{schemaId}", cancellationToken);
-        
+
         if (!response.IsSuccessStatusCode)
         {
             return HandleNotFound<SchemaInfo?>(() => new SchemaNotFoundException(schemaId));
         }
 
         var schema = await DeserializeSchemaResponse(response, cancellationToken);
-        
+
         if (schema == null)
         {
             return HandleNotFound<SchemaInfo?>(() => new SchemaNotFoundException(schemaId));
@@ -75,11 +77,12 @@ public sealed class HttpSchemaRegistryClient : ISchemaRegistryClient, IDisposabl
 
         // Cache it TODO retrieve topic and cache in the other cache too (dto contains it)
         _cacheById[schemaId] = new CachedSchema(schema);
-        
+
         return schema;
     }
 
-    public async Task<SchemaInfo?> GetLatestSchemaByTopicAsync(string topic, CancellationToken cancellationToken = default)
+    public async Task<SchemaInfo?> GetLatestSchemaByTopicAsync(string topic,
+        CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(topic))
             throw new ArgumentException("Topic cannot be null or empty", nameof(topic));
@@ -100,14 +103,14 @@ public sealed class HttpSchemaRegistryClient : ISchemaRegistryClient, IDisposabl
 
         // Fetch from registry
         var response = await _http.GetAsync($"schema/topic/{topic}", cancellationToken);
-        
+
         if (!response.IsSuccessStatusCode)
         {
             return HandleNotFound<SchemaInfo?>(() => new SchemaNotFoundException(topic));
         }
 
         var schema = await DeserializeSchemaResponse(response, cancellationToken);
-        
+
         if (schema == null)
         {
             return HandleNotFound<SchemaInfo?>(() => new SchemaNotFoundException(topic));
@@ -117,14 +120,15 @@ public sealed class HttpSchemaRegistryClient : ISchemaRegistryClient, IDisposabl
         var cachedSchema = new CachedSchema(schema);
         _cacheByTopic[topic] = cachedSchema;
         _cacheById[schema.SchemaId] = cachedSchema;
-        
+
         return schema;
     }
 
-    private async Task<SchemaInfo?> DeserializeSchemaResponse(HttpResponseMessage response, CancellationToken cancellationToken)
+    private async Task<SchemaInfo?> DeserializeSchemaResponse(HttpResponseMessage response,
+        CancellationToken cancellationToken)
     {
         var content = await response.Content.ReadAsStringAsync(cancellationToken);
-        
+
         var dto = JsonSerializer.Deserialize<SchemaDto>(
             content,
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
@@ -141,6 +145,7 @@ public sealed class HttpSchemaRegistryClient : ISchemaRegistryClient, IDisposabl
         {
             throw exceptionFactory();
         }
+
         return default(T)!;
     }
 

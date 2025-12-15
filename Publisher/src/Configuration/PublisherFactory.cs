@@ -4,6 +4,8 @@ using Publisher.Domain.Logic;
 using Publisher.Domain.Port;
 using Publisher.Domain.Service;
 using Publisher.Outbound.Adapter;
+using Shared.Configuration.SchemaRegistryClient.Options;
+using Shared.Outbound.SchemaRegistryClient;
 
 namespace Publisher.Configuration;
 

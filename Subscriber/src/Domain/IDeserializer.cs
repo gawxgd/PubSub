@@ -1,4 +1,4 @@
-using SchemaRegistryClient;
+using Shared.Domain.Entities.SchemaRegistryClient;
 
 namespace Subscriber.Domain;
 
