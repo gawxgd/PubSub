@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 using Shared.Domain.Entities.SchemaRegistryClient;
 using Shared.Domain.Port.SchemaRegistryClient;
 
@@ -31,7 +32,7 @@ public sealed class InMemorySchemaCache(TimeSpan? expiration = null) : ISchemaCa
         _byId[schema.SchemaId] = cached;
     }
 
-    private bool TryGetFromCache<TKey>(ConcurrentDictionary<TKey, CachedSchema> cache, TKey key, out SchemaInfo schema)
+    private bool TryGetFromCache<TKey>(ConcurrentDictionary<TKey, CachedSchema> cache, TKey key, out SchemaInfo? schema)
         where TKey : notnull
     {
         if (cache.TryGetValue(key, out var cached) && !IsExpired(cached))

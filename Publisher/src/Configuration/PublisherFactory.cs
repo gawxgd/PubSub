@@ -4,31 +4,27 @@ using Publisher.Domain.Logic;
 using Publisher.Domain.Port;
 using Publisher.Domain.Service;
 using Publisher.Outbound.Adapter;
-using Shared.Configuration.SchemaRegistryClient.Options;
-using Shared.Outbound.SchemaRegistryClient;
+using Shared.Domain.Port.SchemaRegistryClient;
 
 namespace Publisher.Configuration;
 
-public sealed class PublisherFactory<T> : IPublisherFactory<T>
+public sealed class PublisherFactory<T>(ISchemaRegistryClientFactory schemaRegistryClientFactory) : IPublisherFactory<T>
 {
     private const int MinPort = 1;
     private const int MaxPort = 65535;
     private const uint MaxPublisherQueueSize = 65536; // think about value
     private const string AllowedUriScheme = "messageBroker";
 
-
     public IPublisher<T> CreatePublisher(PublisherOptions options)
     {
         ValidateOptions(options);
 
         var avroSerializer = new AvroSerializer<T>();
-        var schemaClient = new Sch
-
+        var schemaClient = schemaRegistryClientFactory.Create();
         var serializeMessageUseCase = new SerializeMessageUseCase<T>(avroSerializer, schemaClient, options.Topic);
 
         return new TcpPublisher<T>(options, serializeMessageUseCase);
     }
-
 
     private void ValidateOptions(PublisherOptions options)
     {
