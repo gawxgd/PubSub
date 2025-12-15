@@ -47,7 +47,14 @@ try
     await using var publisher = new TcpTransportPublisher(
         brokerOptions.Host,
         brokerOptions.Port,
-        brokerOptions.MaxQueueSize, 5, 5);
+        demoOptions.Topic ?? "demo-topic", // topic
+        5, // maxSendAttempts
+        brokerOptions.MaxQueueSize,
+        5, // maxRetryAttempts
+        demoOptions.BatchMaxBytes > 0 ? demoOptions.BatchMaxBytes : 65536, // batchMaxBytes (default 64KB)
+        demoOptions.BatchMaxDelay > 0 ? demoOptions.BatchMaxDelay : 1000 // batchMaxDelay (default 1000ms)
+    );
+
 
     // Create publishing service
     await using var publisherService = new MessagePublisherService(publisher, demoOptions);

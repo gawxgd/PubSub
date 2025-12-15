@@ -111,7 +111,7 @@ public sealed class TcpPublisherConnection(
 
                 var now = DateTime.UtcNow;
 
-                var full = currentBatchBytes >= batchMaxBytes;
+                var full = currentBatchBytes >= batchMaxBytes; // TODO: think about this - this means that the batch can actually be a little bit bigger than batchMaxSize
                 var timeout = now - lastFlush >= batchMaxDelay;
 
                 if (full || timeout)
