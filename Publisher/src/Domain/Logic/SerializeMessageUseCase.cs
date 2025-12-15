@@ -11,7 +11,6 @@ public class SerializeMessageUseCase<T>(
     public async Task<byte[]> Serialize(T message)
     {
         var schema = await schemaRegistryClient.GetLatestSchemaByTopicAsync(topic);
-
-        return await serializer.SerializeAsync(message, schema);
+        return serializer.Serialize(message, schema);
     }
 }
