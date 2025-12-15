@@ -13,5 +13,5 @@ public interface ISchemaRegistryClient
     /// <exception cref="SchemaNotFoundException">
     /// Thrown when no schema exists for the topic.
     /// </exception>
-    Task<SchemaInfo?> GetLatestSchemaByTopicAsync(string topic, CancellationToken cancellationToken = default);
+    Task<SchemaInfo> GetLatestSchemaByTopicAsync(string topic, CancellationToken cancellationToken = default);
 }

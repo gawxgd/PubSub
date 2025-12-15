@@ -12,9 +12,12 @@ namespace Shared.Outbound.SchemaRegistryClient;
 
 public sealed class HttpSchemaRegistryClient : ISchemaRegistryClient
 {
+    private const string IdEndpoint = "schema/id/";
+    private const string TopicEndpoint = "schema/topic/";
+    
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
     private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<HttpSchemaRegistryClient>(LogSource.Other);
-
+    
     private readonly HttpClient _httpClient;
     private readonly ISchemaCache _cache;
 
@@ -35,13 +38,13 @@ public sealed class HttpSchemaRegistryClient : ISchemaRegistryClient
         }
 
         Logger.LogDebug($"Cache miss for schema ID: {schemaId}, fetching from registry");
-        var schema = await FetchSchemaAsync($"schema/id/{schemaId}", cancellationToken);
+        var schema = await FetchSchemaAsync($"{IdEndpoint}{schemaId}", cancellationToken);
 
         _cache.AddToCache(schemaId, schema);
         return schema;
     }
 
-    public async Task<SchemaInfo?> GetLatestSchemaByTopicAsync(string topic, CancellationToken cancellationToken = default)
+    public async Task<SchemaInfo> GetLatestSchemaByTopicAsync(string topic, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(topic);
 
@@ -52,7 +55,7 @@ public sealed class HttpSchemaRegistryClient : ISchemaRegistryClient
         }
 
         Logger.LogDebug($"Cache miss for topic: {topic}, fetching from registry");
-        var schema = await FetchSchemaAsync($"schema/topic/{topic}", cancellationToken);
+        var schema = await FetchSchemaAsync($"{TopicEndpoint}{topic}", cancellationToken);
 
         _cache.AddToCache(topic, schema);
         return schema;
