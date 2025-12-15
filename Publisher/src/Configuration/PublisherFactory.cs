@@ -1,3 +1,10 @@
+using System.Text;
+using MessageBroker.Domain.Port.CommitLog.Compressor;
+using MessageBroker.Domain.Port.CommitLog.Record;
+using MessageBroker.Domain.Port.CommitLog.RecordBatch;
+using MessageBroker.Inbound.CommitLog.BatchRecord;
+using MessageBroker.Inbound.CommitLog.Compressor;
+using MessageBroker.Inbound.CommitLog.Record;
 using Publisher.Configuration.Exceptions;
 using Publisher.Configuration.Options;
 using Publisher.Domain.Logic;
@@ -12,7 +19,7 @@ public sealed class PublisherFactory<T>(ISchemaRegistryClientFactory schemaRegis
 {
     private const int MinPort = 1;
     private const int MaxPort = 65535;
-    private const uint MaxPublisherQueueSize = 65536; // think about value
+    private const uint MaxPublisherQueueSize = 65536;
     private const string AllowedUriScheme = "messageBroker";
 
     public IPublisher<T> CreatePublisher(PublisherOptions options)
@@ -22,8 +29,16 @@ public sealed class PublisherFactory<T>(ISchemaRegistryClientFactory schemaRegis
         var avroSerializer = new AvroSerializer<T>();
         var schemaClient = schemaRegistryClientFactory.Create();
         var serializeMessageUseCase = new SerializeMessageUseCase<T>(avroSerializer, schemaClient, options.Topic);
+        var batchWriter = CreateBatchWriter();
 
-        return new TcpPublisher<T>(options, serializeMessageUseCase);
+        return new TcpPublisher<T>(options, serializeMessageUseCase, batchWriter);
+    }
+
+    private static ILogRecordBatchWriter CreateBatchWriter()
+    {
+        ILogRecordWriter recordWriter = new LogRecordBinaryWriter();
+        ICompressor compressor = new NoopCompressor();
+        return new LogRecordBatchBinaryWriter(recordWriter, compressor, Encoding.UTF8);
     }
 
     private void ValidateOptions(PublisherOptions options)

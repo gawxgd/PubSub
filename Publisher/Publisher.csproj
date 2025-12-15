@@ -8,16 +8,21 @@
 
     <ItemGroup>
         <ProjectReference Include="..\LoggerLib\LoggerLib.csproj"/>
-        <ProjectReference Include="..\Shared\Shared.csproj" />
+        <ProjectReference Include="..\MessageBroker\src\MessageBroker.csproj"/>
+        <ProjectReference Include="..\Shared\Shared.csproj"/>
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Apache.Avro" Version="1.12.1" />
+        <PackageReference Include="Apache.Avro" Version="1.12.1"/>
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="src\Inbound\" />
-      <Folder Include="test\" />
+        <Folder Include="src\Inbound\"/>
+        <Folder Include="test\"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Compile Remove="test\**\*.cs"/>
     </ItemGroup>
 
 </Project>

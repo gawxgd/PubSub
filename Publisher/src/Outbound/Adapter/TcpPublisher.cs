@@ -2,6 +2,7 @@ using System.Threading.Channels;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
+using MessageBroker.Domain.Port.CommitLog.RecordBatch;
 using Publisher.Configuration.Options;
 using Publisher.Domain.Logic;
 using Publisher.Domain.Port;
@@ -9,7 +10,10 @@ using Publisher.Outbound.Exceptions;
 
 namespace Publisher.Outbound.Adapter;
 
-public sealed class TcpPublisher<T>(PublisherOptions options, SerializeMessageUseCase<T> serializeMessageUseCase)
+public sealed class TcpPublisher<T>(
+    PublisherOptions options,
+    SerializeMessageUseCase<T> serializeMessageUseCase,
+    ILogRecordBatchWriter batchWriter)
     : IPublisher<T>, IAsyncDisposable
 {
     private readonly IAutoLogger _logger = AutoLoggerFactory.CreateLogger<TcpPublisher<T>>(LogSource.Publisher);
@@ -71,9 +75,12 @@ public sealed class TcpPublisher<T>(PublisherOptions options, SerializeMessageUs
 
             try
             {
-                _currentPublisherConnection =
-                    new TcpPublisherConnection(options,
-                        _channel.Reader, _deadLetterChannel);
+                var batchUseCase = new BatchMessagesUseCase(batchWriter);
+                _currentPublisherConnection = new TcpPublisherConnection(
+                    options,
+                    _channel.Reader,
+                    _deadLetterChannel,
+                    batchUseCase);
                 await _currentPublisherConnection.ConnectAsync();
                 break;
             }
