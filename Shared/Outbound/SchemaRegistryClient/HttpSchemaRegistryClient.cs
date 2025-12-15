@@ -80,10 +80,10 @@ public sealed class HttpSchemaRegistryClient : ISchemaRegistryClient
 
             var content = await response.Content.ReadAsStringAsync(cancellationToken);
 
-            var dto = JsonSerializer.Deserialize<SchemaDto>(content, JsonOptions);
+            var schemaInfo = JsonSerializer.Deserialize<SchemaInfo>(content, JsonOptions)!;
 
             Logger.LogInfo($"Successfully fetched the schema from: {endpoint}");
-            return new SchemaInfo(dto!.Id, dto.SchemaJson.GetRawText(), dto.Version);
+            return schemaInfo;
         }
         catch (SchemaNotFoundException)
         {

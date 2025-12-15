@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace Shared.Domain.Entities.SchemaRegistryClient;
 
-public sealed record SchemaInfo(int SchemaId, string Json, int Version);
+public sealed record SchemaInfo(int SchemaId, JsonElement SchemaJson, int Version);

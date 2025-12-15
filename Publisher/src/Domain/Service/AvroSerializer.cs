@@ -19,7 +19,7 @@ public sealed class AvroSerializer<T> : IAvroSerializer<T>
     {
         try
         {
-            var schema = Schema.Parse(schemaInfo.Json);
+            var schema = Schema.Parse(schemaInfo.SchemaJson.GetRawText());
 
             using var stream = new MemoryStream();
 
