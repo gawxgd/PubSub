@@ -1,21 +1,21 @@
 using System.IO.Pipelines;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading.Channels;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
 using Publisher.Configuration.Options;
+using Publisher.Domain.Logic;
 using Publisher.Domain.Port;
 using Publisher.Outbound.Exceptions;
 
 namespace Publisher.Outbound.Adapter;
 
-//ToDo what should be a case for reconnection creating a new connection instance and what not
 public sealed class TcpPublisherConnection(
     PublisherOptions options,
     ChannelReader<byte[]> channelReader,
-    Channel<byte[]> deadLetterChannel)
+    Channel<byte[]> deadLetterChannel,
+    BatchMessagesUseCase batchMessagesUseCase)
     : IPublisherConnection, IAsyncDisposable
 {
     private static readonly IAutoLogger Logger =
@@ -49,7 +49,6 @@ public sealed class TcpPublisherConnection(
 
         try
         {
-            // clean shutdown
             await ProcessChannelTask;
 
             await PipeWriter.FlushAsync();
@@ -59,7 +58,7 @@ public sealed class TcpPublisherConnection(
             _client.Close();
 
             deadLetterChannel.Writer.TryComplete();
-            // dispose
+
             _client.Dispose();
             _cancellationSource.Dispose();
         }
@@ -73,9 +72,12 @@ public sealed class TcpPublisherConnection(
     {
         try
         {
-            await _client.ConnectAsync(options.MessageBrokerConnectionUri.Host, options.MessageBrokerConnectionUri.Port,
+            await _client.ConnectAsync(
+                options.MessageBrokerConnectionUri.Host,
+                options.MessageBrokerConnectionUri.Port,
                 _cancellationSource.Token);
             _pipeWriter = PipeWriter.Create(_client.GetStream());
+
             Logger.LogInfo($"Connected to broker on {_client.Client.RemoteEndPoint}");
         }
         catch (SocketException ex) when (CanRetrySocketException(ex))
@@ -95,159 +97,96 @@ public sealed class TcpPublisherConnection(
 
     private async Task ProcessChannelAsync()
     {
-        var batch = new List<byte[]>(128);
-        var currentBatchBytes = 0;
-        var lastFlush = DateTime.UtcNow;
-
-        try
+        await foreach (var msg in channelReader.ReadAllAsync(_cancellationSource.Token))
         {
-            await foreach (var msg in channelReader.ReadAllAsync(_cancellationSource.Token))
+            batchMessagesUseCase.Add(msg);
+
+            if (batchMessagesUseCase.ShouldFlush(options.BatchMaxBytes, options.BatchMaxDelay))
             {
-                batch.Add(msg);
-                currentBatchBytes += msg.Length;
-
-                var now = DateTime.UtcNow;
-
-                var full = currentBatchBytes >=
-                           batchMaxBytes; // TODO: think about this - this means that the batch can actually be a little bit bigger than batchMaxSize
-                var timeout = now - lastFlush >= batchMaxDelay;
-
-                if (full || timeout)
-                {
-                    await FlushBatchAsync(batch);
-                    batch.Clear();
-                    currentBatchBytes = 0;
-                    lastFlush = now;
-                }
+                await SendBatchAsync();
             }
+        }
 
-            if (batch.Count > 0)
-                await FlushBatchAsync(batch);
-        }
-        catch (OperationCanceledException)
+        if (batchMessagesUseCase.Count > 0)
         {
-            Logger.LogInfo("ProcessChannelAsync cancelled");
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError($"ProcessChannelAsync failed: {ex.Message}", ex);
+            await SendBatchAsync();
         }
 
         Logger.LogInfo("Finished processing channel");
     }
 
-    private async Task FlushBatchAsync(List<byte[]> messages)
+    private async Task SendBatchAsync()
     {
-        if (messages.Count == 0)
-            return;
+        var batchBytes = batchMessagesUseCase.Build();
+        var count = batchMessagesUseCase.Count;
+        batchMessagesUseCase.Clear();
 
-        var batch = BuildBatchBytes(topic, messages);
+        var attempts = 0;
+        var sent = false;
 
-        if (!await SendWithRetries(batch))
-            SendToDeadLetterNoBlocking(batch); // TODO maybe deconstruct batch and put separate messages there
-    }
-
-    /// <summary>
-    /// Makes a batch out of serialized messages.
-    /// Adds a size prefix to each message and the whole batch itself
-    /// Also adds a topic at the beginning of the batch
-    /// [batchContentSize][topicSize][topic][size1][message1][size2][message2]...
-    /// where batchContentSize refers only to this part: [size1][message1][size2][message2]...
-    /// </summary>
-    private byte[] BuildBatchBytes(string topic, List<byte[]> messages)
-    {
-        // TODO: check if we need to set endianees explicitely
-        var topicBytes = Encoding.UTF8.GetBytes(topic);
-
-        int batchContentSize =
-            messages.Sum(m => sizeof(int) + m.Length);
-
-        var result = new byte[2 * sizeof(int) + topicBytes.Length + batchContentSize];
-        int offset = 0;
-
-        // [batchContentSize]
-        BitConverter.GetBytes(batchContentSize).CopyTo(result, offset);
-        offset += sizeof(int);
-
-        // [topicSize]
-        BitConverter.GetBytes((int)topicBytes.Length).CopyTo(result, offset);
-        offset += sizeof(int);
-
-        // [topic]
-        Buffer.BlockCopy(topicBytes, 0, result, offset, topicBytes.Length);
-        offset += topicBytes.Length;
-
-        //[size1][message1][size2][message2]...
-        foreach (var msg in messages)
+        while (!sent && attempts < options.MaxSendAttempts && !_cancellationSource.Token.IsCancellationRequested)
         {
-            BitConverter.GetBytes(msg.Length).CopyTo(result, offset);
-            offset += sizeof(int);
+            attempts++;
 
-            Buffer.BlockCopy(msg, 0, result, offset, msg.Length);
-            offset += msg.Length;
-        }
-
-        return result;
-    }
-
-
-    private async Task<bool> SendWithRetries(byte[] payload)
-    {
-        for (int attempt = 1;
-             attempt <= maxSendAttempts && !_cancellationSource.Token.IsCancellationRequested;
-             attempt++)
-        {
             try
             {
-                var mem = PipeWriter.GetMemory(payload.Length);
-                payload.AsSpan().CopyTo(mem.Span);
-                PipeWriter.Advance(payload.Length);
+                var buffer = PipeWriter.GetMemory(batchBytes.Length);
+                batchBytes.CopyTo(buffer);
+                PipeWriter.Advance(batchBytes.Length);
 
                 var result = await PipeWriter.FlushAsync(_cancellationSource.Token);
 
                 if (result.IsCompleted)
+                {
                     throw new PublisherConnectionException("Connection to broker failed");
+                }
 
                 if (result.IsCanceled)
                 {
-                    Logger.LogWarning("Cancellation requested – batch unsent");
+                    Logger.LogWarning(
+                        "The cancellation was requested. Batch was not sent, moving to dead letter queue");
                     break;
                 }
 
-                return true;
-            }
-            catch (OperationCanceledException)
-            {
-                Logger.LogInfo("Send canceled");
-                break;
+                sent = true;
+                Logger.LogDebug($"Sent batch with {count} records");
             }
             catch (IOException ex)
             {
-                Logger.LogWarning($"IO error on attempt {attempt}", ex);
+                Logger.LogWarning($"IO exception: {ex.Message} retrying connection", ex);
+                throw new PublisherConnectionException("Connection to broker failed");
             }
             catch (SocketException ex) when (CanRetrySocketException(ex))
             {
-                Logger.LogWarning($"Socket error on attempt {attempt}", ex);
+                Logger.LogWarning($"Retriable socket exception: {ex.Message} retrying connection", ex);
+                throw new PublisherConnectionException("Connection to broker failed");
             }
-
-            // backoff
-            await Task.Delay(TimeSpan.FromMilliseconds(100 * attempt), _cancellationSource.Token);
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Unexpected error while sending batch: {ex.Message}", ex);
+                break;
+            }
         }
 
-        return false;
+        if (!sent)
+        {
+            SendToDeadLetterNoBlocking(batchBytes);
+        }
     }
-
 
     private void SendToDeadLetterNoBlocking(byte[] msg)
     {
-        // TODO: wychodzi, że to będzie zawieralo cale batche - czy to mamy rozbuc na message?
         if (!deadLetterChannel.Writer.TryWrite(msg))
         {
             Logger.LogWarning("Dead-letter queue full, newest message dropped.");
             return;
         }
 
-        Logger.LogInfo($"Send {Convert.ToBase64String(msg)} to dead letter queue");
+        Logger.LogInfo("Sent batch to dead letter queue");
     }
 
     private static bool CanRetrySocketException(SocketException ex)
