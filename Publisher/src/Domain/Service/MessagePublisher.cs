@@ -3,15 +3,15 @@ using SchemaRegistryClient;
 
 namespace Publisher.Domain.Service;
 
-public class MessagePublisher(
+public class MessagePublisher<T>(
     ITransportPublisher transportPublisher,
-    IAvroSerializer serializer,
+    IAvroSerializer<T> serializer,
     ISchemaRegistryClient schemaRegistryClient,
     string topic)
-    : IMessagePublisher
+    : IMessagePublisher<T>
 {
 
-    public async Task PublishAsync<T>(T message)
+    public async Task PublishAsync(T message)
     {
         if (message == null)
             throw new ArgumentNullException(nameof(message));

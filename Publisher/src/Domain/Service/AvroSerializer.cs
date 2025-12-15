@@ -7,11 +7,9 @@ using SchemaRegistryClient;
 
 namespace Publisher.Domain.Service;
 
-public sealed class AvroSerializer : IAvroSerializer
+public sealed class AvroSerializer<T> : IAvroSerializer<T>
 {
-    private static readonly byte[] Separator = Encoding.UTF8.GetBytes("\n");
-    
-    public async Task<byte[]> SerializeAsync<T>(T message, SchemaInfo schemaInfo)
+    public async Task<byte[]> SerializeAsync(T message, SchemaInfo schemaInfo)
     {
         Schema schema;
         try

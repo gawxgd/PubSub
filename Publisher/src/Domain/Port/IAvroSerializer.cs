@@ -2,7 +2,7 @@ using SchemaRegistryClient;
 
 namespace Publisher.Domain.Port;
 
-public interface IAvroSerializer
+public interface IAvroSerializer<T>
 {
-    Task<byte[]> SerializeAsync<T>(T message, SchemaInfo schemaInfo);
+    Task<byte[]> SerializeAsync(T message, SchemaInfo schemaInfo);
 }

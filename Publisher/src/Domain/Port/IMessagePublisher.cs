@@ -1,6 +1,6 @@
 namespace Publisher.Domain.Port;
 
-public interface IMessagePublisher
+public interface IMessagePublisher<T>
 {
-    Task PublishAsync<T>(T message);
+    Task PublishAsync(T message);
 }

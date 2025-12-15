@@ -249,7 +249,7 @@ public sealed class TcpPublisherConnection(
             return;
         }
 
-        Logger.LogInfo($"Send {msg} to dead letter queue");
+        Logger.LogInfo($"Send {Convert.ToBase64String(msg)} to dead letter queue");
     }
 
     private static bool CanRetrySocketException(SocketException ex)
