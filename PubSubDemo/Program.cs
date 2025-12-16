@@ -5,7 +5,7 @@ using PubSubDemo.Services;
 
 Console.WriteLine("╔════════════════════════════════════════════╗");
 Console.WriteLine("║   PubSub Demo - Message Publisher         ║");
-Console.WriteLine("║   Demonstrates TcpPublisher Usage          ║");
+Console.WriteLine("║   Demonstrates TcpTransportPublisher Usage          ║");
 Console.WriteLine("╚════════════════════════════════════════════╝");
 Console.WriteLine();
 
@@ -43,11 +43,18 @@ Console.CancelKeyPress += (sender, eventArgs) =>
 
 try
 {
-    // Create publisher
+    // Create transportPublisher
     await using var publisher = new TcpPublisher(
         brokerOptions.Host,
         brokerOptions.Port,
-        brokerOptions.MaxQueueSize, 5, 5);
+        demoOptions.Topic ?? "demo-topic", // topic
+        5, // maxSendAttempts
+        brokerOptions.MaxQueueSize,
+        5, // maxRetryAttempts
+        demoOptions.BatchMaxBytes > 0 ? demoOptions.BatchMaxBytes : 65536, // batchMaxBytes (default 64KB)
+        demoOptions.BatchMaxDelay > 0 ? demoOptions.BatchMaxDelay : 1000 // batchMaxDelay (default 1000ms)
+    );
+
 
     // Create publishing service
     await using var publisherService = new MessagePublisherService(publisher, demoOptions);
@@ -79,4 +86,3 @@ catch (Exception ex)
 
 Console.WriteLine("\n👋 PubSub Demo finished.");
 return 0;
-

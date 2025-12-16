@@ -2,22 +2,22 @@ using System.Threading.Channels;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
-using Subscriber.Domain;
+using Subscriber.Domain.UseCase;
 
 namespace Subscriber.Inbound.Adapter;
 
-public class MessageReceiver(
+public class MessageReceiver<T>(
     Channel<byte[]> responseChannel,
-    MessageValidator messageValidator,
-    Func<string, Task>? messageHandler,
+    ProcessMessageUseCase<T> processMessageUseCase,
     TimeSpan pollInterval,
-    CancellationToken cancellationToken)
+    CancellationToken cancellationToken) where T : new()
 {
     private static readonly IAutoLogger Logger =
-        AutoLoggerFactory.CreateLogger<MessageReceiver>(LogSource.MessageBroker);
+        AutoLoggerFactory.CreateLogger<MessageReceiver<T>>(LogSource.MessageBroker);
 
     public async Task StartReceivingAsync()
     {
+        //ToDo clean this function
         Logger.LogInfo("Starting message receiver");
 
         while (!cancellationToken.IsCancellationRequested)
@@ -28,9 +28,13 @@ public class MessageReceiver(
                 {
                     while (responseChannel.Reader.TryRead(out var message))
                     {
-                        await ProcessMessageAsync(message);
+                        await processMessageUseCase.ExecuteAsync(message);
                     }
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                break;
             }
             catch (Exception ex)
             {
@@ -49,28 +53,4 @@ public class MessageReceiver(
 
         Logger.LogInfo("Message receiver stopped");
     }
-
-    private async Task ProcessMessageAsync(byte[] message)
-    {
-        var validationResult = messageValidator.Validate(message);
-
-        if (!validationResult.IsValid)
-        {
-            return;
-        }
-
-        try
-        {
-            if (messageHandler != null)
-            {
-                await messageHandler(validationResult.Payload!);
-            }
-            Logger.LogInfo($"Received message: {validationResult.Payload}");
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError($"Error handling message: {ex.Message}", ex);
-        }
-    }
 }
-

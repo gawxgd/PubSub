@@ -4,27 +4,31 @@ using System.Threading.Channels;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
+using Publisher.Configuration.Options;
+using Publisher.Domain.Logic;
 using Publisher.Domain.Port;
 using Publisher.Outbound.Exceptions;
 
 namespace Publisher.Outbound.Adapter;
 
-//ToDo what should be a case for reconnection creating a new connection instance and what not
 public sealed class TcpPublisherConnection(
-    string host,
-    int port,
-    uint maxSendAttempts,
+    PublisherOptions options,
     ChannelReader<byte[]> channelReader,
-    Channel<byte[]> deadLetterChannel)
+    Channel<byte[]> deadLetterChannel,
+    BatchMessagesUseCase batchMessagesUseCase)
     : IPublisherConnection, IAsyncDisposable
 {
-    private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<TcpPublisherConnection>(LogSource.Publisher);
+    private static readonly IAutoLogger Logger =
+        AutoLoggerFactory.CreateLogger<TcpPublisherConnection>(LogSource.Publisher);
+
     private readonly CancellationTokenSource _cancellationSource = new();
     private readonly TcpClient _client = new();
     private PipeWriter? _pipeWriter;
     private Task? _processChannelTask;
+
     private PipeWriter PipeWriter =>
         _pipeWriter ?? throw new InvalidOperationException("PipeWriter has not been initialized.");
+
     private Task ProcessChannelTask =>
         _processChannelTask ?? throw new InvalidOperationException("Process channel task has not been initialized.");
 
@@ -45,7 +49,6 @@ public sealed class TcpPublisherConnection(
 
         try
         {
-            // clean shutdown
             await ProcessChannelTask;
 
             await PipeWriter.FlushAsync();
@@ -55,7 +58,7 @@ public sealed class TcpPublisherConnection(
             _client.Close();
 
             deadLetterChannel.Writer.TryComplete();
-            // dispose
+
             _client.Dispose();
             _cancellationSource.Dispose();
         }
@@ -69,9 +72,12 @@ public sealed class TcpPublisherConnection(
     {
         try
         {
-            await _client.ConnectAsync(host, port, _cancellationSource.Token);
+            await _client.ConnectAsync(
+                options.MessageBrokerConnectionUri.Host,
+                options.MessageBrokerConnectionUri.Port,
+                _cancellationSource.Token);
             _pipeWriter = PipeWriter.Create(_client.GetStream());
-            
+
             Logger.LogInfo($"Connected to broker on {_client.Client.RemoteEndPoint}");
         }
         catch (SocketException ex) when (CanRetrySocketException(ex))
@@ -93,62 +99,83 @@ public sealed class TcpPublisherConnection(
     {
         await foreach (var msg in channelReader.ReadAllAsync(_cancellationSource.Token))
         {
-            var attempts = 0;
-            var sent = false;
+            batchMessagesUseCase.Add(msg);
 
-            while (!sent && attempts < maxSendAttempts && !_cancellationSource.Token.IsCancellationRequested)
+            if (batchMessagesUseCase.ShouldFlush(options.BatchMaxBytes, options.BatchMaxDelay))
             {
-                attempts++;
-
-                try
-                {
-                    var buffer = PipeWriter.GetMemory(msg.Length);
-                    msg.CopyTo(buffer);
-                    PipeWriter.Advance(msg.Length);
-
-                    var result = await PipeWriter.FlushAsync(_cancellationSource.Token);
-
-                    if (result.IsCompleted)
-                    {
-                        throw new PublisherConnectionException("Connection to broker failed");
-                    }
-
-                    if (result.IsCanceled)
-                    {
-                        Logger.LogWarning("The cancellation was requested. Message, was not send, moving to dead letter queue");
-                        break;
-                    }
-
-                    sent = true;
-                }
-                catch (IOException ex)
-                {
-                    Logger.LogWarning($"IO exception: {ex.Message} retrying connection", ex);
-                    throw new PublisherConnectionException("Connection to broker failed");
-                }
-                catch (SocketException ex) when (CanRetrySocketException(ex))
-                {
-                    Logger.LogWarning($"Retriable socket exception: {ex.Message} retrying connection", ex);
-                    throw new PublisherConnectionException("Connection to broker failed");
-                }
-                catch (OperationCanceledException)
-                {
-                    break;
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogError($"Unexpected error while sending message: {ex.Message}", ex);
-                    break;
-                }
-            }
-
-            if (!sent)
-            {
-                SendToDeadLetterNoBlocking(msg);
+                await SendBatchAsync();
             }
         }
 
+        if (batchMessagesUseCase.Count > 0)
+        {
+            await SendBatchAsync();
+        }
+
         Logger.LogInfo("Finished processing channel");
+    }
+
+    private async Task SendBatchAsync()
+    {
+        var batchBytes = batchMessagesUseCase.Build();
+        var count = batchMessagesUseCase.Count;
+        batchMessagesUseCase.Clear();
+
+        var attempts = 0;
+        var sent = false;
+
+        while (!sent && attempts < options.MaxSendAttempts && !_cancellationSource.Token.IsCancellationRequested)
+        {
+            attempts++;
+
+            try
+            {
+                var buffer = PipeWriter.GetMemory(batchBytes.Length);
+                batchBytes.CopyTo(buffer);
+                PipeWriter.Advance(batchBytes.Length);
+
+                var result = await PipeWriter.FlushAsync(_cancellationSource.Token);
+
+                if (result.IsCompleted)
+                {
+                    throw new PublisherConnectionException("Connection to broker failed");
+                }
+
+                if (result.IsCanceled)
+                {
+                    Logger.LogWarning(
+                        "The cancellation was requested. Batch was not sent, moving to dead letter queue");
+                    break;
+                }
+
+                sent = true;
+                Logger.LogDebug($"Sent batch with {count} records");
+            }
+            catch (IOException ex)
+            {
+                Logger.LogWarning($"IO exception: {ex.Message} retrying connection", ex);
+                throw new PublisherConnectionException("Connection to broker failed");
+            }
+            catch (SocketException ex) when (CanRetrySocketException(ex))
+            {
+                Logger.LogWarning($"Retriable socket exception: {ex.Message} retrying connection", ex);
+                throw new PublisherConnectionException("Connection to broker failed");
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Unexpected error while sending batch: {ex.Message}", ex);
+                break;
+            }
+        }
+
+        if (!sent)
+        {
+            SendToDeadLetterNoBlocking(batchBytes);
+        }
     }
 
     private void SendToDeadLetterNoBlocking(byte[] msg)
@@ -159,7 +186,7 @@ public sealed class TcpPublisherConnection(
             return;
         }
 
-        Logger.LogInfo($"Send {msg} to dead letter queue");
+        Logger.LogInfo("Sent batch to dead letter queue");
     }
 
     private static bool CanRetrySocketException(SocketException ex)
