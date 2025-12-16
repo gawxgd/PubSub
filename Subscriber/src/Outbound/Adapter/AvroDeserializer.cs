@@ -1,47 +1,38 @@
-using Avro;
-using Avro.Generic;
 using Avro.IO;
-using Microsoft.Extensions.Logging;
+using Avro.Reflect;
 using Shared.Domain.Entities.SchemaRegistryClient;
 using Subscriber.Domain;
-using LoggerLib.Domain.Enums;
-using LoggerLib.Domain.Port;
-using LoggerLib.Outbound.Adapter;
+using Subscriber.Domain.Exceptions;
 
 namespace Subscriber.Outbound.Adapter;
 
 public class AvroDeserializer<T> : IDeserializer<T> where T : new()
 {
-    private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<TcpSubscriber<T>>(LogSource.MessageBroker);
-    
-    public Task<T?> DeserializeAsync(byte[] avroBytes, SchemaInfo writersSchema, SchemaInfo readersSchema)
+    public Task<T> DeserializeAsync(byte[] avroBytes, SchemaInfo writersSchema, SchemaInfo readersSchema)
     {
-            var writerAvroSchema = Avro.Schema.Parse(writersSchema.Json);
-            var readerAvroSchema = Avro.Schema.Parse(readersSchema.Json);
-        
-            var datumReader = new GenericDatumReader<GenericRecord>(writerAvroSchema, readerAvroSchema);
+        try
+        {
+            var writerAvroSchema = Avro.Schema.Parse(writersSchema.SchemaJson.GetRawText());
+            var readerAvroSchema = Avro.Schema.Parse(readersSchema.SchemaJson.GetRawText());
+
+            var datumReader = new ReflectReader<T>(writerAvroSchema, readerAvroSchema);
 
             using var stream = new MemoryStream(avroBytes);
             var decoder = new BinaryDecoder(stream);
-        
-            var record = datumReader.Read(null, decoder);
-        
-            return Task.FromResult(Map(record));
-    }
-    private static T Map(GenericRecord record)
-    {
-        var result = new T();
-        var type = typeof(T); // metadata of type T available in runtime
 
-        foreach (var field in record.Schema.Fields)
-        {
-            var prop = type.GetProperty(field.Name);
-            if (prop == null || !prop.CanWrite)
-                continue;
+            var result = datumReader.Read(default!, decoder);
 
-            prop.SetValue(result, record[field.Name]);
+            return result == null
+                ? throw new DeserializationException($"Avro deserialization returned null for type {typeof(T).Name}")
+                : Task.FromResult(result);
         }
-
-        return result;
+        catch (DeserializationException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            throw new DeserializationException($"Failed to deserialize Avro data to type {typeof(T).Name}", ex);
+        }
     }
 }

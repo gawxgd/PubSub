@@ -2,19 +2,23 @@ using System.Threading.Channels;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
+using Shared.Domain.Entities.SchemaRegistryClient;
 using Subscriber.Domain;
+using Subscriber.Domain.UseCase;
 
 namespace Subscriber.Inbound.Adapter;
 
-public class MessageReceiver(
+public class MessageReceiver<T>(
     Channel<byte[]> responseChannel,
-    MessageValidator messageValidator,
-    Func<string, Task>? messageHandler,
+    DeserializeBatchUseCase<T> deserializeBatchUseCase,
+    SchemaInfo writersSchema,
+    SchemaInfo readersSchema,
+    Func<T, Task>? messageHandler,
     TimeSpan pollInterval,
-    CancellationToken cancellationToken)
+    CancellationToken cancellationToken) where T : new()
 {
     private static readonly IAutoLogger Logger =
-        AutoLoggerFactory.CreateLogger<MessageReceiver>(LogSource.MessageBroker);
+        AutoLoggerFactory.CreateLogger<MessageReceiver<T>>(LogSource.MessageBroker);
 
     public async Task StartReceivingAsync()
     {
@@ -31,6 +35,10 @@ public class MessageReceiver(
                         await ProcessMessageAsync(message);
                     }
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                break;
             }
             catch (Exception ex)
             {
@@ -52,20 +60,20 @@ public class MessageReceiver(
 
     private async Task ProcessMessageAsync(byte[] message)
     {
-        var validationResult = messageValidator.Validate(message);
-
-        if (!validationResult.IsValid)
-        {
-            return;
-        }
-
         try
         {
-            if (messageHandler != null)
+            var deserializedMessages =
+                await deserializeBatchUseCase.ExecuteAsync(message, writersSchema, readersSchema);
+
+            foreach (var deserializedMessage in deserializedMessages)
             {
-                await messageHandler(validationResult.Payload!);
+                if (messageHandler != null)
+                {
+                    await messageHandler(deserializedMessage);
+                }
             }
-            Logger.LogInfo($"Received message: {validationResult.Payload}");
+
+            Logger.LogInfo($"Processed batch with {deserializedMessages.Count} events");
         }
         catch (Exception ex)
         {
@@ -73,4 +81,3 @@ public class MessageReceiver(
         }
     }
 }
-

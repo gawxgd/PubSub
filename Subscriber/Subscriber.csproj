@@ -15,11 +15,13 @@
     <ItemGroup>
       <ProjectReference Include="..\LoggerLib\LoggerLib.csproj" />
         <ProjectReference Include="..\Shared\Shared.csproj" />
+        <ProjectReference Include="..\MessageBroker\src\MessageBroker.csproj" />
     </ItemGroup>
 
 
     <ItemGroup>
       <PackageReference Include="Apache.Avro" Version="1.12.1" />
+      <PackageReference Include="Crc32.NET" Version="1.2.0"/>
       <PackageReference Include="xunit" Version="2.8.0" />
       <PackageReference Include="Moq" Version="4.20.70" />
       <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
