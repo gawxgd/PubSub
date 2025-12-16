@@ -1,6 +1,7 @@
 {
   "Server": {
-    "Port": 9096,
+    "PublisherPort": 9096,
+    "SubscriberPort": 9098,
     "Address": "127.0.0.1",
     "MaxRequestSizeBytes": 512,
     "InlineCompletions": false,
@@ -17,15 +18,21 @@
   },
   "CommitLogTopics": [
     {
+      "Name": "default",
+      "BaseOffset": 0,
+      "FlushIntervalMs": 1,
+      "Directory": null
+    },
+    {
       "Name": "test-topic",
       "BaseOffset": 0,
-      "FlushIntervalMs": 100,
+      "FlushIntervalMs": 1,
       "Directory": null
     },
     {
       "Name": "custom-topic",
       "BaseOffset": 0,
-      "FlushIntervalMs": 100,
+      "FlushIntervalMs": 1,
       "Directory": null
     }
   ]

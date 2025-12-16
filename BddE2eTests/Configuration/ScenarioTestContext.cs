@@ -16,21 +16,21 @@ public class ScenarioTestContext(ScenarioContext scenarioContext)
     private const string PublisherOptionsBuilderKey = "PublisherOptionsBuilder";
     private const string SubscriberOptionsBuilderKey = "SubscriberOptionsBuilder";
 
-    public IPublisher Publisher
+    public IPublisher<TestEvent> Publisher
     {
-        get => scenarioContext.Get<IPublisher>(PublisherKey);
+        get => scenarioContext.Get<IPublisher<TestEvent>>(PublisherKey);
         set => scenarioContext.Set(value, PublisherKey);
     }
 
-    public ISubscriber Subscriber
+    public ISubscriber<TestEvent> Subscriber
     {
-        get => scenarioContext.Get<ISubscriber>(SubscriberKey);
+        get => scenarioContext.Get<ISubscriber<TestEvent>>(SubscriberKey);
         set => scenarioContext.Set(value, SubscriberKey);
     }
 
-    public Channel<string> ReceivedMessages
+    public Channel<TestEvent> ReceivedMessages
     {
-        get => scenarioContext.Get<Channel<string>>(ReceivedMessagesKey);
+        get => scenarioContext.Get<Channel<TestEvent>>(ReceivedMessagesKey);
         set => scenarioContext.Set(value, ReceivedMessagesKey);
     }
 
@@ -46,17 +46,17 @@ public class ScenarioTestContext(ScenarioContext scenarioContext)
         set => scenarioContext.Set(value, SentMessageKey);
     }
 
-    public bool TryGetPublisher(out IPublisher? publisher)
+    public bool TryGetPublisher(out IPublisher<TestEvent>? publisher)
     {
         return scenarioContext.TryGetValue(PublisherKey, out publisher);
     }
 
-    public bool TryGetSubscriber(out ISubscriber? subscriber)
+    public bool TryGetSubscriber(out ISubscriber<TestEvent>? subscriber)
     {
         return scenarioContext.TryGetValue(SubscriberKey, out subscriber);
     }
 
-    public bool TryGetReceivedMessages(out Channel<string>? channel)
+    public bool TryGetReceivedMessages(out Channel<TestEvent>? channel)
     {
         return scenarioContext.TryGetValue(ReceivedMessagesKey, out channel);
     }
