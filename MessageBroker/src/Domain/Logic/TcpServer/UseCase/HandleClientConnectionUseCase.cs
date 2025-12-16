@@ -11,12 +11,12 @@ using MessageBroker.Domain.Port.CommitLog.RecordBatch;
 
 namespace MessageBroker.Domain.Logic.TcpServer.UseCase;
 
-public class HandleClientConnectionUseCase(Socket socket, Action onConnectionClosed, IMessageProcessorUseCase messageProcessorUseCase) : IHandleClientConnectionUseCase
 public class HandleClientConnectionUseCase(
     Socket socket,
     Action onConnectionClosed,
+    IMessageProcessorUseCase messageProcessorUseCase,
     ICommitLogFactory commitLogFactory,
-    ILogRecordBatchReader batchReader)
+    ILogRecordBatchReader batchReader) : IHandleClientConnectionUseCase
 {
     private readonly string _connectedClientEndpoint = socket.RemoteEndPoint?.ToString() ?? "Unknown";
 
@@ -127,7 +127,7 @@ public class HandleClientConnectionUseCase(
             Logger.LogInfo($"ProcessPipe completed for {_connectedClientEndpoint}");
         }
     }
-    
+
     private async Task CleanupAsync(CancellationToken cancellationToken)
     {
         try
@@ -157,7 +157,7 @@ public class HandleClientConnectionUseCase(
     {
         Logger.LogInfo(
             $"Consuming message channel, connected to client {_connectedClientEndpoint}");
-        
+
         await foreach (var message in _messageChannel.Reader.ReadAllAsync(cancellationToken))
         {
             Logger.LogInfo($"[{_connectedClientEndpoint}] Received {message.Length} bytes");

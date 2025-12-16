@@ -20,7 +20,8 @@ public class ConnectionManager(
     private static readonly IAutoLogger Logger =
         AutoLoggerFactory.CreateLogger<ConnectionManager>(LogSource.MessageBroker);
 
-    public void RegisterConnection(ConnectionType connectionType, Socket acceptedSocket, CancellationTokenSource cancellationTokenSource)
+    public void RegisterConnection(ConnectionType connectionType, Socket acceptedSocket,
+        CancellationTokenSource cancellationTokenSource)
     {
         var connectionId = connectionRepository.GenerateConnectionId();
 
@@ -32,7 +33,8 @@ public class ConnectionManager(
                 $"Started handler thread for connection {connectionId} with client: {acceptedSocket.RemoteEndPoint}");
             IMessageProcessorUseCase messageProcessorUseCase = connectionType switch
             {
-                ConnectionType.Publisher => new ProcessReceivedPublisherMessageUseCase(commitLogFactory, "default"),
+                ConnectionType.Publisher => new ProcessReceivedPublisherMessageUseCase(commitLogFactory, "default",
+                    batchReader),
                 ConnectionType.Subscriber => new ProcessSubscriberRequestUseCase(commitLogFactory),
                 _ => throw new ArgumentOutOfRangeException(nameof(connectionType), connectionType, null),
             };
@@ -40,8 +42,10 @@ public class ConnectionManager(
             IHandleClientConnectionUseCase handleClientConnectionUseCase = new HandleClientConnectionUseCase(
                 acceptedSocket,
                 () => UnregisterConnectionAfterThreadFinish(connectionId),
-                messageProcessorUseCase);
-            
+                messageProcessorUseCase,
+                commitLogFactory,
+                batchReader);
+
             return handleClientConnectionUseCase.HandleConnection(cancellationTokenSource.Token);
         }, cancellationTokenSource.Token);
 
