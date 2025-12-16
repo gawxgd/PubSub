@@ -1,34 +1,36 @@
-﻿using System.Buffers.Binary;
-using System.Text;
-using System.Threading.Channels;
+﻿using System.Threading.Channels;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
-using Shared.Domain.Port.SchemaRegistryClient;
 using Subscriber.Domain;
+using Subscriber.Inbound.Adapter;
 using Subscriber.Outbound.Exceptions;
 
 namespace Subscriber.Outbound.Adapter;
 
-public sealed class TcpSubscriber<T>(
+public sealed class TcpSubscriber(
     string topic,
+    int minMessageLength,
+    int maxMessageLength,
     TimeSpan pollInterval,
     uint maxRetryAttempts,
     ISubscriberConnection connection,
-    ISchemaRegistryClient schemaRegistryClient,
-    IDeserializer<T> deserializer,
-    Channel<byte[]> inboundChannel,
-    Func<T, Task>? messageHandler,
+    Channel<byte[]> respondChannel,
+    Channel<byte[]> requestChannel,
+    Func<string, Task>? messageHandler,
     Func<Exception, Task>? errorHandler = null)
-    : ISubscriber<T>, IAsyncDisposable where T : new()
+    : ISubscriber, IAsyncDisposable
 {
     private readonly CancellationTokenSource _cts = new();
     private CancellationToken CancellationToken => _cts.Token;
 
-    private static readonly IAutoLogger Logger =
-        AutoLoggerFactory.CreateLogger<TcpSubscriber<T>>(LogSource.MessageBroker);
+    private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<TcpSubscriber>(LogSource.MessageBroker);
 
-    async Task ISubscriber<T>.CreateConnection()
+    private readonly MessageValidator _messageValidator = new(topic, minMessageLength, maxMessageLength);
+    private MessageReceiver? _messageReceiver;
+    private RequestSender? _requestSender;
+
+    async Task ISubscriber.CreateConnection()
     {
         var retryCount = 0;
 
@@ -53,84 +55,61 @@ public sealed class TcpSubscriber<T>(
 
     public async Task ReceiveAsync(byte[] message)
     {
-        if (message.Length < 4)
+        // This method is kept for backward compatibility
+        // The actual processing is now done by MessageReceiver
+        var validationResult = _messageValidator.Validate(message);
+        
+        if (!validationResult.IsValid)
         {
-            Logger.LogError($"Message too short: {message.Length} bytes (minimum 4 for schemaId)");
             return;
         }
-
-        var schemaId = BinaryPrimitives.ReadInt32BigEndian(message.AsSpan(0, 4));
-
-        var avroData = message.AsSpan(4).ToArray();
-
-        var writerSchema = await schemaRegistryClient.GetSchemaByIdAsync(schemaId);
-
-        var readerSchema = await schemaRegistryClient.GetLatestSchemaByTopicAsync(topic);
-
-        var deserializedEvent = await deserializer.DeserializeAsync(
-            avroData,
-            writerSchema,
-            readerSchema);
 
         try
         {
             if (messageHandler != null)
             {
-                await messageHandler(deserializedEvent);
+                await messageHandler(validationResult.Payload!);
             }
+            Logger.LogInfo($"Received message: {validationResult.Payload}");
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex.Message);
-
-            if (errorHandler != null)
-            {
-                await errorHandler(ex);
-            }
+            Logger.LogError($"Error handling message: {ex.Message}", ex);
         }
     }
-
+    
     public async Task StartMessageProcessingAsync()
     {
-        while (!CancellationToken.IsCancellationRequested)
-        {
-            try
-            {
-                if (await inboundChannel.Reader.WaitToReadAsync(CancellationToken))
-                {
-                    while (inboundChannel.Reader.TryRead(out var message))
-                    {
-                        await ReceiveAsync(message);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError($"Error while processing message: {ex.Message}");
-            }
+        _messageReceiver = new MessageReceiver(
+            respondChannel,
+            _messageValidator,
+            messageHandler,
+            pollInterval,
+            CancellationToken);
 
-            try
-            {
-                await Task.Delay(pollInterval, CancellationToken);
-            }
-            catch (TaskCanceledException)
-            {
-                Logger.LogWarning("Message processing task cancelled");
-            }
-        }
+        await _messageReceiver.StartReceivingAsync();
     }
-
+    
     public async Task StartConnectionAsync()
     {
         try
         {
-            await ((ISubscriber<T>)this).CreateConnection();
+            await ((ISubscriber)this).CreateConnection();
+            
+            // Start automatic request sender after connection is established
+            _requestSender = new RequestSender(
+                requestChannel,
+                topic,
+                pollInterval,
+                CancellationToken);
+            
+            _ = Task.Run(() => _requestSender.StartSendingAsync(), CancellationToken);
         }
         catch (SubscriberConnectionException ex) when (ex.IsRetriable)
         {
             Logger.LogWarning($"Retriable connection error: {ex.Message}");
             await Task.Delay(pollInterval, CancellationToken);
-            await StartConnectionAsync();
+            await StartConnectionAsync(); 
         }
         catch (SubscriberConnectionException ex)
         {
@@ -147,10 +126,20 @@ public sealed class TcpSubscriber<T>(
 
     public async ValueTask DisposeAsync()
     {
-        await _cts.CancelAsync(); // 1. Cancel internal operations
-        await connection.DisconnectAsync(); // 2. Stop TCP read loop / producer
-        inboundChannel.Writer.TryComplete(); // 3. Signal no more messages
-        await inboundChannel.Reader.Completion; // 4. Wait for consumer to finish
-        _cts.Dispose(); // 5. Cleanup
+        // 1. Cancel internal operations
+        await _cts.CancelAsync();
+
+        // 2. Signal no more outbound messages (requests to broker)
+        requestChannel.Writer.TryComplete();
+        await requestChannel.Reader.Completion;  // wait until producer finishes
+
+        // 3. Stop TCP read/write loops
+        await connection.DisconnectAsync();
+        // 4. Signal no more inbound messages (responses from broker)
+        respondChannel.Writer.TryComplete();
+        await respondChannel.Reader.Completion;   // wait until consumer finishes
+
+        // 5. Cleanup
+        _cts.Dispose();
     }
 }

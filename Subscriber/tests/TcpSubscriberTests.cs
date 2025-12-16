@@ -30,7 +30,7 @@ public class TcpSubscriberTests
             SingleWriter = true
         });
 
-    private TcpSubscriber CreateSubscriber(Channel<byte[]> channel) =>
+    private TcpSubscriber CreateSubscriber(Channel<byte[]> respondChannel, Channel<byte[]> requestChannel) =>
         new TcpSubscriber(
             Topic,
             MinMessageLength,
@@ -38,14 +38,15 @@ public class TcpSubscriberTests
             PollInterval,
             MaxRetryAttempts,
             _connectionMock.Object,
-            channel,
+            respondChannel,
+            requestChannel,
             _messageHandlerMock.Object);
 
     [Fact]
     public async Task CreateConnection_ShouldSucceedOnFirstAttempt()
     {
         _connectionMock.Setup(c => c.ConnectAsync()).Returns(Task.CompletedTask);
-        var subscriber = CreateSubscriber(CreateBoundedChannel());
+        var subscriber = CreateSubscriber(CreateBoundedChannel(), CreateBoundedChannel());
 
         await ((ISubscriber)subscriber).CreateConnection();
 
@@ -60,7 +61,7 @@ public class TcpSubscriberTests
             .Throws(new SubscriberConnectionException("fail again", null))
             .Returns(Task.CompletedTask);
 
-        var subscriber = CreateSubscriber(CreateBoundedChannel());
+        var subscriber = CreateSubscriber(CreateBoundedChannel(), CreateBoundedChannel());
 
         await ((ISubscriber)subscriber).CreateConnection();
 
@@ -74,7 +75,7 @@ public class TcpSubscriberTests
         _connectionMock.Setup(c => c.ConnectAsync())
             .Throws(new SubscriberConnectionException("fail", null));
 
-        var subscriber = CreateSubscriber(CreateBoundedChannel());
+        var subscriber = CreateSubscriber(CreateBoundedChannel(), CreateBoundedChannel());
 
         await Assert.ThrowsAsync<SubscriberConnectionException>(() =>
             ((ISubscriber)subscriber).CreateConnection());
@@ -85,7 +86,7 @@ public class TcpSubscriberTests
     [Fact]
     public async Task ReceiveAsync_ShouldIgnoreInvalidLength()
     {
-        var subscriber = CreateSubscriber(CreateBoundedChannel());
+        var subscriber = CreateSubscriber(CreateBoundedChannel(), CreateBoundedChannel());
         var message = Encoding.UTF8.GetBytes(new string('x', MaxMessageLength + 10));
 
         await subscriber.ReceiveAsync(message);
@@ -97,7 +98,7 @@ public class TcpSubscriberTests
     [Fact]
     public async Task ReceiveAsync_ShouldIgnoreWrongTopic()
     {
-        var subscriber = CreateSubscriber(CreateBoundedChannel());
+        var subscriber = CreateSubscriber(CreateBoundedChannel(), CreateBoundedChannel());
         var message = Encoding.UTF8.GetBytes("wrong-topic:payload");
 
         await subscriber.ReceiveAsync(message);
@@ -109,7 +110,7 @@ public class TcpSubscriberTests
     [Fact]
     public async Task ReceiveAsync_ShouldProcessValidMessage()
     {
-        var subscriber = CreateSubscriber(CreateBoundedChannel());
+        var subscriber = CreateSubscriber(CreateBoundedChannel(), CreateBoundedChannel());
         var payload = "test-payload";
         var message = Encoding.UTF8.GetBytes($"{Topic}:{payload}");
 
@@ -122,7 +123,7 @@ public class TcpSubscriberTests
     [Fact]
     public async Task ReceiveAsync_ShouldHandleHandlerException()
     {
-        var subscriber = CreateSubscriber(CreateBoundedChannel());
+        var subscriber = CreateSubscriber(CreateBoundedChannel(), CreateBoundedChannel());
         var payload = "test-payload";
         var message = Encoding.UTF8.GetBytes($"{Topic}:{payload}");
         var exception = new Exception("Handler error");
@@ -137,13 +138,14 @@ public class TcpSubscriberTests
     [Fact]
     public async Task StartConnectionAndMessageProcessing_ShouldProcessMessageAndExit()
     {
-        var channel = CreateBoundedChannel();
-        var subscriber = CreateSubscriber(channel);
+        var respondChannel = CreateBoundedChannel();
+        var requestChannel = CreateBoundedChannel();
+        var subscriber = CreateSubscriber(respondChannel, requestChannel);
 
         var payload = "test-payload";
         var message = Encoding.UTF8.GetBytes($"{Topic}:{payload}");
-        await channel.Writer.WriteAsync(message);
-        channel.Writer.Complete(); 
+        await requestChannel.Writer.WriteAsync(message);
+        requestChannel.Writer.Complete(); 
 
         _connectionMock.Setup(c => c.ConnectAsync()).Returns(Task.CompletedTask);
         _connectionMock.Setup(c => c.DisconnectAsync()).Returns(Task.CompletedTask);
@@ -166,15 +168,18 @@ public class TcpSubscriberTests
     [Fact]
     public async Task DisposeAsync_ShouldCleanupResources()
     {
-        var channel = CreateBoundedChannel();
-        var subscriber = CreateSubscriber(channel);
+        var respondChannel = CreateBoundedChannel();
+        var requestChannel = CreateBoundedChannel();
+        var subscriber = CreateSubscriber(respondChannel, requestChannel);
 
         _connectionMock.Setup(c => c.DisconnectAsync()).Returns(Task.CompletedTask);
 
         await subscriber.DisposeAsync();
 
         _connectionMock.Verify(c => c.DisconnectAsync(), Times.Once);
-        Assert.True(channel.Reader.Completion.IsCompleted);
+        Assert.True(respondChannel.Reader.Completion.IsCompleted);
     }
 
 }
+
+

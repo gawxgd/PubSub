@@ -12,7 +12,7 @@ public class CreateSocketUseCase(IOptionsMonitor<TcpServerOptions> monitor)
 {
     private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<CreateSocketUseCase>(LogSource.MessageBroker);
 
-    public Socket CreateSocket()
+    public Socket CreateSocket(int port)
     {
         var options = monitor.CurrentValue;
 
@@ -26,7 +26,7 @@ public class CreateSocketUseCase(IOptionsMonitor<TcpServerOptions> monitor)
         socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
 
         var address = IPAddress.Parse(options.Address);
-        socket.Bind(new IPEndPoint(address, options.Port));
+        socket.Bind(new IPEndPoint(address, port));
         socket.Listen(options.Backlog);
 
         Logger.LogInfo($"Created socket with options: {options}");

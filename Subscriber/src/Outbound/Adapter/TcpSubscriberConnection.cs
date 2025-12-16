@@ -1,7 +1,6 @@
 ﻿using System.Buffers;
 using System.IO.Pipelines;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading.Channels;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
@@ -14,13 +13,16 @@ namespace Subscriber.Outbound.Adapter;
 public sealed class TcpSubscriberConnection(
     string host,
     int port,
-    ChannelWriter<byte[]> messageChannelWriter)
+    Channel<byte[]> requestChannel,
+    Channel<byte[]> responseChannel)
     : ISubscriberConnection, IAsyncDisposable
 {
     private readonly TcpClient _client = new();
     private readonly CancellationTokenSource _cancellationSource = new();
     private PipeReader? _pipeReader;
+    private PipeWriter? _pipeWriter;
     private Task? _readLoopTask;
+    private Task? _writeLoopTask;
     private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<TcpSubscriberConnection>(LogSource.MessageBroker);
 
     public async Task ConnectAsync()
@@ -28,8 +30,12 @@ public sealed class TcpSubscriberConnection(
         try
         {
             await _client.ConnectAsync(host, port);
-            _pipeReader = PipeReader.Create(_client.GetStream());
-            _readLoopTask = Task.Run(() => ReadLoopAsync(_cancellationSource.Token), _cancellationSource.Token);
+            var stream = _client.GetStream();
+            _pipeReader = PipeReader.Create(stream);
+            _pipeWriter = PipeWriter.Create(stream);
+            
+            _readLoopTask = Task.Run(() => ReadLoopAsync( _cancellationSource.Token));
+            _writeLoopTask = Task.Run(() => WriteLoopAsync(_cancellationSource.Token));
             Logger.LogInfo($"Connected to broker at {_client.Client.RemoteEndPoint}");
         }
         catch (OperationCanceledException ex)
@@ -67,13 +73,20 @@ public sealed class TcpSubscriberConnection(
             
             await _cancellationSource.CancelAsync();
 
+            if (_writeLoopTask != null)
+                await _writeLoopTask;
+
             if (_readLoopTask != null)
                 await _readLoopTask;
 
             if (_pipeReader != null)
                 await _pipeReader.CompleteAsync();
             
-            messageChannelWriter.TryComplete();
+            if (_pipeWriter != null)
+                await _pipeWriter.CompleteAsync();
+            
+            responseChannel.Writer.TryComplete();
+            requestChannel.Writer.TryComplete();
             
             Logger.LogInfo( $"Disconnected from broker at {_client.Client.RemoteEndPoint}");
             
@@ -98,12 +111,9 @@ public sealed class TcpSubscriberConnection(
                 var result = await _pipeReader!.ReadAsync(cancellationToken);
                 var buffer = result.Buffer;
 
-                while (TryReadBatch(ref buffer, out var batch))
+                while (TryReadMessage(ref buffer, out var message))
                 {
-                    foreach (var message in UnpackBatch(batch))
-                    {
-                        await messageChannelWriter.WriteAsync(message, cancellationToken);
-                    }
+                    await responseChannel.Writer.WriteAsync(message, cancellationToken);
                 }
 
                 _pipeReader.AdvanceTo(buffer.Start, buffer.End);
@@ -127,97 +137,41 @@ public sealed class TcpSubscriberConnection(
         }
     }
 
-    
-    /// <summary>Isolates a single batch from the buffer.</summary>
-    private bool TryReadBatch(ref ReadOnlySequence<byte> buffer, out ReadOnlySequence<byte> batch)
-    {
-        batch = default;
-        
-        // Minimum: contentSize + topicSize
-        if (buffer.Length < 2 * sizeof(int))
-        {
-            return false;
-        }
-        
-        var reader = new SequenceReader<byte>(buffer);
-        
-        if (!reader.TryReadBigEndian(out int batchContentSize))
-        {
-            return false;
-        }
-        
-        if (!reader.TryReadBigEndian(out int topicSize))
-        {
-            return false;
-        }
-        
-        long totalBatchSize = 2 * sizeof(int) + topicSize + batchContentSize;
-    
-        if (buffer.Length < totalBatchSize)
-        {
-            // We don't have the whole batch yet
-            return false;
-        }
-        
-        batch = buffer.Slice(0, totalBatchSize);
-        
-        buffer = buffer.Slice(totalBatchSize);
-        
-        Logger.LogDebug($"Read batch: contentSize={batchContentSize}, topicSize={topicSize}, totalSize={totalBatchSize}");
 
+    private bool TryReadMessage(ref ReadOnlySequence<byte> buffer, out byte[] message)
+    {
+        var newline = buffer.PositionOf((byte)'\n');
+        if (newline == null)
+        {
+            message = [];
+            return false;
+        }
+
+        var slice = buffer.Slice(0, newline.Value);
+        message = slice.ToArray();
+
+        buffer = buffer.Slice(buffer.GetPosition(1, newline.Value));
+        Logger.LogInfo( "Received message");
         return true;
     }
-    
-    /// <summary>Takes the batch apart</summary>
-    /// <returns>messages serialized with avro as byte[] still wrapped with their SchemaId but already without
-    /// their size prefixes</returns>
-    private IEnumerable<byte[]> UnpackBatch(ReadOnlySequence<byte> batch)
+
+    private async Task WriteLoopAsync(CancellationToken cancellationToken)
     {
-        var reader = new SequenceReader<byte>(batch);
-        
-        reader.Advance(4); //Skip batchContentSize
-        
-        if (!reader.TryReadBigEndian(out int topicSize))
+        try
         {
-            Logger.LogError("Failed to read topicSize");
-            yield break;
+            await foreach (var message in requestChannel.Reader.ReadAllAsync(cancellationToken))
+            {
+                var writer = _pipeWriter!;
+                var span = writer.GetSpan(message.Length);
+                message.CopyTo(span);
+                writer.Advance(message.Length);
+                await writer.FlushAsync(cancellationToken);
+                Logger.LogDebug($"Sent request to broker: {message.Length} bytes");
+            }
         }
-        
-        Span<byte> topicBytes = stackalloc byte[topicSize];
-        if (!reader.TryCopyTo(topicBytes))
+        finally
         {
-            Logger.LogError("Failed to read topic");
-            yield break;
-        }
-        reader.Advance(topicSize);
-        
-        var topicName = Encoding.UTF8.GetString(topicBytes);
-        Logger.LogDebug($"Unpacking batch for topic: {topicName}");
-        
-        // Read messages right now they look like [msgSize][schemaId][message]
-        while (reader.Remaining > 0)
-        {
-            if (!reader.TryReadBigEndian(out int messageSize))
-            {
-                Logger.LogError("Failed to read message size");
-                yield break;
-            }
-            
-            if (messageSize <= 0 || messageSize > reader.Remaining)
-            {
-                Logger.LogError($"Invalid message size: {messageSize}, remaining: {reader.Remaining}");
-                yield break;
-            }
-            
-            var messageBytes = new byte[messageSize];
-            if (!reader.TryCopyTo(messageBytes))
-            {
-                Logger.LogError("Failed to read message content");
-                yield break;
-            }
-            reader.Advance(messageSize);
-            
-            yield return messageBytes;
+            await _pipeWriter!.CompleteAsync();
         }
     }
 

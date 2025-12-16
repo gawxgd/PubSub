@@ -5,11 +5,13 @@ using System.Threading.Channels;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
+using MessageBroker.Domain.Port;
 using MessageBroker.Domain.Port.CommitLog;
 using MessageBroker.Domain.Port.CommitLog.RecordBatch;
 
 namespace MessageBroker.Domain.Logic.TcpServer.UseCase;
 
+public class HandleClientConnectionUseCase(Socket socket, Action onConnectionClosed, IMessageProcessorUseCase messageProcessorUseCase) : IHandleClientConnectionUseCase
 public class HandleClientConnectionUseCase(
     Socket socket,
     Action onConnectionClosed,
@@ -28,6 +30,8 @@ public class HandleClientConnectionUseCase(
             SingleReader = true,
             FullMode = BoundedChannelFullMode.Wait
         });
+
+    private Socket Socket => socket;
 
     private readonly Pipe _pipe = new();
 
@@ -123,32 +127,7 @@ public class HandleClientConnectionUseCase(
             Logger.LogInfo($"ProcessPipe completed for {_connectedClientEndpoint}");
         }
     }
-
-    private async Task ConsumeMessageChannelAsync(CancellationToken cancellationToken)
-    {
-        Logger.LogInfo(
-            $"Consuming message channel, connected to client {_connectedClientEndpoint}");
-
-        await foreach (var message in _messageChannel.Reader.ReadAllAsync(cancellationToken))
-        {
-            Logger.LogInfo($"[{_connectedClientEndpoint}] Received {message.Length} bytes");
-
-            try
-            {
-                await new ProcessReceivedMessageUseCase(commitLogFactory, batchReader, "default")
-                    .ProcessMessageAsync(message, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError($"Consume message channel exception for {_connectedClientEndpoint}", ex);
-            }
-
-            await socket.SendAsync(message, SocketFlags.None, cancellationToken);
-        }
-
-        Logger.LogInfo($"ConsumeMessageChannel completed for {_connectedClientEndpoint}");
-    }
-
+    
     private async Task CleanupAsync(CancellationToken cancellationToken)
     {
         try
@@ -172,5 +151,20 @@ public class HandleClientConnectionUseCase(
         }
 
         Logger.LogInfo($"End of handling connection with client: {_connectedClientEndpoint}");
+    }
+
+    private async Task ConsumeMessageChannelAsync(CancellationToken cancellationToken)
+    {
+        Logger.LogInfo(
+            $"Consuming message channel, connected to client {_connectedClientEndpoint}");
+        
+        await foreach (var message in _messageChannel.Reader.ReadAllAsync(cancellationToken))
+        {
+            Logger.LogInfo($"[{_connectedClientEndpoint}] Received {message.Length} bytes");
+
+            await messageProcessorUseCase.ProcessAsync(message, Socket, cancellationToken);
+        }
+
+        Logger.LogInfo($"ConsumeMessageChannel completed for {_connectedClientEndpoint}");
     }
 }
