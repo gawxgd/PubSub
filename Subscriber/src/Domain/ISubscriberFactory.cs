@@ -1,9 +1,8 @@
-﻿using Subscriber.Configuration;
-using Subscriber.Configuration.Options;
+﻿using Subscriber.Configuration.Options;
 
 namespace Subscriber.Domain;
 
-public interface ISubscriberFactory<T>
+public interface ISubscriberFactory<T> where T : new()
 {
-    ISubscriber<T> CreateSubscriber(SubscriberOptions options, Func<T, Task>? messageHandler);
+    ISubscriber<T> CreateSubscriber(SubscriberOptions options, Func<T, Task> messageHandler);
 }

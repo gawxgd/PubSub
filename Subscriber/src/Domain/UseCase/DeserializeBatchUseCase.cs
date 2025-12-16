@@ -5,7 +5,7 @@ namespace Subscriber.Domain.UseCase;
 
 public class DeserializeBatchUseCase<T>(
     ILogRecordBatchReader batchReader,
-    IDeserializer<T> deserializer)
+    IDeserializer<T> deserializer) where T : new()
 {
     public async Task<IReadOnlyList<T>> ExecuteAsync(byte[] batchData, SchemaInfo writersSchema,
         SchemaInfo readersSchema)

@@ -3,34 +3,31 @@ using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
 using Subscriber.Domain;
+using Subscriber.Domain.UseCase;
 using Subscriber.Inbound.Adapter;
 using Subscriber.Outbound.Exceptions;
 
 namespace Subscriber.Outbound.Adapter;
 
-public sealed class TcpSubscriber(
+public sealed class TcpSubscriber<T>(
     string topic,
-    int minMessageLength,
-    int maxMessageLength,
     TimeSpan pollInterval,
     uint maxRetryAttempts,
     ISubscriberConnection connection,
-    Channel<byte[]> respondChannel,
+    Channel<byte[]> responseChannel,
     Channel<byte[]> requestChannel,
-    Func<string, Task>? messageHandler,
-    Func<Exception, Task>? errorHandler = null)
-    : ISubscriber, IAsyncDisposable
+    ProcessMessageUseCase<T> processMessageUseCase)
+    : ISubscriber<T>, IAsyncDisposable where T : new()
 {
     private readonly CancellationTokenSource _cts = new();
     private CancellationToken CancellationToken => _cts.Token;
 
-    private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<TcpSubscriber>(LogSource.MessageBroker);
+    private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<TcpSubscriber<T>>(LogSource.MessageBroker);
 
-    private readonly MessageValidator _messageValidator = new(topic, minMessageLength, maxMessageLength);
-    private MessageReceiver? _messageReceiver;
+    private MessageReceiver<T>? _messageReceiver;
     private RequestSender? _requestSender;
 
-    async Task ISubscriber.CreateConnection()
+    async Task ISubscriber<T>.CreateConnection()
     {
         var retryCount = 0;
 
@@ -45,7 +42,7 @@ public sealed class TcpSubscriber(
             {
                 retryCount++;
                 var delay = TimeSpan.FromSeconds(Math.Min(retryCount, maxRetryAttempts));
-                Logger.LogDebug($" Retry {retryCount}: {ex.Message}. Waiting {delay}...");
+                Logger.LogDebug($"Retry {retryCount}: {ex.Message}. Waiting {delay}...");
                 await Task.Delay(delay);
             }
         }
@@ -55,61 +52,39 @@ public sealed class TcpSubscriber(
 
     public async Task ReceiveAsync(byte[] message)
     {
-        // This method is kept for backward compatibility
-        // The actual processing is now done by MessageReceiver
-        var validationResult = _messageValidator.Validate(message);
-        
-        if (!validationResult.IsValid)
-        {
-            return;
-        }
-
-        try
-        {
-            if (messageHandler != null)
-            {
-                await messageHandler(validationResult.Payload!);
-            }
-            Logger.LogInfo($"Received message: {validationResult.Payload}");
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError($"Error handling message: {ex.Message}", ex);
-        }
+        await processMessageUseCase.ExecuteAsync(message);
     }
-    
+
     public async Task StartMessageProcessingAsync()
     {
-        _messageReceiver = new MessageReceiver(
-            respondChannel,
-            _messageValidator,
-            messageHandler,
+        _messageReceiver = new MessageReceiver<T>(
+            responseChannel,
+            processMessageUseCase,
             pollInterval,
             CancellationToken);
 
         await _messageReceiver.StartReceivingAsync();
     }
-    
+
     public async Task StartConnectionAsync()
     {
         try
         {
-            await ((ISubscriber)this).CreateConnection();
-            
-            // Start automatic request sender after connection is established
+            await ((ISubscriber<T>)this).CreateConnection();
+
             _requestSender = new RequestSender(
                 requestChannel,
                 topic,
                 pollInterval,
                 CancellationToken);
-            
+
             _ = Task.Run(() => _requestSender.StartSendingAsync(), CancellationToken);
         }
         catch (SubscriberConnectionException ex) when (ex.IsRetriable)
         {
             Logger.LogWarning($"Retriable connection error: {ex.Message}");
             await Task.Delay(pollInterval, CancellationToken);
-            await StartConnectionAsync(); 
+            await StartConnectionAsync();
         }
         catch (SubscriberConnectionException ex)
         {
@@ -123,23 +98,18 @@ public sealed class TcpSubscriber(
         }
     }
 
-
     public async ValueTask DisposeAsync()
     {
-        // 1. Cancel internal operations
         await _cts.CancelAsync();
 
-        // 2. Signal no more outbound messages (requests to broker)
         requestChannel.Writer.TryComplete();
-        await requestChannel.Reader.Completion;  // wait until producer finishes
+        await requestChannel.Reader.Completion;
 
-        // 3. Stop TCP read/write loops
         await connection.DisconnectAsync();
-        // 4. Signal no more inbound messages (responses from broker)
-        respondChannel.Writer.TryComplete();
-        await respondChannel.Reader.Completion;   // wait until consumer finishes
 
-        // 5. Cleanup
+        responseChannel.Writer.TryComplete();
+        await responseChannel.Reader.Completion;
+
         _cts.Dispose();
     }
 }
