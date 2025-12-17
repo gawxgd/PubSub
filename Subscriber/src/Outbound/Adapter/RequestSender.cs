@@ -13,9 +13,9 @@ public class RequestSender(
     CancellationToken cancellationToken)
 {
     private static readonly IAutoLogger Logger =
-        AutoLoggerFactory.CreateLogger<RequestSender>(LogSource.MessageBroker);
+        AutoLoggerFactory.CreateLogger<RequestSender>(LogSource.Subscriber);
 
-    private ulong _lastOffset = 0; // TODO: track offset from received messages
+    private ulong _lastOffset = 0;
 
     public async Task StartSendingAsync()
     {
@@ -25,13 +25,18 @@ public class RequestSender(
         {
             try
             {
-                // Create request message: "topic:offset" format
-                // TODO: Update format when ProcessSubscriberRequestUseCase implements proper parsing
+                // Create request message: "topic:offset\n" format
                 var requestMessage = $"{topic}:{_lastOffset}\n";
                 var requestBytes = Encoding.UTF8.GetBytes(requestMessage);
 
-                await requestChannel.Writer.WriteAsync(requestBytes, cancellationToken);
-                Logger.LogDebug($"Sent automatic request for topic: {topic}, offset: {_lastOffset}");
+                // Build framed message: [4-byte length][message]
+                var lengthPrefix = BitConverter.GetBytes(requestBytes.Length);
+                var framedMessage = new byte[4 + requestBytes.Length];
+                lengthPrefix.CopyTo(framedMessage, 0);
+                requestBytes.CopyTo(framedMessage, 4);
+
+                await requestChannel.Writer.WriteAsync(framedMessage, cancellationToken);
+                Logger.LogDebug($"Sent request for topic: {topic}, offset: {_lastOffset} (framed: {framedMessage.Length} bytes)");
 
                 // Wait before sending next request
                 await Task.Delay(pollInterval, cancellationToken);
@@ -43,7 +48,7 @@ public class RequestSender(
             }
             catch (Exception ex)
             {
-                Logger.LogError($"Error in request sender: {ex.Message}", ex);
+                Logger.LogError($"Error in request sender: {ex.Message}");
                 // Continue sending even if there's an error
                 try
                 {

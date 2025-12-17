@@ -23,7 +23,7 @@ public sealed class TcpSubscriberConnection(
     private PipeWriter? _pipeWriter;
     private Task? _readLoopTask;
     private Task? _writeLoopTask;
-    private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<TcpSubscriberConnection>(LogSource.MessageBroker);
+    private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<TcpSubscriberConnection>(LogSource.Subscriber);
 
     public async Task ConnectAsync()
     {
@@ -34,19 +34,19 @@ public sealed class TcpSubscriberConnection(
             _pipeReader = PipeReader.Create(stream);
             _pipeWriter = PipeWriter.Create(stream);
             
-            _readLoopTask = Task.Run(() => ReadLoopAsync( _cancellationSource.Token));
+            _readLoopTask = Task.Run(() => ReadLoopAsync(_cancellationSource.Token));
             _writeLoopTask = Task.Run(() => WriteLoopAsync(_cancellationSource.Token));
             Logger.LogInfo($"Connected to broker at {_client.Client.RemoteEndPoint}");
         }
-        catch (OperationCanceledException ex)
+        catch (OperationCanceledException)
         {
-            Logger.LogInfo("Read loop cancelled.");
+            Logger.LogInfo("Connection cancelled.");
             throw;
         }
         catch (SocketException ex)
         {
-            Logger.LogError( $"Error during connection: {ex.Message}");
-            bool isRetriable = this.IsRetriable(ex);
+            Logger.LogError($"Error during connection: {ex.Message}");
+            bool isRetriable = IsRetriable(ex);
 
             throw new SubscriberConnectionException("TCP connection failed", ex, isRetriable);
         }
@@ -63,7 +63,7 @@ public sealed class TcpSubscriberConnection(
             catch (SocketException ex)
             {
                 Logger.LogInfo(
-                    $"Socket already closed or disconnected while shutting down connection : {ex.SocketErrorCode}"
+                    $"Socket already closed or disconnected while shutting down connection: {ex.SocketErrorCode}"
                 );
             }
             finally
@@ -88,7 +88,7 @@ public sealed class TcpSubscriberConnection(
             responseChannel.Writer.TryComplete();
             requestChannel.Writer.TryComplete();
             
-            Logger.LogInfo( $"Disconnected from broker at {_client.Client.RemoteEndPoint}");
+            Logger.LogInfo($"Disconnected from broker at {_client.Client.RemoteEndPoint}");
             
         }
         catch (Exception ex)
@@ -111,7 +111,8 @@ public sealed class TcpSubscriberConnection(
                 var result = await _pipeReader!.ReadAsync(cancellationToken);
                 var buffer = result.Buffer;
 
-                while (TryReadMessage(ref buffer, out var message))
+                // Read framed messages: [8-byte offset][4-byte length][payload]
+                while (TryReadFramedMessage(ref buffer, out var message))
                 {
                     await responseChannel.Writer.WriteAsync(message, cancellationToken);
                 }
@@ -125,33 +126,46 @@ public sealed class TcpSubscriberConnection(
                 }
             }
         }
+        catch (OperationCanceledException)
+        {
+            Logger.LogInfo("Read loop cancelled");
+        }
         catch (IOException ex) when (ex.InnerException is SocketException socketEx)
         {
             bool isRetriable = IsRetriable(socketEx);
-
             throw new SubscriberConnectionException("Read loop failed", socketEx, isRetriable);
         }
         catch (Exception ex)
         {
-            throw new SubscriberConnectionException("Unexpected error in read loop", null, false);
+            Logger.LogError($"Unexpected error in read loop: {ex.Message}");
         }
     }
 
-
-    private bool TryReadMessage(ref ReadOnlySequence<byte> buffer, out byte[] message)
+    private bool TryReadFramedMessage(ref ReadOnlySequence<byte> buffer, out byte[] message)
     {
-        var newline = buffer.PositionOf((byte)'\n');
-        if (newline == null)
-        {
-            message = [];
+        message = Array.Empty<byte>();
+
+        // Need at least 12 bytes: 8 for offset + 4 for length
+        if (buffer.Length < 12)
             return false;
-        }
 
-        var slice = buffer.Slice(0, newline.Value);
-        message = slice.ToArray();
+        // Read offset (8 bytes) and length (4 bytes)
+        Span<byte> headerSpan = stackalloc byte[12];
+        buffer.Slice(0, 12).CopyTo(headerSpan);
+        
+        var offset = BitConverter.ToUInt64(headerSpan.Slice(0, 8));
+        var payloadLength = BitConverter.ToInt32(headerSpan.Slice(8, 4));
 
-        buffer = buffer.Slice(buffer.GetPosition(1, newline.Value));
-        Logger.LogInfo( "Received message");
+        // Check if we have the full message
+        var totalLength = 12 + payloadLength;
+        if (buffer.Length < totalLength)
+            return false;
+
+        // Extract full framed message (including header) for downstream processing
+        message = buffer.Slice(0, totalLength).ToArray();
+        buffer = buffer.Slice(totalLength);
+
+        Logger.LogInfo($"Received batch: offset={offset}, payload={payloadLength} bytes");
         return true;
     }
 
@@ -169,9 +183,14 @@ public sealed class TcpSubscriberConnection(
                 Logger.LogDebug($"Sent request to broker: {message.Length} bytes");
             }
         }
+        catch (OperationCanceledException)
+        {
+            Logger.LogInfo("Write loop cancelled");
+        }
         finally
         {
-            await _pipeWriter!.CompleteAsync();
+            if (_pipeWriter != null)
+                await _pipeWriter.CompleteAsync();
         }
     }
 

@@ -52,7 +52,8 @@ public sealed class TcpSubscriber<T>(
 
     public async Task ReceiveAsync(byte[] message)
     {
-        await processMessageUseCase.ExecuteAsync(message);
+        var offset = await processMessageUseCase.ExecuteAsync(message);
+        _requestSender?.UpdateOffset(offset + 1);
     }
 
     public async Task StartMessageProcessingAsync()
@@ -61,7 +62,8 @@ public sealed class TcpSubscriber<T>(
             responseChannel,
             processMessageUseCase,
             pollInterval,
-            CancellationToken);
+            CancellationToken,
+            (offset) => _requestSender?.UpdateOffset(offset));
 
         await _messageReceiver.StartReceivingAsync();
     }

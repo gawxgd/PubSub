@@ -1,45 +1,56 @@
 using System.Net.Sockets;
+using System.Text;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
 using MessageBroker.Domain.Port;
 using MessageBroker.Domain.Port.CommitLog;
-using MessageBroker.Domain.Port.CommitLog.RecordBatch;
 
 namespace MessageBroker.Domain.Logic.TcpServer.UseCase;
 
 public class ProcessReceivedPublisherMessageUseCase(
-    ICommitLogFactory commitLogFactory,
-    string topic,
-    ILogRecordBatchReader batchReader) : IMessageProcessorUseCase
+    ICommitLogFactory commitLogFactory) : IMessageProcessorUseCase
 {
     private static readonly IAutoLogger Logger =
         AutoLoggerFactory.CreateLogger<ProcessReceivedPublisherMessageUseCase>(LogSource.MessageBroker);
 
-    private readonly ICommitLogAppender _commitLogAppender = commitLogFactory.GetAppender(topic);
-
     public async Task ProcessAsync(ReadOnlyMemory<byte> message, Socket socket, CancellationToken cancellationToken)
     {
-        Logger.LogDebug($"Processing message {message.Length} bytes");
+        Logger.LogDebug($"Processing publisher message: {message.Length} bytes");
 
         try
         {
-            using var stream = new MemoryStream(message.ToArray());
-            var batch = batchReader.ReadBatch(stream);
+            //ToDo change to append bytes with correct offset without reading and writing
+            var (topic, batchBytes) = ParseMessage(message);
+            
+            Logger.LogDebug($"Parsed message for topic '{topic}', batch size: {batchBytes.Length} bytes");
 
-            Logger.LogDebug($"Parsed batch with {batch.Records.Count} records");
+            var commitLogAppender = commitLogFactory.GetAppender(topic);
+            await commitLogAppender.AppendAsync(batchBytes);
 
-            foreach (var record in batch.Records)
-            {
-                await _commitLogAppender.AppendAsync(record.Payload);
-            }
-
-            Logger.LogInfo($"Appended {batch.Records.Count} records to commit log");
+            Logger.LogInfo($"Appended batch ({batchBytes.Length} bytes) to commit log for topic '{topic}'");
         }
         catch (InvalidDataException ex)
         {
-            Logger.LogError($"Failed to parse batch: {ex.Message}", ex);
+            Logger.LogError($"Failed to parse message: {ex.Message}", ex);
             throw;
         }
+    }
+
+    private static (string topic, byte[] batchBytes) ParseMessage(ReadOnlyMemory<byte> message)
+    {
+        var span = message.Span;
+        
+        // Find the separator ':'
+        var separatorIndex = span.IndexOf((byte)':');
+        if (separatorIndex == -1)
+        {
+            throw new InvalidDataException("Invalid publisher message format: missing topic separator");
+        }
+
+        var topic = Encoding.UTF8.GetString(span.Slice(0, separatorIndex));
+        var batchBytes = span.Slice(separatorIndex + 1).ToArray();
+
+        return (topic, batchBytes);
     }
 }
