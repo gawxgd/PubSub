@@ -1,4 +1,4 @@
-﻿﻿using System.Net.Sockets;
+﻿using System.Net.Sockets;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
