@@ -10,14 +10,14 @@ public class MessageReceiver<T>(
     Channel<byte[]> responseChannel,
     ProcessMessageUseCase<T> processMessageUseCase,
     TimeSpan pollInterval,
-    CancellationToken cancellationToken) where T : new()
+    CancellationToken cancellationToken,
+    Action<ulong>? onOffsetReceived = null) where T : new()
 {
     private static readonly IAutoLogger Logger =
-        AutoLoggerFactory.CreateLogger<MessageReceiver<T>>(LogSource.MessageBroker);
+        AutoLoggerFactory.CreateLogger<MessageReceiver<T>>(LogSource.Subscriber);
 
     public async Task StartReceivingAsync()
     {
-        //ToDo clean this function
         Logger.LogInfo("Starting message receiver");
 
         while (!cancellationToken.IsCancellationRequested)
@@ -28,7 +28,8 @@ public class MessageReceiver<T>(
                 {
                     while (responseChannel.Reader.TryRead(out var message))
                     {
-                        await processMessageUseCase.ExecuteAsync(message);
+                        var offset = await processMessageUseCase.ExecuteAsync(message);
+                        onOffsetReceived?.Invoke(offset + 1);
                     }
                 }
             }

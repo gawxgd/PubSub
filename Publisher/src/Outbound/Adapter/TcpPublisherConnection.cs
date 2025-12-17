@@ -23,6 +23,7 @@ public sealed class TcpPublisherConnection(
 
     private readonly CancellationTokenSource _cancellationSource = new();
     private readonly TcpClient _client = new();
+    private readonly FrameMessageUseCase _frameMessageUseCase = new();
     private PipeWriter? _pipeWriter;
     private Task? _processChannelTask;
 
@@ -130,9 +131,11 @@ public sealed class TcpPublisherConnection(
 
             try
             {
-                var buffer = PipeWriter.GetMemory(batchBytes.Length);
-                batchBytes.CopyTo(buffer);
-                PipeWriter.Advance(batchBytes.Length);
+                await _frameMessageUseCase.WriteFramedMessageAsync(
+                    PipeWriter,
+                    options.Topic,
+                    batchBytes,
+                    _cancellationSource.Token);
 
                 var result = await PipeWriter.FlushAsync(_cancellationSource.Token);
 
@@ -149,7 +152,7 @@ public sealed class TcpPublisherConnection(
                 }
 
                 sent = true;
-                Logger.LogDebug($"Sent batch with {count} records");
+                Logger.LogDebug($"Sent batch with {count} records, topic: {options.Topic}, batch size: {batchBytes.Length} bytes");
             }
             catch (IOException ex)
             {
