@@ -35,7 +35,18 @@
       "FlushIntervalMs": 1,
       "Directory": null
     }
-  ]
+  ],
+  "Publisher": {
+    "SchemaRegistryHost": "127.0.0.1",
+    "SchemaRegistryPort": 8081,
+    "BatchMaxBytes": 1,
+    "BatchMaxDelayMs": 1,
+    "SchemaRegistryTimeoutSeconds": 10
+  },
+  "Subscriber": {
+    "SchemaRegistryHost": "127.0.0.1",
+    "SchemaRegistryPort": 8081
+  }
 }
 
 
