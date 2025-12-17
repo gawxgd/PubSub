@@ -1,5 +1,7 @@
 using System.Threading.Channels;
 using BddE2eTests.Configuration.Builder;
+using BddE2eTests.Configuration.Options;
+using BddE2eTests.Configuration.TestEvents;
 using Publisher.Domain.Port;
 using Reqnroll;
 using Subscriber.Domain;
@@ -15,6 +17,9 @@ public class ScenarioTestContext(ScenarioContext scenarioContext)
     private const string SentMessageKey = "SentMessage";
     private const string PublisherOptionsBuilderKey = "PublisherOptionsBuilder";
     private const string SubscriberOptionsBuilderKey = "SubscriberOptionsBuilder";
+    private const string SchemaRegistryClientBuilderKey = "SchemaRegistryClientBuilder";
+
+    private static readonly TestOptions TestOptions = TestOptionsLoader.Load();
 
     public IPublisher<TestEvent> Publisher
     {
@@ -65,9 +70,10 @@ public class ScenarioTestContext(ScenarioContext scenarioContext)
     {
         if (!scenarioContext.TryGetValue(PublisherOptionsBuilderKey, out PublisherOptionsBuilder builder))
         {
-            builder = new PublisherOptionsBuilder();
+            builder = new PublisherOptionsBuilder(TestOptions.Publisher);
             scenarioContext.Set(builder, PublisherOptionsBuilderKey);
         }
+
         return builder;
     }
 
@@ -75,10 +81,21 @@ public class ScenarioTestContext(ScenarioContext scenarioContext)
     {
         if (!scenarioContext.TryGetValue(SubscriberOptionsBuilderKey, out SubscriberOptionsBuilder builder))
         {
-            builder = new SubscriberOptionsBuilder();
+            builder = new SubscriberOptionsBuilder(TestOptions.Subscriber);
             scenarioContext.Set(builder, SubscriberOptionsBuilderKey);
         }
+
+        return builder;
+    }
+
+    public SchemaRegistryClientBuilder GetOrCreateSchemaRegistryClientBuilder()
+    {
+        if (!scenarioContext.TryGetValue(SchemaRegistryClientBuilderKey, out SchemaRegistryClientBuilder builder))
+        {
+            builder = new SchemaRegistryClientBuilder(TestOptions.SchemaRegistry);
+            scenarioContext.Set(builder, SchemaRegistryClientBuilderKey);
+        }
+
         return builder;
     }
 }
-

@@ -2,6 +2,7 @@ using System.Threading.Channels;
 using Reqnroll;
 using Subscriber.Configuration;
 using BddE2eTests.Configuration;
+using BddE2eTests.Configuration.TestEvents;
 
 namespace BddE2eTests.Steps.Subscriber.Given;
 
@@ -24,6 +25,7 @@ public class ConfigureSubscriberGivenStep(ScenarioContext scenarioContext)
     {
         await TestContext.Progress.WriteLineAsync("[Subscriber Step] Starting subscriber configuration...");
         var builder = _context.GetOrCreateSubscriberOptionsBuilder();
+        var schemaRegistryBuilder = _context.GetOrCreateSchemaRegistryClientBuilder();
         string? topic = null;
 
         foreach (var row in table.Rows)
@@ -68,8 +70,7 @@ public class ConfigureSubscriberGivenStep(ScenarioContext scenarioContext)
             .Build();
 
         await TestContext.Progress.WriteLineAsync("[Subscriber Step] Creating schema registry client...");
-        var schemaRegistryClient =
-            TestDependencies.CreateSchemaRegistryClient(subscriberOptions.SchemaRegistryConnectionUri);
+        var schemaRegistryClient = schemaRegistryBuilder.Build();
 
         await TestContext.Progress.WriteLineAsync("[Subscriber Step] Creating subscriber factory...");
         var subscriberFactory = new SubscriberFactory<TestEvent>(schemaRegistryClient);
@@ -94,6 +95,6 @@ public class ConfigureSubscriberGivenStep(ScenarioContext scenarioContext)
         await connectionReady.Task;
         await TestContext.Progress.WriteLineAsync("[Subscriber Step] Subscriber setup complete!");
     }
-    
+
     //ToDo add cleanup
 }

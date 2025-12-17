@@ -1,6 +1,7 @@
 using NUnit.Framework;
 using Reqnroll;
 using BddE2eTests.Configuration;
+using BddE2eTests.Configuration.TestEvents;
 
 namespace BddE2eTests.Steps.Publisher.When;
 

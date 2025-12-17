@@ -1,6 +1,7 @@
 using Reqnroll;
 using Publisher.Configuration;
 using BddE2eTests.Configuration;
+using BddE2eTests.Configuration.TestEvents;
 
 namespace BddE2eTests.Steps.Publisher.Given;
 
@@ -16,6 +17,7 @@ public class ConfigurePublisherGivenStep(ScenarioContext scenarioContext)
     private const string MaxSendAttemptsSetting = "max send attempts";
     private const char BrokerSeparator = ':';
     private const string TopicRequiredError = "Topic must be specified in the configuration table";
+    
     private const int CleanupTimeoutSeconds = 5;
 
     private readonly ScenarioTestContext _context = new(scenarioContext);
@@ -25,6 +27,7 @@ public class ConfigurePublisherGivenStep(ScenarioContext scenarioContext)
     {
         await TestContext.Progress.WriteLineAsync("[Publisher Step] Starting publisher configuration...");
         var builder = _context.GetOrCreatePublisherOptionsBuilder();
+        var schemaRegistryBuilder = _context.GetOrCreateSchemaRegistryClientBuilder();
         string? topic = null;
 
         foreach (var row in table.Rows)
@@ -43,8 +46,9 @@ public class ConfigurePublisherGivenStep(ScenarioContext scenarioContext)
                     if (brokerParts.Length == 2)
                     {
                         builder.WithBrokerHost(brokerParts[0])
-                               .WithBrokerPort(int.Parse(brokerParts[1]));
+                            .WithBrokerPort(int.Parse(brokerParts[1]));
                     }
+
                     break;
                 case QueueSizeSetting:
                     builder.WithMaxPublisherQueueSize(uint.Parse(value));
@@ -65,16 +69,16 @@ public class ConfigurePublisherGivenStep(ScenarioContext scenarioContext)
 
         await TestContext.Progress.WriteLineAsync($"[Publisher Step] Building options for topic: {topic}");
         var publisherOptions = builder.Build();
-        
+
         await TestContext.Progress.WriteLineAsync("[Publisher Step] Creating schema registry client factory...");
-        var schemaRegistryClientFactory = TestDependencies.CreateSchemaRegistryClientFactory(publisherOptions.SchemaRegistryConnectionUri);
-        
+        var schemaRegistryClientFactory = schemaRegistryBuilder.BuildFactory();
+
         await TestContext.Progress.WriteLineAsync("[Publisher Step] Creating publisher factory...");
         var publisherFactory = new PublisherFactory<TestEvent>(schemaRegistryClientFactory);
-        
+
         await TestContext.Progress.WriteLineAsync("[Publisher Step] Creating publisher...");
         var publisher = publisherFactory.CreatePublisher(publisherOptions);
-        
+
         await TestContext.Progress.WriteLineAsync("[Publisher Step] Connecting to broker...");
         await publisher.CreateConnection();
         await TestContext.Progress.WriteLineAsync("[Publisher Step] Publisher connected!");
@@ -87,7 +91,7 @@ public class ConfigurePublisherGivenStep(ScenarioContext scenarioContext)
     public async Task Cleanup()
     {
         await TestContext.Progress.WriteLineAsync("[Cleanup] Starting publisher cleanup...");
-        
+
         if (_context.TryGetPublisher(out var publisher)
             && publisher is IAsyncDisposable publisherDisposable)
         {
@@ -96,10 +100,11 @@ public class ConfigurePublisherGivenStep(ScenarioContext scenarioContext)
             {
                 var disposeTask = publisherDisposable.DisposeAsync().AsTask();
                 var completedTask = await Task.WhenAny(disposeTask, Task.Delay(Timeout.Infinite, cts.Token));
-                
+
                 if (completedTask != disposeTask)
                 {
-                    await TestContext.Progress.WriteLineAsync($"[Cleanup] WARNING: Publisher dispose timed out after {CleanupTimeoutSeconds}s");
+                    await TestContext.Progress.WriteLineAsync(
+                        $"[Cleanup] WARNING: Publisher dispose timed out after {CleanupTimeoutSeconds}s");
                 }
             }
             catch (OperationCanceledException)
@@ -111,8 +116,7 @@ public class ConfigurePublisherGivenStep(ScenarioContext scenarioContext)
                 await TestContext.Progress.WriteLineAsync($"[Cleanup] Error disposing publisher: {ex.Message}");
             }
         }
-        
+
         await TestContext.Progress.WriteLineAsync("[Cleanup] Publisher cleanup complete");
     }
 }
-
