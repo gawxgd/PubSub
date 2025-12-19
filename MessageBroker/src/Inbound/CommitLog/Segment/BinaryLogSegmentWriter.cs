@@ -25,7 +25,6 @@ public sealed class BinaryLogSegmentWriter
     private readonly IOffsetIndexWriter _indexWriter;
     private readonly ITimeIndexWriter _timeIndexWriter;
 
-    private readonly ILogRecordBatchWriter _batchWriter;
     private LogSegment _segment;
     private readonly ulong _maxSegmentBytes;
     private readonly uint _indexIntervalBytes;
@@ -36,7 +35,6 @@ public sealed class BinaryLogSegmentWriter
     public BinaryLogSegmentWriter(
         IOffsetIndexWriter indexWriter,
         ITimeIndexWriter timeIndexWriter,
-        ILogRecordBatchWriter batchWriter,
         LogSegment segment,
         ulong maxSegmentBytes,
         uint indexIntervalBytes,
@@ -45,7 +43,6 @@ public sealed class BinaryLogSegmentWriter
     {
         _indexWriter = indexWriter;
         _timeIndexWriter = timeIndexWriter;
-        _batchWriter = batchWriter;
         _segment = segment;
         _maxSegmentBytes = maxSegmentBytes;
         _indexIntervalBytes = indexIntervalBytes;
@@ -96,10 +93,12 @@ public sealed class BinaryLogSegmentWriter
             _maxSegmentBytes; //ToDo we risk that the segment will be bigger because we dont accomodate the size of next batch
     }
 
-    public async ValueTask AppendAsync(LogRecordBatch batch, CancellationToken ct = default)
+    public async ValueTask AppendAsync(byte[] batch, ulong batchBaseOffset, ulong batchLastOffset,
+        CancellationToken ct)
     {
         var start = _log.Position;
-        _batchWriter.WriteTo(batch, _log);
+
+        await _log.WriteAsync(batch, 0, batch.Length, ct).ConfigureAwait(false);
         await _log.FlushAsync(ct).ConfigureAwait(false);
 
         var written = (ulong)(_log.Position - start);
@@ -107,19 +106,20 @@ public sealed class BinaryLogSegmentWriter
 
         if (_bytesSinceLastIndex >= _indexIntervalBytes)
         {
-            await WriteIndexAsync(start, batch).ConfigureAwait(false);
+            await WriteIndexAsync(start, batchBaseOffset).ConfigureAwait(false);
             _bytesSinceLastIndex = 0;
         }
 
-        var baseTs = batch.BaseTimestamp;
-        if (_timeIndexIntervalMs > 0 &&
-            (_lastTimeIndexTimestamp == 0 || baseTs - _lastTimeIndexTimestamp >= _timeIndexIntervalMs))
-        {
-            await WriteTimeIndexAsync(start, batch).ConfigureAwait(false);
-            _lastTimeIndexTimestamp = baseTs;
-        }
+        //ToDo handle timestamps
+        // var baseTs = batch.BaseTimestamp;
+        // if (_timeIndexIntervalMs > 0 &&
+        //     (_lastTimeIndexTimestamp == 0 || baseTs - _lastTimeIndexTimestamp >= _timeIndexIntervalMs))
+        // {
+        //     await WriteTimeIndexAsync(start, batch).ConfigureAwait(false);
+        //     _lastTimeIndexTimestamp = baseTs;
+        // }
 
-        _segment = _segment with { NextOffset = batch.BaseOffset + (ulong)batch.Records.Count };
+        _segment = _segment with { NextOffset = batchBaseOffset + batchLastOffset };
     }
 
     public async ValueTask DisposeAsync()
@@ -129,9 +129,9 @@ public sealed class BinaryLogSegmentWriter
         await _timeIndex.DisposeAsync().ConfigureAwait(false);
     }
 
-    private async ValueTask WriteIndexAsync(long start, LogRecordBatch batch)
+    private async ValueTask WriteIndexAsync(long start, ulong batchBaseOffset)
     {
-        var relativeOffset = batch.BaseOffset - _segment.BaseOffset;
+        var relativeOffset = batchBaseOffset - _segment.BaseOffset;
         var entry = new OffsetIndexEntry(relativeOffset, (ulong)start);
         await _indexWriter.WriteToAsync(entry, _index);
     }

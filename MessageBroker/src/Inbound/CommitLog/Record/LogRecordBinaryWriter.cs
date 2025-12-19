@@ -8,10 +8,13 @@ public class LogRecordBinaryWriter : ILogRecordWriter
 {
     public void WriteTo(LogRecord record, BinaryWriter bw, ulong batchBaseTimestamp)
     {
-        bw.Write(record.Offset);
-        // it is important that offset has constant size
-        bw.WriteVarULong(record.Timestamp - batchBaseTimestamp);
-        bw.WriteVarUInt((uint)record.Payload.Length);
+        bw.Write((ulong)record.Offset); // ulong
+
+        var timestampDelta = record.Timestamp - batchBaseTimestamp;
+        var totalSize = record.Payload.Length + sizeof(ulong);
+
+        bw.Write((uint)totalSize); // uint
+        bw.Write((ulong)timestampDelta); // ulong
         bw.Write(record.Payload.Span);
     }
 }

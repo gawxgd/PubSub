@@ -16,11 +16,13 @@ public class LogRecordBatchBinaryReader(ILogRecordReader logRecordReader, ICompr
         using var br = new BinaryReader(stream, encoding, true);
 
         var baseOffset = br.ReadUInt64();
-        var batchLength = br.ReadUInt64();
-        if (batchLength is 0 or > Int64.MaxValue)
+        var batchLength = br.ReadUInt32();
+        if (batchLength is 0 or > Int32.MaxValue)
         {
             throw new InvalidDataException("Batch length cannot be zero, or bigger than Int64.MaxValue.");
         }
+
+        var recordBytesLength = br.ReadUInt32();
 
         var batchStartPosition = stream.Position;
 
@@ -31,13 +33,12 @@ public class LogRecordBatchBinaryReader(ILogRecordReader logRecordReader, ICompr
                 $"Invalid magic number: expected {CommitLogMagicNumbers.LogRecordBatchMagicNumber}, got {magic}");
         }
 
-        var storedCrc = br.ReadVarUInt();
-        var compressedFlag = (byte)br.ReadVarUInt();
+        var storedCrc = br.ReadUInt32();
+        var compressedFlag = br.ReadByte();
         var compressed = compressedFlag != 0;
 
-        var baseTimestamp = br.ReadVarULong();
+        var baseTimestamp = br.ReadUInt64();
 
-        var recordBytesLength = br.ReadVarUInt();
         if (recordBytesLength > int.MaxValue)
         {
             throw new InvalidDataException(
