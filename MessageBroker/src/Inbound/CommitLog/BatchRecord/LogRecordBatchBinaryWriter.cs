@@ -53,7 +53,7 @@ public class LogRecordBatchBinaryWriter(ILogRecordWriter recordIo, ICompressor c
                CrcSize
                + CompressedFlagSize
                + TimestampSize
-               + RecordPayloadLengthSize
+               // + RecordPayloadLengthSize ToDo verify
                + sizeof(byte) * recordBytesLength;
     }
 
