@@ -56,7 +56,7 @@ public class  LogRecordBatchBinaryWriter(ILogRecordWriter recordIo, ICompressor 
     {
         using var batchRecordWriter = new BinaryWriter(stream, encoding, true);
 
-        batchRecordWriter.Write(recordBatch.BaseOffset);
+        batchRecordWriter.Write(recordBatch.BaseOffset); //ToDo delte offset
         batchRecordWriter.Write(batchLength);
         // it is important that baseOffset and batch length is const in size
         batchRecordWriter.Write((byte)recordBatch.MagicNumber);

@@ -9,7 +9,6 @@ using Publisher.Configuration.Exceptions;
 using Publisher.Configuration.Options;
 using Publisher.Domain.Logic;
 using Publisher.Domain.Port;
-using Publisher.Domain.Service;
 using Publisher.Outbound.Adapter;
 using Shared.Domain.Port.SchemaRegistryClient;
 
