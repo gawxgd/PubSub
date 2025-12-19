@@ -14,8 +14,9 @@ public class AssignOffsetsUseCase
     private const int CrcSize = sizeof(uint);
     private const int TimestampSize = sizeof(ulong);
 
+    private const int CompressedFlagSize = sizeof(byte);
     private const int RecordBytesStartPosition =
-        OffsetSize + LengthSize + LengthSize + MagicNumberSize + CrcSize + TimestampSize;
+        OffsetSize + LengthSize + LengthSize + MagicNumberSize + CrcSize + CompressedFlagSize + TimestampSize;
 
     private int _position;
 
@@ -28,9 +29,6 @@ public class AssignOffsetsUseCase
         AssignBatchBaseOffset(baseOffset, batchBytes);
 
         SkipBatchHeaders(batchBytes);
-
-        baseOffset++;
-
 
         while (_position < batchBytes.Length)
         {
