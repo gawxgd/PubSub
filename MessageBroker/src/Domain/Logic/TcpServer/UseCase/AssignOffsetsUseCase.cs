@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using System.Runtime.InteropServices;
+using System.IO.Hashing;
 
 namespace MessageBroker.Domain.Logic.TcpServer.UseCase;
 
@@ -7,12 +8,22 @@ public class AssignOffsetsUseCase
 {
     private const int OffsetSize = sizeof(ulong);
     private const int LengthSize = sizeof(uint);
+    private const int MagicNumberSize = sizeof(byte);
+    private const int RecordBytesLengthPosition = OffsetSize + LengthSize;
+    private const int CrcPosition = OffsetSize + LengthSize + LengthSize + MagicNumberSize;
+    private const int CrcSize = sizeof(uint);
+    private const int TimestampSize = sizeof(ulong);
+
+    private const int RecordBytesStartPosition =
+        OffsetSize + LengthSize + LengthSize + MagicNumberSize + CrcSize + TimestampSize;
 
     private int _position;
 
     public ulong AssignOffsets(ulong baseOffset, ReadOnlyMemory<byte> batchMemory)
     {
         var batchBytes = MemoryMarshal.AsMemory(batchMemory).Span;
+
+        VerifyCrc(batchBytes);
 
         AssignBatchBaseOffset(baseOffset, batchBytes);
 
@@ -28,6 +39,8 @@ public class AssignOffsetsUseCase
 
             baseOffset++;
         }
+
+        RecalculateAndUpdateCrc(batchBytes);
 
         return baseOffset;
     }
@@ -70,5 +83,38 @@ public class AssignOffsetsUseCase
         var recordLength = BinaryPrimitives.ReadUInt32LittleEndian(batchBytes.Slice(_position, LengthSize));
         _position += LengthSize;
         _position += (int)recordLength;
+    }
+
+    private void VerifyCrc(Span<byte> batchBytes)
+    {
+        var storedCrc = BinaryPrimitives.ReadUInt32LittleEndian(batchBytes.Slice(CrcPosition, LengthSize));
+
+        var recordBytesLength =
+            BinaryPrimitives.ReadUInt32LittleEndian(batchBytes.Slice(RecordBytesLengthPosition, LengthSize));
+
+        var recordBytes = batchBytes.Slice(RecordBytesStartPosition, (int)recordBytesLength);
+
+        var computedCrc = Crc32.HashToUInt32(recordBytes);
+
+        if (computedCrc != storedCrc)
+        {
+            throw new InvalidDataException($"Batch CRC mismatch: expected {storedCrc}, got {computedCrc}");
+        }
+    }
+
+
+    private void RecalculateAndUpdateCrc(Span<byte> batchBytes)
+    {
+        var recordBytesLength =
+            BinaryPrimitives.ReadUInt32LittleEndian(batchBytes.Slice(RecordBytesLengthPosition, LengthSize));
+
+        var recordBytes = batchBytes.Slice(RecordBytesStartPosition, (int)recordBytesLength);
+
+        var newCrc = Crc32.HashToUInt32(recordBytes);
+
+        BinaryPrimitives.WriteUInt32LittleEndian(
+            batchBytes.Slice(CrcPosition, LengthSize),
+            newCrc
+        );
     }
 }
