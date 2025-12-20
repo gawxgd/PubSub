@@ -6,10 +6,17 @@ using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
 using MessageBroker.Domain.Port;
+using MessageBroker.Domain.Port.CommitLog;
+using MessageBroker.Domain.Port.CommitLog.RecordBatch;
 
 namespace MessageBroker.Domain.Logic.TcpServer.UseCase;
 
-public class HandleClientConnectionUseCase(Socket socket, Action onConnectionClosed, IMessageProcessorUseCase messageProcessorUseCase) : IHandleClientConnectionUseCase
+public class HandleClientConnectionUseCase(
+    Socket socket,
+    Action onConnectionClosed,
+    IMessageProcessorUseCase messageProcessorUseCase,
+    ICommitLogFactory commitLogFactory,
+    ILogRecordBatchReader batchReader) : IHandleClientConnectionUseCase
 {
     private readonly string _connectedClientEndpoint = socket.RemoteEndPoint?.ToString() ?? "Unknown";
 
@@ -120,7 +127,7 @@ public class HandleClientConnectionUseCase(Socket socket, Action onConnectionClo
             Logger.LogInfo($"ProcessPipe completed for {_connectedClientEndpoint}");
         }
     }
-    
+
     private async Task CleanupAsync(CancellationToken cancellationToken)
     {
         try
@@ -134,7 +141,6 @@ public class HandleClientConnectionUseCase(Socket socket, Action onConnectionClo
 
         socket.Dispose();
 
-        // Ensure pipe is fully completed
         await _pipe.Reader.CompleteAsync();
         await _pipe.Writer.CompleteAsync();
 
@@ -151,7 +157,7 @@ public class HandleClientConnectionUseCase(Socket socket, Action onConnectionClo
     {
         Logger.LogInfo(
             $"Consuming message channel, connected to client {_connectedClientEndpoint}");
-        
+
         await foreach (var message in _messageChannel.Reader.ReadAllAsync(cancellationToken))
         {
             Logger.LogInfo($"[{_connectedClientEndpoint}] Received {message.Length} bytes");
@@ -162,4 +168,3 @@ public class HandleClientConnectionUseCase(Socket socket, Action onConnectionClo
         Logger.LogInfo($"ConsumeMessageChannel completed for {_connectedClientEndpoint}");
     }
 }
-

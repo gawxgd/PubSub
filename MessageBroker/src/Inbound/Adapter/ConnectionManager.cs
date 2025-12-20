@@ -7,16 +7,21 @@ using MessageBroker.Domain.Enums;
 using MessageBroker.Domain.Logic.TcpServer.UseCase;
 using MessageBroker.Domain.Port;
 using MessageBroker.Domain.Port.CommitLog;
+using MessageBroker.Domain.Port.CommitLog.RecordBatch;
 
 namespace MessageBroker.Inbound.Adapter;
 
-public class ConnectionManager(IConnectionRepository connectionRepository, ICommitLogFactory commitLogFactory)
+public class ConnectionManager(
+    IConnectionRepository connectionRepository,
+    ICommitLogFactory commitLogFactory,
+    ILogRecordBatchReader batchReader)
     : IConnectionManager
 {
     private static readonly IAutoLogger Logger =
         AutoLoggerFactory.CreateLogger<ConnectionManager>(LogSource.MessageBroker);
 
-    public void RegisterConnection(ConnectionType connectionType, Socket acceptedSocket, CancellationTokenSource cancellationTokenSource)
+    public void RegisterConnection(ConnectionType connectionType, Socket acceptedSocket,
+        CancellationTokenSource cancellationTokenSource)
     {
         var connectionId = connectionRepository.GenerateConnectionId();
 
@@ -28,7 +33,8 @@ public class ConnectionManager(IConnectionRepository connectionRepository, IComm
                 $"Started handler thread for connection {connectionId} with client: {acceptedSocket.RemoteEndPoint}");
             IMessageProcessorUseCase messageProcessorUseCase = connectionType switch
             {
-                ConnectionType.Publisher => new ProcessReceivedPublisherMessageUseCase(commitLogFactory, "default"),
+                ConnectionType.Publisher => new ProcessReceivedPublisherMessageUseCase(commitLogFactory, "default",
+                    batchReader),
                 ConnectionType.Subscriber => new ProcessSubscriberRequestUseCase(commitLogFactory),
                 _ => throw new ArgumentOutOfRangeException(nameof(connectionType), connectionType, null),
             };
@@ -36,8 +42,10 @@ public class ConnectionManager(IConnectionRepository connectionRepository, IComm
             IHandleClientConnectionUseCase handleClientConnectionUseCase = new HandleClientConnectionUseCase(
                 acceptedSocket,
                 () => UnregisterConnectionAfterThreadFinish(connectionId),
-                messageProcessorUseCase);
-            
+                messageProcessorUseCase,
+                commitLogFactory,
+                batchReader);
+
             return handleClientConnectionUseCase.HandleConnection(cancellationTokenSource.Token);
         }, cancellationTokenSource.Token);
 

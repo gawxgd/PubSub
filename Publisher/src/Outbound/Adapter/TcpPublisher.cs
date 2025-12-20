@@ -2,20 +2,26 @@ using System.Threading.Channels;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
+using MessageBroker.Domain.Port.CommitLog.RecordBatch;
+using Publisher.Configuration.Options;
+using Publisher.Domain.Logic;
 using Publisher.Domain.Port;
 using Publisher.Outbound.Exceptions;
 
 namespace Publisher.Outbound.Adapter;
 
-public sealed class TcpPublisher(string host, int port, uint maxSendAttempts, uint maxQueueSize, uint maxRetryAttempts)
-    : IPublisher, IAsyncDisposable
+public sealed class TcpPublisher<T>(
+    PublisherOptions options,
+    SerializeMessageUseCase<T> serializeMessageUseCase,
+    ILogRecordBatchWriter batchWriter)
+    : IPublisher<T>, IAsyncDisposable
 {
-    private static readonly IAutoLogger Logger =  AutoLoggerFactory.CreateLogger<TcpPublisher>(LogSource.Publisher);
-    private static readonly TimeSpan BaseRetryDelay = TimeSpan.FromSeconds(1);
+    private readonly IAutoLogger _logger = AutoLoggerFactory.CreateLogger<TcpPublisher<T>>(LogSource.Publisher);
+    private readonly TimeSpan _baseRetryDelay = TimeSpan.FromSeconds(1);
     private readonly CancellationTokenSource _cancellationTokenSource = new();
 
     private readonly Channel<byte[]> _channel = Channel.CreateBounded<byte[]>(
-        new BoundedChannelOptions((int)maxQueueSize)
+        new BoundedChannelOptions((int)options.MaxPublisherQueueSize)
         {
             FullMode = BoundedChannelFullMode.Wait,
             SingleReader = true,
@@ -23,7 +29,7 @@ public sealed class TcpPublisher(string host, int port, uint maxSendAttempts, ui
         });
 
     private readonly Channel<byte[]> _deadLetterChannel = Channel.CreateBounded<byte[]>(
-        new BoundedChannelOptions((int)maxQueueSize)
+        new BoundedChannelOptions((int)options.MaxPublisherQueueSize)
         {
             FullMode = BoundedChannelFullMode.DropNewest
         });
@@ -50,7 +56,7 @@ public sealed class TcpPublisher(string host, int port, uint maxSendAttempts, ui
         }
         catch (Exception ex)
         {
-            Logger.LogError("Exception while disposing",ex);
+            _logger.LogError("Exception while disposing", ex);
         }
     }
 
@@ -63,23 +69,28 @@ public sealed class TcpPublisher(string host, int port, uint maxSendAttempts, ui
 
         var retryCount = 0;
 
-        while (retryCount < maxRetryAttempts && !_cancellationTokenSource.Token.IsCancellationRequested)
+        while (retryCount < options.MaxRetryAttempts && !_cancellationTokenSource.Token.IsCancellationRequested)
         {
             retryCount++;
 
             try
             {
-                _currentPublisherConnection =
-                    new TcpPublisherConnection(host, port, maxSendAttempts, _channel.Reader, _deadLetterChannel);
+                var batchUseCase = new BatchMessagesUseCase(batchWriter);
+                _currentPublisherConnection = new TcpPublisherConnection(
+                    options,
+                    _channel.Reader,
+                    _deadLetterChannel,
+                    batchUseCase);
                 await _currentPublisherConnection.ConnectAsync();
                 break;
             }
             catch (PublisherConnectionException ex)
             {
-                var delay = TimeSpan.FromSeconds(BaseRetryDelay.TotalSeconds *
-                                                 Math.Min(retryCount, maxRetryAttempts));
+                var delay = TimeSpan.FromSeconds(_baseRetryDelay.TotalSeconds *
+                                                 Math.Min(retryCount, options.MaxRetryAttempts));
 
-                Logger.LogWarning($"Caught retriable exception {ex.Message}, retrying connection after {delay} delay", ex);
+                _logger.LogWarning($"Caught retriable exception {ex.Message}, retrying connection after {delay} delay",
+                    ex);
 
                 await SafeDisconnectPublisher();
 
@@ -87,12 +98,12 @@ public sealed class TcpPublisher(string host, int port, uint maxSendAttempts, ui
             }
             catch (OperationCanceledException)
             {
-                Logger.LogInfo("Operation cancelled");
+                _logger.LogInfo("Operation cancelled");
                 break;
             }
             catch (Exception ex)
             {
-                Logger.LogError($"Unrecoverable connection: {ex.Message}", ex);
+                _logger.LogError($"Unrecoverable connection: {ex.Message}", ex);
 
                 await SafeDisconnectPublisher();
                 throw;
@@ -100,9 +111,11 @@ public sealed class TcpPublisher(string host, int port, uint maxSendAttempts, ui
         }
     }
 
-    public async Task PublishAsync(byte[] message)
+    public async Task PublishAsync(T message)
     {
-        await _channel.Writer.WriteAsync(message, _cancellationTokenSource.Token);
+        var serializedMessage = await serializeMessageUseCase.Serialize(message);
+
+        await _channel.Writer.WriteAsync(serializedMessage, _cancellationTokenSource.Token);
     }
 
     private async Task SafeDisconnectPublisher()

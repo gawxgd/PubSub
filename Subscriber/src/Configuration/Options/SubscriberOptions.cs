@@ -11,6 +11,11 @@ public class SubscriberOptions
     public uint MaxRetryAttempts { get; set; }
 
     public required Uri MessageBrokerConnectionUri;
+    
+    public required Uri SchemaRegistryConnectionUri;
+    
     public int MaxQueueSIze { get; set; }
     public int MaxQueueSize { get; } = 65536; // Analize the value here
+    
+    public TimeSpan SchemaRegistryTimeout { get; set; } = TimeSpan.FromSeconds(10);
 }

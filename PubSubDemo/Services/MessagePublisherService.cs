@@ -30,7 +30,7 @@ public sealed class MessagePublisherService : IAsyncDisposable
     public async Task StartAsync(CancellationToken cancellationToken = default)
     {
         Console.WriteLine("Starting Message Publisher Service...");
-        
+
         // Connect to the broker
         await _publisher.CreateConnection();
         Console.WriteLine("Connected to message broker successfully!");
@@ -45,7 +45,7 @@ public sealed class MessagePublisherService : IAsyncDisposable
     public async Task StopAsync()
     {
         Console.WriteLine("\nStopping Message Publisher Service...");
-        
+
         await _cts.CancelAsync();
 
         if (_publishTask != null)
@@ -87,11 +87,12 @@ public sealed class MessagePublisherService : IAsyncDisposable
 
                 // Publish to broker
                 await _publisher.PublishAsync(bytes);
-                
+
                 Interlocked.Increment(ref _messagesSent);
 
                 // Console output with status
-                Console.Write($"\r[{DateTime.Now:HH:mm:ss}] Sent: {_messagesSent} | Failed: {_messagesFailed} | Last: {message.MessageType,-15}");
+                Console.Write(
+                    $"\r[{DateTime.Now:HH:mm:ss}] Sent: {_messagesSent} | Failed: {_messagesFailed} | Last: {message.MessageType,-15}");
 
                 // Wait before sending next message
                 await Task.Delay(_options.MessageInterval, cancellationToken);
@@ -111,7 +112,7 @@ public sealed class MessagePublisherService : IAsyncDisposable
             {
                 Interlocked.Increment(ref _messagesFailed);
                 Console.WriteLine($"\nError publishing message: {ex.Message}");
-                
+
                 // Wait a bit before retrying
                 await Task.Delay(1000, cancellationToken);
             }
@@ -180,6 +181,3 @@ public sealed class DemoMessage
     public string Source { get; set; } = string.Empty;
     public string MessageType { get; set; } = string.Empty;
 }
-
-
-
