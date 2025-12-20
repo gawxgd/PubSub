@@ -12,8 +12,6 @@ const api = axios.create({
 
 export const fetchStatistics = async () => {
   try {
-    // TODO: Replace with actual API endpoint when backend is ready
-    // For now, return mock data
     const response = await api.get('/statistics')
     return response.data
   } catch (error) {
