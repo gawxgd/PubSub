@@ -82,7 +82,7 @@ try
         MessageBrokerConnectionUri: new Uri($"messageBroker://{brokerOptions.Host}:{brokerOptions.Port}"),
         SchemaRegistryConnectionUri: schemaRegistryOptions.BaseAddress,
         SchemaRegistryTimeout: schemaRegistryOptions.Timeout,
-        Topic: demoOptions.Topic ?? "demo-topic",
+        Topic: demoOptions.Topic ?? "default",
         MaxPublisherQueueSize: brokerOptions.MaxQueueSize,
         MaxSendAttempts: 5,
         MaxRetryAttempts: 5,
@@ -105,7 +105,7 @@ try
         MessageBrokerConnectionUri = new Uri($"messageBroker://{brokerOptions.Host}:{brokerOptions.Port}"),
         SchemaRegistryConnectionUri = schemaRegistryOptions.BaseAddress,
         SchemaRegistryTimeout = schemaRegistryOptions.Timeout,
-        Topic = demoOptions.Topic ?? "demo-topic",
+        Topic = demoOptions.Topic ?? "default",
         PollInterval = TimeSpan.FromMilliseconds(100),
         MaxRetryAttempts = 3
     };
