@@ -52,7 +52,7 @@ public sealed class PublisherFactory<T>(ISchemaRegistryClientFactory schemaRegis
                 PublisherFactoryErrorCode.InvalidUri);
         }
 
-        if (!string.Equals(AllowedUriScheme, connectionUri.Scheme.ToLowerInvariant()))
+        if (!string.Equals(AllowedUriScheme, connectionUri.Scheme, StringComparison.OrdinalIgnoreCase))
         {
             throw new PublisherFactoryException(
                 $"Unsupported URI scheme '{connectionUri.Scheme}'. Allowed: '{AllowedUriScheme}'.",
