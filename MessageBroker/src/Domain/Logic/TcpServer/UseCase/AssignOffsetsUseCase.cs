@@ -25,6 +25,8 @@ public class AssignOffsetsUseCase
 
     public ulong AssignOffsets(ulong baseOffset, ReadOnlyMemory<byte> batchMemory)
     {
+        _position = 0;
+
         var batchBytes = MemoryMarshal.AsMemory(batchMemory).Span;
 
         VerifyCrc(batchBytes);

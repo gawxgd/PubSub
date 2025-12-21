@@ -23,7 +23,9 @@ public sealed class TcpSubscriberConnection(
     private PipeWriter? _pipeWriter;
     private Task? _readLoopTask;
     private Task? _writeLoopTask;
-    private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<TcpSubscriberConnection>(LogSource.Subscriber);
+
+    private static readonly IAutoLogger Logger =
+        AutoLoggerFactory.CreateLogger<TcpSubscriberConnection>(LogSource.Subscriber);
 
     public async Task ConnectAsync()
     {
@@ -33,7 +35,7 @@ public sealed class TcpSubscriberConnection(
             var stream = _client.GetStream();
             _pipeReader = PipeReader.Create(stream);
             _pipeWriter = PipeWriter.Create(stream);
-            
+
             _readLoopTask = Task.Run(() => ReadLoopAsync(_cancellationSource.Token));
             _writeLoopTask = Task.Run(() => WriteLoopAsync(_cancellationSource.Token));
             Logger.LogInfo($"Connected to broker at {_client.Client.RemoteEndPoint}");
@@ -68,9 +70,9 @@ public sealed class TcpSubscriberConnection(
             }
             finally
             {
-                _client.Close(); 
+                _client.Close();
             }
-            
+
             await _cancellationSource.CancelAsync();
 
             if (_writeLoopTask != null)
@@ -81,15 +83,14 @@ public sealed class TcpSubscriberConnection(
 
             if (_pipeReader != null)
                 await _pipeReader.CompleteAsync();
-            
+
             if (_pipeWriter != null)
                 await _pipeWriter.CompleteAsync();
-            
+
             responseChannel.Writer.TryComplete();
             requestChannel.Writer.TryComplete();
-            
+
             Logger.LogInfo($"Disconnected from broker at {_client.Client.RemoteEndPoint}");
-            
         }
         catch (Exception ex)
         {
@@ -111,10 +112,9 @@ public sealed class TcpSubscriberConnection(
                 var result = await _pipeReader!.ReadAsync(cancellationToken);
                 var buffer = result.Buffer;
 
-                // Read framed messages: [8-byte offset][4-byte length][payload]
-                while (TryReadFramedMessage(ref buffer, out var message))
+                while (TryReadBatchMessage(ref buffer, out var batchBytes))
                 {
-                    await responseChannel.Writer.WriteAsync(message, cancellationToken);
+                    await responseChannel.Writer.WriteAsync(batchBytes, cancellationToken);
                 }
 
                 _pipeReader.AdvanceTo(buffer.Start, buffer.End);
@@ -141,31 +141,41 @@ public sealed class TcpSubscriberConnection(
         }
     }
 
-    private bool TryReadFramedMessage(ref ReadOnlySequence<byte> buffer, out byte[] message)
+    private bool TryReadBatchMessage(ref ReadOnlySequence<byte> buffer, out byte[] batchBytes)
     {
-        message = Array.Empty<byte>();
+        //ToDO FIXX DO NOT DELET THIS COMMENT
+        batchBytes = Array.Empty<byte>();
 
-        // Need at least 12 bytes: 8 for offset + 4 for length
-        if (buffer.Length < 12)
+        // Need at least 24 bytes: 8 for baseOffset + 4 for batchLength + 8 for lastOffset + 4 for recordBytesLength
+        const int minHeaderSize = 24;
+        if (buffer.Length < minHeaderSize)
             return false;
 
-        // Read offset (8 bytes) and length (4 bytes)
-        Span<byte> headerSpan = stackalloc byte[12];
-        buffer.Slice(0, 12).CopyTo(headerSpan);
-        
-        var offset = BitConverter.ToUInt64(headerSpan.Slice(0, 8));
-        var payloadLength = BitConverter.ToInt32(headerSpan.Slice(8, 4));
+        // Read header to get batchLength and recordBytesLength
+        Span<byte> headerSpan = stackalloc byte[minHeaderSize];
+        buffer.Slice(0, minHeaderSize).CopyTo(headerSpan);
 
-        // Check if we have the full message
-        var totalLength = 12 + payloadLength;
-        if (buffer.Length < totalLength)
+        var baseOffset = BitConverter.ToUInt64(headerSpan.Slice(0, 8));
+        var batchLength = BitConverter.ToUInt32(headerSpan.Slice(8, 4));
+        var lastOffset = BitConverter.ToUInt64(headerSpan.Slice(12, 8));
+        // recordBytesLength is at offset 20, but we don't need to read it for size calculation
+
+        // Calculate total batch size: header (20 bytes) + RecordBytesLength field (4 bytes) + batchLength
+        // batchLength already includes: MagicNumber + CRC + CompressedFlag + Timestamp + RecordBytes
+        // But RecordBytesLength field (4 bytes) is NOT included in batchLength
+        const int headerSize = 20; // BaseOffset + BatchLength + LastOffset
+        var totalBatchSize = headerSize + sizeof(uint) + (int)batchLength;
+
+        // Check if we have the full batch
+        if (buffer.Length < totalBatchSize)
             return false;
 
-        // Extract full framed message (including header) for downstream processing
-        message = buffer.Slice(0, totalLength).ToArray();
-        buffer = buffer.Slice(totalLength);
+        // Extract full batch bytes
+        batchBytes = buffer.Slice(0, totalBatchSize).ToArray();
+        buffer = buffer.Slice(totalBatchSize);
 
-        Logger.LogInfo($"Received batch: offset={offset}, payload={payloadLength} bytes");
+        Logger.LogInfo(
+            $"Received batch: baseOffset={baseOffset}, lastOffset={lastOffset}, batchLength={batchLength} bytes");
         return true;
     }
 

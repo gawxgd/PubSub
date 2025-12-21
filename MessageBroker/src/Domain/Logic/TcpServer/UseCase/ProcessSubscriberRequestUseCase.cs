@@ -1,10 +1,8 @@
-﻿using System.IO;
-using System.Net.Sockets;
+﻿using System.Net.Sockets;
 using System.Text;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
-using MessageBroker.Domain.Entities.CommitLog;
 using MessageBroker.Domain.Port;
 using MessageBroker.Domain.Port.CommitLog;
 using MessageBroker.Domain.Port.CommitLog.RecordBatch;
@@ -34,7 +32,7 @@ public class ProcessSubscriberRequestUseCase(
 
             while (!cancellationToken.IsCancellationRequested)
             {
-                var batch = commitLogReader.ReadRecordBatch(currentOffset);
+                var batch = commitLogReader.ReadBatchBytes(currentOffset);
 
                 if (batch == null)
                 {
@@ -42,33 +40,17 @@ public class ProcessSubscriberRequestUseCase(
                     break;
                 }
 
+                var (batchBytes, batchOffset, lastOffset) = batch.Value;
+
                 Logger.LogDebug(
-                    $"Read batch with {batch.Records.Count} records, base offset: {batch.BaseOffset}, last offset: {batch.LastOffset}");
+                    $"Read batch with offset {batchOffset} and last offset {lastOffset}");
 
+                await socket.SendAsync(batchBytes, SocketFlags.None, cancellationToken);
 
-                {
-                    // Serialize the batch to bytes
-                    byte[] batchBytes;
-                    using (var batchStream = new MemoryStream())
-                    {
-                        batchWriter.WriteTo(batch, batchStream);
-                        batchBytes = batchStream.ToArray();
-                    }
+                Logger.LogDebug(
+                    $"Send batch with offset {batchOffset} and last offset {lastOffset}");
 
-                    // Send framed message: [8-byte offset][4-byte length][serializedBatchBytes]
-                    var baseOffsetBytes = BitConverter.GetBytes(batch.BaseOffset);
-                    var lengthBytes = BitConverter.GetBytes(batchBytes.Length);
-
-                    await socket.SendAsync(baseOffsetBytes, SocketFlags.None, cancellationToken);
-                    await socket.SendAsync(lengthBytes, SocketFlags.None, cancellationToken);
-                    await socket.SendAsync(batchBytes, SocketFlags.None, cancellationToken);
-
-                    Logger.LogDebug(
-                        $"Sent batch at base offset {batch.BaseOffset}: {batchBytes.Length} bytes (framed: {baseOffsetBytes.Length + lengthBytes.Length + batchBytes.Length} total)");
-                }
-
-                // Move to the next offset after this batch
-                currentOffset = batch.LastOffset + 1;
+                currentOffset = lastOffset + 1;
             }
         }
         catch (FileNotFoundException)

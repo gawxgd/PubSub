@@ -95,8 +95,12 @@ public class LogRecordBatchBinaryReader(ILogRecordReader logRecordReader, ICompr
         }
 
         var lastOffset = br.ReadUInt64();
+        var recordBytesLength = br.ReadUInt32();
 
-        var totalBatchSize = HeaderSize + (int)batchLength;
+        // Total batch size = Header (20) + RecordBytesLength (4) + batchLength
+        // batchLength already includes: MagicNumber + CRC + CompressedFlag + Timestamp + RecordBytes
+        // But RecordBytesLength field (4 bytes) is NOT included in batchLength, so we need to add it
+        var totalBatchSize = HeaderSize + sizeof(uint) + (int)batchLength;
 
         stream.Seek((long)batchStartPosition, SeekOrigin.Begin);
 

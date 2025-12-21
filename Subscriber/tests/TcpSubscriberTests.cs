@@ -61,7 +61,8 @@ public class TcpSubscriberTests
                 _receivedEvents.Add(evt);
                 return Task.CompletedTask;
             },
-            Topic);
+            Topic,
+            batchReaderMock.Object);
     }
 
     private TcpSubscriber<TestEvent> CreateSubscriber(
