@@ -9,7 +9,6 @@ using Publisher.Configuration.Exceptions;
 using Publisher.Configuration.Options;
 using Publisher.Domain.Logic;
 using Publisher.Domain.Port;
-using Publisher.Domain.Service;
 using Publisher.Outbound.Adapter;
 using Shared.Domain.Port.SchemaRegistryClient;
 
@@ -52,7 +51,7 @@ public sealed class PublisherFactory<T>(ISchemaRegistryClientFactory schemaRegis
                 PublisherFactoryErrorCode.InvalidUri);
         }
 
-        if (!string.Equals(AllowedUriScheme, connectionUri.Scheme.ToLowerInvariant()))
+        if (!string.Equals(AllowedUriScheme, connectionUri.Scheme, StringComparison.OrdinalIgnoreCase))
         {
             throw new PublisherFactoryException(
                 $"Unsupported URI scheme '{connectionUri.Scheme}'. Allowed: '{AllowedUriScheme}'.",

@@ -8,6 +8,8 @@ namespace Subscriber.Outbound.Adapter;
 
 public class AvroDeserializer<T> : IDeserializer<T> where T : new()
 {
+    private const int SchemaIdPrefixLength = 4;
+
     public Task<T> DeserializeAsync(byte[] avroBytes, SchemaInfo writersSchema, SchemaInfo readersSchema)
     {
         try
@@ -17,7 +19,8 @@ public class AvroDeserializer<T> : IDeserializer<T> where T : new()
 
             var datumReader = new ReflectReader<T>(writerAvroSchema, readerAvroSchema);
 
-            using var stream = new MemoryStream(avroBytes);
+            using var stream =
+                new MemoryStream(avroBytes, SchemaIdPrefixLength, avroBytes.Length - SchemaIdPrefixLength);
             var decoder = new BinaryDecoder(stream);
 
             var result = datumReader.Read(default!, decoder);

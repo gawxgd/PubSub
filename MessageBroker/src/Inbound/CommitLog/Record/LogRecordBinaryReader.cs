@@ -9,10 +9,14 @@ public class LogRecordBinaryReader : ILogRecordReader
     public LogRecord ReadFrom(BinaryReader br, ulong baseTimestamp)
     {
         var offset = br.ReadUInt64();
-        var timestampDelta = br.ReadVarULong();
+        var totalSize = br.ReadUInt32();
+
+        var timestampDelta = br.ReadUInt64();
         var timestamp = baseTimestamp + timestampDelta;
-        var payloadLength = br.ReadVarUInt();
+
+        var payloadLength = totalSize - sizeof(ulong);
         var payload = br.ReadBytes((int)payloadLength);
+
         return new LogRecord(offset, timestamp, payload);
     }
 }

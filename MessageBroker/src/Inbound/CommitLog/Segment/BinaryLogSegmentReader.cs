@@ -68,7 +68,46 @@ public sealed class BinaryLogSegmentReader : ILogSegmentReader
         }
     }
 
+    public (byte[] batchBytes, ulong baseOffset, ulong lastOffset)? ReadBatchBytes(ulong offset)
+    {
+        return ReadBatchCore(
+            offset,
+            log =>
+            {
+                var (batchBytes, batchOffset, lastOffset) =
+                    _batchReader.ReadBatchBytesAndAdvance(log);
+
+                if (offset >= batchOffset && offset <= lastOffset)
+                    return (true, false, (batchBytes, batchOffset, lastOffset));
+
+                if (batchOffset > offset)
+                    return (false, true, default);
+
+                return (false, false, default);
+            });
+    }
+
     public LogRecordBatch? ReadBatch(ulong offset)
+    {
+        return ReadBatchCore(
+            offset,
+            log =>
+            {
+                var batch = _batchReader.ReadBatch(log);
+
+                if (offset >= batch.BaseOffset && offset <= batch.LastOffset)
+                    return (true, false, batch);
+
+                if (batch.BaseOffset > offset)
+                    return (false, true, default);
+
+                return (false, false, default);
+            });
+    }
+
+    private T? ReadBatchCore<T>(
+        ulong offset,
+        Func<Stream, (bool found, bool passed, T value)> readNext)
     {
         if (offset < _segment.BaseOffset)
         {
@@ -83,16 +122,14 @@ public sealed class BinaryLogSegmentReader : ILogSegmentReader
         {
             try
             {
-                var batch = _batchReader.ReadBatch(_log);
+                var (found, passed, value) = readNext(_log);
 
-                // Check if this batch contains our offset
-                if (offset >= batch.BaseOffset && offset <= batch.LastOffset)
+                if (found)
                 {
-                    return batch;
+                    return value;
                 }
 
-                // If we've gone past the offset, it doesn't exist
-                if (batch.BaseOffset > offset)
+                if (passed)
                 {
                     break;
                 }
@@ -103,7 +140,7 @@ public sealed class BinaryLogSegmentReader : ILogSegmentReader
             }
         }
 
-        return null;
+        return default;
     }
 
     public IEnumerable<LogRecordBatch> ReadRange(ulong startOffset, ulong endOffset)
@@ -188,6 +225,11 @@ public sealed class BinaryLogSegmentReader : ILogSegmentReader
             targetKey: relative
         );
 
+        if (bestEntry == null)
+        {
+            return 0;
+        }
+
         return bestEntry.FilePosition;
     }
 
@@ -204,6 +246,11 @@ public sealed class BinaryLogSegmentReader : ILogSegmentReader
             getKey: e => e.Timestamp,
             targetKey: timestamp
         );
+
+        if (bestEntry == null)
+        {
+            return 0;
+        }
 
         return bestEntry.FilePosition;
     }
