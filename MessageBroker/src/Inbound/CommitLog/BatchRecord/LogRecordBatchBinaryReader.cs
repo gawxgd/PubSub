@@ -75,6 +75,11 @@ public class LogRecordBatchBinaryReader(ILogRecordReader logRecordReader, ICompr
         return new LogRecordBatch(magic, baseOffset, records, compressed);
     }
 
+    public ulong ReadBatchOffset(Stream steam)
+    {
+        throw new NotImplementedException();
+    }
+
     private List<LogRecord> ReadRecords(byte[] recordBytes, ulong baseTimestamp)
     {
         var records = new List<LogRecord>();

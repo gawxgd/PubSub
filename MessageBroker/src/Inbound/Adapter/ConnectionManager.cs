@@ -7,12 +7,14 @@ using MessageBroker.Domain.Enums;
 using MessageBroker.Domain.Logic.TcpServer.UseCase;
 using MessageBroker.Domain.Port;
 using MessageBroker.Domain.Port.CommitLog;
+using MessageBroker.Domain.Port.CommitLog.RecordBatch;
 
 namespace MessageBroker.Inbound.Adapter;
 
 public class ConnectionManager(
     IConnectionRepository connectionRepository,
-    ICommitLogFactory commitLogFactory)
+    ICommitLogFactory commitLogFactory,
+    ILogRecordBatchWriter batchWriter)
     : IConnectionManager
 {
     private static readonly IAutoLogger Logger =
@@ -33,7 +35,7 @@ public class ConnectionManager(
             IMessageProcessorUseCase messageProcessorUseCase = connectionType switch
             {
                 ConnectionType.Publisher => new ProcessReceivedPublisherMessageUseCase(commitLogFactory),
-                ConnectionType.Subscriber => new ProcessSubscriberRequestUseCase(commitLogFactory),
+                ConnectionType.Subscriber => new ProcessSubscriberRequestUseCase(commitLogFactory, batchWriter),
                 _ => throw new ArgumentOutOfRangeException(nameof(connectionType), connectionType, null),
             };
 

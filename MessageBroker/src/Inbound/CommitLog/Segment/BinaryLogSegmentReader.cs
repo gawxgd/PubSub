@@ -68,6 +68,44 @@ public sealed class BinaryLogSegmentReader : ILogSegmentReader
         }
     }
 
+    public byte[]? ReadBatchBytes(ulong offset)
+    {
+        if (offset < _segment.BaseOffset)
+        {
+            throw new SegmentReaderException(
+                "Start read offset is smaller than segment base offset, trying to read from wrong file");
+        }
+
+        var position = FindPositionForOffset(offset);
+        _log.Seek((long)position, SeekOrigin.Begin);
+
+        while (_log.Position < _log.Length)
+        {
+            try
+            {
+                var batch = _batchReader.ReadBatch(_log);
+
+                // Check if this batch contains our offset
+                if (offset >= batch.BaseOffset && offset <= batch.LastOffset)
+                {
+                    return batch;
+                }
+
+                // If we've gone past the offset, it doesn't exist
+                if (batch.BaseOffset > offset)
+                {
+                    break;
+                }
+            }
+            catch (EndOfStreamException)
+            {
+                break;
+            }
+        }
+
+        return null;
+    }
+
     public LogRecordBatch? ReadBatch(ulong offset)
     {
         if (offset < _segment.BaseOffset)

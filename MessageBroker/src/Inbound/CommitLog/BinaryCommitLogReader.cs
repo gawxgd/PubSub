@@ -82,6 +82,11 @@ public sealed class BinaryCommitLogReader : ICommitLogReader
         return batch;
     }
 
+    public byte[]? ReadBatchBytes(ulong baseOffset)
+    {
+        throw new NotImplementedException();
+    }
+
     public IEnumerable<LogRecord> ReadFromTimestamp(ulong timestamp)
     {
         // RefreshSegmentReader();
