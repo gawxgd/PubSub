@@ -9,14 +9,17 @@ public class AssignOffsetsUseCase
     private const int OffsetSize = sizeof(ulong);
     private const int LengthSize = sizeof(uint);
     private const int MagicNumberSize = sizeof(byte);
-    private const int RecordBytesLengthPosition = OffsetSize + LengthSize;
-    private const int CrcPosition = OffsetSize + LengthSize + LengthSize + MagicNumberSize;
+    private const int LastOffsetPosition = OffsetSize + LengthSize;
+    private const int RecordBytesLengthPosition = OffsetSize + LengthSize + OffsetSize;
+    private const int CrcPosition = OffsetSize + LengthSize + OffsetSize + LengthSize + MagicNumberSize;
     private const int CrcSize = sizeof(uint);
     private const int TimestampSize = sizeof(ulong);
 
     private const int CompressedFlagSize = sizeof(byte);
+
     private const int RecordBytesStartPosition =
-        OffsetSize + LengthSize + LengthSize + MagicNumberSize + CrcSize + CompressedFlagSize + TimestampSize;
+        OffsetSize + LengthSize + OffsetSize + LengthSize + MagicNumberSize + CrcSize + CompressedFlagSize +
+        TimestampSize;
 
     private int _position;
 
@@ -38,6 +41,9 @@ public class AssignOffsetsUseCase
             baseOffset++;
         }
 
+        var lastOffset = baseOffset - 1;
+        AssignBatchLastOffset(lastOffset, batchBytes);
+
         RecalculateAndUpdateCrc(batchBytes);
 
         return baseOffset;
@@ -56,13 +62,21 @@ public class AssignOffsetsUseCase
     private void SkipBatchHeaders(Span<byte> batchBytes)
     {
         var batchLength = BinaryPrimitives.ReadUInt32LittleEndian(batchBytes.Slice(_position, LengthSize));
-        _position += LengthSize;
+        _position += LengthSize + OffsetSize;
 
         var recordBytesLength =
             BinaryPrimitives.ReadUInt32LittleEndian(batchBytes.Slice(_position, LengthSize));
         _position += LengthSize;
 
         _position += (int)(batchLength - recordBytesLength);
+    }
+
+    private void AssignBatchLastOffset(ulong lastOffset, Span<byte> batchBytes)
+    {
+        BinaryPrimitives.WriteUInt64LittleEndian(
+            batchBytes.Slice(LastOffsetPosition, OffsetSize),
+            lastOffset
+        );
     }
 
 

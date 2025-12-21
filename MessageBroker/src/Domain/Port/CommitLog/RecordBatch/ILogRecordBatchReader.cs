@@ -6,5 +6,5 @@ public interface ILogRecordBatchReader
 {
     public LogRecordBatch ReadBatch(Stream stream);
 
-    public ulong ReadBatchOffset(Stream steam);
+    public (byte[] batchBytes, ulong batchOffset, ulong lastOffset) ReadBatchBytesAndAdvance(Stream stream);
 }

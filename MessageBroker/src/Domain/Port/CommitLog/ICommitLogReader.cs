@@ -15,7 +15,7 @@ public interface ICommitLogReader : IAsyncDisposable
     /// </summary>
     LogRecordBatch? ReadRecordBatch(ulong baseOffset);
 
-    byte[]? ReadBatchBytes(ulong baseOffset);
+    (byte[] batchBytes, ulong baseOffset, ulong lastOffset)? ReadBatchBytes(ulong baseOffset);
 
     /// <summary>
     /// Not implemented

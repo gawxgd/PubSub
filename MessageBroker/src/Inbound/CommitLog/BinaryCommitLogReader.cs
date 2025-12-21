@@ -82,9 +82,26 @@ public sealed class BinaryCommitLogReader : ICommitLogReader
         return batch;
     }
 
-    public byte[]? ReadBatchBytes(ulong baseOffset)
+    public (byte[] batchBytes, ulong baseOffset, ulong lastOffset)? ReadBatchBytes(ulong offset)
     {
-        throw new NotImplementedException();
+        var segment = _segmentRegistry.GetSegmentContainingOffset(offset);
+
+        if (segment == null)
+        {
+            Logger.LogWarning($"Cannot find segment containing offset {offset}");
+            return null;
+        }
+
+        var segmentReader = GetOrCreateSegmentReader(segment);
+        var batch = segmentReader.ReadBatchBytes(offset);
+
+        if (batch == null)
+        {
+            Logger.LogWarning($"Read batch for {offset} returned null");
+            return null;
+        }
+
+        return batch;
     }
 
     public IEnumerable<LogRecord> ReadFromTimestamp(ulong timestamp)

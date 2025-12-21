@@ -68,7 +68,7 @@ public sealed class BinaryLogSegmentReader : ILogSegmentReader
         }
     }
 
-    public byte[]? ReadBatchBytes(ulong offset)
+    public (byte[] batchBytes, ulong baseOffset, ulong lastOffset)? ReadBatchBytes(ulong offset)
     {
         if (offset < _segment.BaseOffset)
         {
@@ -83,16 +83,14 @@ public sealed class BinaryLogSegmentReader : ILogSegmentReader
         {
             try
             {
-                var batch = _batchReader.ReadBatch(_log);
+                var (batchBytes, batchOffset, lastOffset) = _batchReader.ReadBatchBytesAndAdvance(_log);
 
-                // Check if this batch contains our offset
-                if (offset >= batch.BaseOffset && offset <= batch.LastOffset)
+                if (offset >= batchOffset && offset <= lastOffset)
                 {
-                    return batch;
+                    return (batchBytes, batchOffset, lastOffset);
                 }
 
-                // If we've gone past the offset, it doesn't exist
-                if (batch.BaseOffset > offset)
+                if (batchOffset > offset)
                 {
                     break;
                 }

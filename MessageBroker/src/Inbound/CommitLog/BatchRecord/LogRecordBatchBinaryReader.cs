@@ -11,6 +11,11 @@ namespace MessageBroker.Inbound.CommitLog.BatchRecord;
 public class LogRecordBatchBinaryReader(ILogRecordReader logRecordReader, ICompressor compressor, Encoding encoding)
     : ILogRecordBatchReader
 {
+    private const int BaseOffsetSize = sizeof(ulong);
+    private const int BatchLengthSize = sizeof(uint);
+    private const int LastOffsetSize = sizeof(ulong);
+    private const int HeaderSize = BaseOffsetSize + BatchLengthSize + LastOffsetSize;
+
     public LogRecordBatch ReadBatch(Stream stream)
     {
         using var br = new BinaryReader(stream, encoding, true);
@@ -21,6 +26,8 @@ public class LogRecordBatchBinaryReader(ILogRecordReader logRecordReader, ICompr
         {
             throw new InvalidDataException("Batch length cannot be zero, or bigger than Int64.MaxValue.");
         }
+
+        var lastOffset = br.ReadUInt64(); // Skip LastOffset, it's computed from records
 
         var recordBytesLength = br.ReadUInt32();
 
@@ -75,9 +82,33 @@ public class LogRecordBatchBinaryReader(ILogRecordReader logRecordReader, ICompr
         return new LogRecordBatch(magic, baseOffset, records, compressed);
     }
 
-    public ulong ReadBatchOffset(Stream steam)
+    public (byte[] batchBytes, ulong batchOffset, ulong lastOffset) ReadBatchBytesAndAdvance(Stream stream)
     {
-        throw new NotImplementedException();
+        var batchStartPosition = stream.Position;
+        using var br = new BinaryReader(stream, encoding, true);
+
+        var baseOffset = br.ReadUInt64();
+        var batchLength = br.ReadUInt32();
+        if (batchLength is 0 or > Int32.MaxValue)
+        {
+            throw new InvalidDataException("Batch length cannot be zero, or bigger than Int32.MaxValue.");
+        }
+
+        var lastOffset = br.ReadUInt64();
+
+        var totalBatchSize = HeaderSize + (int)batchLength;
+
+        stream.Seek((long)batchStartPosition, SeekOrigin.Begin);
+
+        var fullBatchBytes = new byte[totalBatchSize];
+        var bytesRead = stream.Read(fullBatchBytes, 0, totalBatchSize);
+        if (bytesRead != totalBatchSize)
+        {
+            throw new InvalidDataException(
+                $"Expected {totalBatchSize} bytes but only read {bytesRead}");
+        }
+
+        return (fullBatchBytes, baseOffset, lastOffset);
     }
 
     private List<LogRecord> ReadRecords(byte[] recordBytes, ulong baseTimestamp)

@@ -64,6 +64,7 @@ public class LogRecordBatchBinaryWriter(ILogRecordWriter recordIo, ICompressor c
 
         batchRecordWriter.Write((ulong)recordBatch.BaseOffset); //ToDo delte offset
         batchRecordWriter.Write((uint)batchLength);
+        batchRecordWriter.Write((ulong)recordBatch.LastOffset);
         batchRecordWriter.Write((uint)recordBytesLength);
         batchRecordWriter.Write((byte)recordBatch.MagicNumber);
         batchRecordWriter.Write((uint)crc);
