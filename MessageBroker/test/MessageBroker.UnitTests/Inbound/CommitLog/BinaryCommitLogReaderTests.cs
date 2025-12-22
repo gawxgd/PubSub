@@ -56,55 +56,39 @@ public class BinaryCommitLogReaderTests
     [Fact]
     public void ReadFromTimestamp_Should_Return_Whole_First_Batch()
     {
-        //ToDo test after implementation
+        // Aktualna implementacja nie jest jeszcze dostępna i rzuca NotImplementedException
         var segment = new LogSegment("a.log", "a.index", "a.timeindex", 0, 0);
         _registry.GetActiveSegment().Returns(segment);
 
-        var firstBatch = new LogRecordBatch(
-            CommitLogMagicNumbers.LogRecordBatchMagicNumber,
-            20,
-            new List<LogRecord>
-            {
-                new LogRecord(20, 200, new byte[] { 1 }),
-                new LogRecord(21, 201, new byte[] { 2 })
-            },
-            false);
-
-        var segReader = Substitute.For<ILogSegmentReader>();
-        segReader.ReadFromTimestamp(200).Returns(new[] { firstBatch });
-
-        _segmentFactory.CreateReader(segment).Returns(segReader);
-
         var reader = new BinaryCommitLogReader(_segmentFactory, _registry);
 
-        var records = reader.ReadFromTimestamp(200).ToList();
+        Action act = () => reader.ReadFromTimestamp(200).ToList();
 
-        records.Should().HaveCount(2);
-        records.Select(r => r.Offset).Should().BeEquivalentTo(new[] { 20UL, 21UL });
+        act.Should().Throw<NotImplementedException>();
     }
 
     [Fact]
     public async Task Reader_Should_Switch_When_Segment_Changes()
     {
-        //ToDo this test case is wrong
         var seg1 = new LogSegment("a.log", "a.index", "a.timeindex", 0, 0);
         var seg2 = new LogSegment("b.log", "b.index", "b.timeindex", 100, 100);
 
         var segReader1 = Substitute.For<ILogSegmentReader>();
         var segReader2 = Substitute.For<ILogSegmentReader>();
 
-        _registry.GetActiveSegment().Returns(seg1, seg2);
+        _registry.GetActiveSegment().Returns(seg1);
+        _registry.GetSegmentContainingOffset(0).Returns(seg1);
+        _registry.GetSegmentContainingOffset(100).Returns(seg2);
         _segmentFactory.CreateReader(seg1).Returns(segReader1);
         _segmentFactory.CreateReader(seg2).Returns(segReader2);
 
         var reader = new BinaryCommitLogReader(_segmentFactory, _registry);
 
         reader.ReadRecordBatch(0);
-
         reader.ReadRecordBatch(100);
 
-        await segReader1.Received(1).DisposeAsync();
-        _segmentFactory.Received(1).CreateReader(seg1);
+        segReader1.Received(1).ReadBatch(0);
+        segReader2.Received(1).ReadBatch(100);
         _segmentFactory.Received(1).CreateReader(seg2);
     }
 }

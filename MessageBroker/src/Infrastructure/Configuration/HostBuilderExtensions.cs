@@ -55,7 +55,16 @@ public static class HostBuilderExtensions
                 {
                     app.UseCors();
                     app.UseRouting();
-                    app.UseEndpoints(endpoints => { endpoints.MapLogger(); });
+                    app.UseEndpoints(endpoints => 
+                    { 
+                        endpoints.MapLogger();
+                        endpoints.MapGet("/api/statistics", async context =>
+                        {
+                            var statisticsService = context.RequestServices.GetRequiredService<MessageBroker.Domain.Port.IStatisticsService>();
+                            var statistics = statisticsService.GetStatistics();
+                            await context.Response.WriteAsJsonAsync(statistics);
+                        });
+                    });
                 });
             });
 

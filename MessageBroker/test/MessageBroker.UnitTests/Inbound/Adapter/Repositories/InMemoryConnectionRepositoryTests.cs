@@ -3,6 +3,7 @@ using FluentAssertions;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
 using MessageBroker.Domain.Entities;
+using MessageBroker.Domain.Enums;
 using MessageBroker.Inbound.Adapter;
 using NSubstitute;
 using Xunit;
@@ -91,7 +92,7 @@ public class InMemoryConnectionRepositoryTests
         // Arrange
         var repository = new InMemoryConnectionRepository();
         var cts = new CancellationTokenSource();
-        var connection = new Connection(1, "test", cts, Task.CompletedTask);
+        var connection = new Connection(1, "test", cts, Task.CompletedTask, ConnectionType.Publisher);
         repository.Add(connection);
 
         // Act
@@ -185,6 +186,7 @@ public class InMemoryConnectionRepositoryTests
 
     private static Connection CreateTestConnection(long id)
     {
-        return new Connection(id, $"test-{id}", new CancellationTokenSource(), Task.CompletedTask);
+        return new Connection(id, $"test-{id}", new CancellationTokenSource(), Task.CompletedTask,
+            ConnectionType.Publisher);
     }
 }

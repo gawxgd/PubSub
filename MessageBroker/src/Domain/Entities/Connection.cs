@@ -8,7 +8,8 @@ public class Connection(
     long id,
     string clientEndpoint,
     CancellationTokenSource cancellationTokenSource,
-    Task handlerTask) : IDisposable
+    Task handlerTask,
+    Enums.ConnectionType connectionType) : IDisposable
 {
     private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<Connection>(LogSource.MessageBroker);
 
@@ -18,6 +19,7 @@ public class Connection(
     public DateTime ConnectedAt { get; } = DateTime.UtcNow;
     public Task HandlerTask { get; } = handlerTask;
     public CancellationTokenSource CancellationTokenSource { get; } = cancellationTokenSource;
+    public MessageBroker.Domain.Enums.ConnectionType ConnectionType { get; } = connectionType;
 
     public void Dispose()
     {

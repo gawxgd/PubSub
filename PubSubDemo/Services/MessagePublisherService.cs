@@ -1,5 +1,3 @@
-using System.Text;
-using System.Text.Json;
 using Publisher.Domain.Port;
 using PubSubDemo.Configuration;
 
@@ -8,16 +6,16 @@ namespace PubSubDemo.Services;
 /// <summary>
 /// Background service that publishes demo messages to the broker.
 /// </summary>
-public sealed class MessagePublisherService : IAsyncDisposable
+public sealed class MessagePublisherService<T> : IAsyncDisposable
 {
-    private readonly IPublisher _publisher;
+    private readonly IPublisher<T> _publisher;
     private readonly DemoOptions _options;
     private readonly CancellationTokenSource _cts;
     private Task? _publishTask;
     private long _messagesSent;
     private long _messagesFailed;
 
-    public MessagePublisherService(IPublisher publisher, DemoOptions options)
+    public MessagePublisherService(IPublisher<T> publisher, DemoOptions options)
     {
         _publisher = publisher ?? throw new ArgumentNullException(nameof(publisher));
         _options = options ?? throw new ArgumentNullException(nameof(options));
@@ -81,12 +79,8 @@ public sealed class MessagePublisherService : IAsyncDisposable
                     MessageType = GetRandomMessageType()
                 };
 
-                // Serialize to JSON
-                var json = JsonSerializer.Serialize(message);
-                var bytes = Encoding.UTF8.GetBytes(json);
-
-                // Publish to broker
-                await _publisher.PublishAsync(bytes);
+                // Publish to broker (publisher handles serialization)
+                await _publisher.PublishAsync((T)(object)message);
 
                 Interlocked.Increment(ref _messagesSent);
 
@@ -136,10 +130,7 @@ public sealed class MessagePublisherService : IAsyncDisposable
                     MessageType = "Batch"
                 };
 
-                var json = JsonSerializer.Serialize(message);
-                var bytes = Encoding.UTF8.GetBytes(json);
-
-                await _publisher.PublishAsync(bytes);
+                await _publisher.PublishAsync((T)(object)message);
                 Interlocked.Increment(ref _messagesSent);
             }
             catch (Exception ex)
@@ -175,6 +166,11 @@ public sealed class MessagePublisherService : IAsyncDisposable
 /// </summary>
 public sealed class DemoMessage
 {
+    public DemoMessage()
+    {
+        // Required for new() constraint
+    }
+
     public int Id { get; set; }
     public DateTimeOffset Timestamp { get; set; }
     public string Content { get; set; } = string.Empty;

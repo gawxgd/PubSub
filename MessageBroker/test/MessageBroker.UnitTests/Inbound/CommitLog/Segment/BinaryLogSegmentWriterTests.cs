@@ -181,13 +181,13 @@ public class BinaryLogSegmentWriterTests : IDisposable
         // Assert
         File.Exists(segment.TimeIndexFilePath).Should().BeTrue();
         var timeIndexData = await File.ReadAllBytesAsync(segment.TimeIndexFilePath);
-        timeIndexData.Length.Should().Be(16, "time index entry is 8 bytes for timestamp + 8 bytes for relative offset");
+        timeIndexData.Length.Should().Be(16, "time index entry is 8 bytes for timestamp + 8 bytes for file position");
 
         var timestamp = BinaryPrimitives.ReadUInt64BigEndian(timeIndexData.AsSpan(0, 8));
-        var relativeOffset = BinaryPrimitives.ReadUInt64BigEndian(timeIndexData.AsSpan(8, 8));
+        var filePosition = BinaryPrimitives.ReadUInt64BigEndian(timeIndexData.AsSpan(8, 8));
 
         timestamp.Should().Be(1000UL, "base timestamp from test batch");
-        relativeOffset.Should().Be(2UL, "batch base offset (52) - segment base offset (50) = 2");
+        filePosition.Should().Be(0UL, "batch was written at position 0");
 
         // Verify data can be read back
         await using var reader = CreateReader(segment);

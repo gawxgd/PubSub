@@ -7,6 +7,7 @@ using MessageBroker.Domain.Entities;
 using MessageBroker.Domain.Enums;
 using MessageBroker.Domain.Port;
 using MessageBroker.Domain.Port.CommitLog;
+using MessageBroker.Domain.Port.CommitLog.RecordBatch;
 using MessageBroker.Inbound.Adapter;
 using NSubstitute;
 using Xunit;
@@ -29,8 +30,9 @@ public class ConnectionManagerTests
         // Arrange
         var repository = Substitute.For<IConnectionRepository>();
         var commitLog = Substitute.For<ICommitLogFactory>();
+        var batchReader = Substitute.For<ILogRecordBatchReader>();
         repository.GenerateConnectionId().Returns(42L);
-        var manager = new ConnectionManager(repository, commitLog);
+        var manager = new ConnectionManager(repository, commitLog, batchReader);
         var socket = CreateMockSocket();
         var cts = new CancellationTokenSource();
 
@@ -51,11 +53,12 @@ public class ConnectionManagerTests
         // Arrange
         var repository = Substitute.For<IConnectionRepository>();
         var commitLog = Substitute.For<ICommitLogFactory>();
+        var batchReader = Substitute.For<ILogRecordBatchReader>();
         var tcs = new TaskCompletionSource();
         var cts = new CancellationTokenSource();
-        var connection = new Connection(1, "test", cts, tcs.Task);
+        var connection = new Connection(1, "test", cts, tcs.Task, ConnectionType.Publisher);
         repository.Get(1).Returns(connection);
-        var manager = new ConnectionManager(repository, commitLog);
+        var manager = new ConnectionManager(repository, commitLog, batchReader);
 
         // Act
         var unregisterTask = manager.UnregisterConnectionAsync(1);
@@ -73,8 +76,9 @@ public class ConnectionManagerTests
         // Arrange
         var repository = Substitute.For<IConnectionRepository>();
         var commitLog = Substitute.For<ICommitLogFactory>();
+        var batchReader = Substitute.For<ILogRecordBatchReader>();
         repository.Get(999).Returns((Connection?)null);
-        var manager = new ConnectionManager(repository, commitLog);
+        var manager = new ConnectionManager(repository, commitLog, batchReader);
 
         // Act
         var act = async () => await manager.UnregisterConnectionAsync(999);
@@ -90,16 +94,17 @@ public class ConnectionManagerTests
         // Arrange
         var repository = Substitute.For<IConnectionRepository>();
         var commitLog = Substitute.For<ICommitLogFactory>();
+        var batchReader = Substitute.For<ILogRecordBatchReader>();
         var tcs1 = new TaskCompletionSource();
         var tcs2 = new TaskCompletionSource();
         var cts1 = new CancellationTokenSource();
         var cts2 = new CancellationTokenSource();
 
-        var conn1 = new Connection(1, "test1", cts1, tcs1.Task);
-        var conn2 = new Connection(2, "test2", cts2, tcs2.Task);
+        var conn1 = new Connection(1, "test1", cts1, tcs1.Task, ConnectionType.Publisher);
+        var conn2 = new Connection(2, "test2", cts2, tcs2.Task, ConnectionType.Publisher);
 
         repository.GetAll().Returns(new List<Connection> { conn1, conn2 });
-        var manager = new ConnectionManager(repository, commitLog);
+        var manager = new ConnectionManager(repository, commitLog, batchReader);
 
         // Act
         var unregisterTask = manager.UnregisterAllConnectionsAsync();
