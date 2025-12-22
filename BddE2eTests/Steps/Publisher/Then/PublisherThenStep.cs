@@ -2,7 +2,7 @@ using BddE2eTests.Configuration;
 using Reqnroll;
 using Shared.Domain.Exceptions.SchemaRegistryClient;
 
-namespace BddE2eTests.Steps.Subscriber.Then;
+namespace BddE2eTests.Steps.Publisher.Then;
 
 [Binding]
 public class PublisherThenStep(ScenarioContext scenarioContext)
