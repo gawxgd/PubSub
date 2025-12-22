@@ -18,6 +18,7 @@ public class ScenarioTestContext(ScenarioContext scenarioContext)
     private const string PublisherOptionsBuilderKey = "PublisherOptionsBuilder";
     private const string SubscriberOptionsBuilderKey = "SubscriberOptionsBuilder";
     private const string SchemaRegistryClientBuilderKey = "SchemaRegistryClientBuilder";
+    private const string PublishExceptionKey = "PublishException";
 
     private static readonly TestOptions TestOptions = TestOptionsLoader.Load();
 
@@ -97,5 +98,11 @@ public class ScenarioTestContext(ScenarioContext scenarioContext)
         }
 
         return builder;
+    }
+
+    public Exception? PublishException
+    {
+        get => scenarioContext.TryGetValue(PublishExceptionKey, out Exception? ex) ? ex : null;
+        set => scenarioContext.Set(value, PublishExceptionKey);
     }
 }

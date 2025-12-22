@@ -13,12 +13,19 @@ public class PublishMessageWhenStep(ScenarioContext scenarioContext)
     [When(@"the publisher sends message ""(.*)"" to topic ""(.*)""")]
     public async Task WhenThePublisherSendsMessageToTopic(string message, string topic)
     {
-        await TestContext.Progress.WriteLineAsync($"[When Step] Sending message '{message}' to topic '{topic}'...");
-        await PublishSingleMessage(message, topic);
-        await TestContext.Progress.WriteLineAsync($"[When Step] Message sent!");
-        
-        _context.SentMessage = message;
-        _context.Topic = topic;
+        try
+        {
+            await TestContext.Progress.WriteLineAsync($"[When Step] Sending message '{message}' to topic '{topic}'...");
+            await PublishSingleMessage(message, topic);
+            await TestContext.Progress.WriteLineAsync($"[When Step] Message sent!");
+
+            _context.SentMessage = message;
+            _context.Topic = topic;
+        }
+        catch (Exception ex)
+        {
+            _context.PublishException = ex;
+        }
     }
 
     [When(@"the publisher sends messages in order:")]
