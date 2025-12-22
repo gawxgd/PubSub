@@ -9,7 +9,7 @@ public class Connection(
     string clientEndpoint,
     CancellationTokenSource cancellationTokenSource,
     Task handlerTask,
-    MessageBroker.Domain.Enums.ConnectionType connectionType) : IDisposable
+    Enums.ConnectionType connectionType) : IDisposable
 {
     private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<Connection>(LogSource.MessageBroker);
 

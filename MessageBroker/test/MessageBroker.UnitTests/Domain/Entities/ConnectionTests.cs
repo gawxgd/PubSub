@@ -3,6 +3,7 @@ using FluentAssertions;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
 using MessageBroker.Domain.Entities;
+using MessageBroker.Domain.Enums;
 using NSubstitute;
 using Xunit;
 
@@ -26,7 +27,7 @@ public class ConnectionTests
         var task = Task.CompletedTask;
 
         // Act
-        var connection = new Connection(id, endpoint, cts, task);
+        var connection = new Connection(id, endpoint, cts, task, ConnectionType.Publisher);
 
         // Assert
         connection.Id.Should().Be(id);
@@ -41,7 +42,7 @@ public class ConnectionTests
         // Arrange
         var cts = new CancellationTokenSource();
         var tcs = new TaskCompletionSource();
-        var connection = new Connection(1, "test", cts, tcs.Task);
+        var connection = new Connection(1, "test", cts, tcs.Task, ConnectionType.Publisher);
 
         // Act
         var disconnectTask = connection.DisconnectAsync();
@@ -58,7 +59,7 @@ public class ConnectionTests
         // Arrange
         var cts = new CancellationTokenSource();
         var tcs = new TaskCompletionSource();
-        var connection = new Connection(1, "test", cts, tcs.Task);
+        var connection = new Connection(1, "test", cts, tcs.Task, ConnectionType.Publisher);
         var completed = false;
 
         // Act
@@ -84,7 +85,7 @@ public class ConnectionTests
         // Arrange
         var cts = new CancellationTokenSource();
         var tcs = new TaskCompletionSource();
-        var connection = new Connection(1, "test", cts, tcs.Task);
+        var connection = new Connection(1, "test", cts, tcs.Task, ConnectionType.Publisher);
 
         // Act
         var stopwatch = Stopwatch.StartNew();
@@ -100,7 +101,7 @@ public class ConnectionTests
     {
         // Arrange
         var cts = new CancellationTokenSource();
-        var connection = new Connection(1, "test", cts, Task.CompletedTask);
+        var connection = new Connection(1, "test", cts, Task.CompletedTask, ConnectionType.Publisher);
 
         // Act
         await connection.DisconnectAsync();
@@ -115,7 +116,7 @@ public class ConnectionTests
     {
         // Arrange
         var cts = new CancellationTokenSource();
-        var connection = new Connection(1, "test", cts, Task.CompletedTask);
+        var connection = new Connection(1, "test", cts, Task.CompletedTask, ConnectionType.Publisher);
 
         // Act
         connection.Dispose();
@@ -130,7 +131,7 @@ public class ConnectionTests
     {
         // Arrange
         var cts = new CancellationTokenSource();
-        var connection = new Connection(1, "test", cts, Task.CompletedTask);
+        var connection = new Connection(1, "test", cts, Task.CompletedTask, ConnectionType.Publisher);
 
         // Act
         connection.Dispose();
