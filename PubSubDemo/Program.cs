@@ -1,3 +1,7 @@
+using System.Net.Http;
+using System.Net.Http.Json;
+using System.Text;
+using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Http;
 using Publisher.Configuration;
@@ -32,10 +36,15 @@ var configuration = new ConfigurationBuilder()
 
 var brokerOptions = configuration.GetSection("Broker").Get<BrokerOptions>() ?? new BrokerOptions();
 var demoOptions = configuration.GetSection("Demo").Get<DemoOptions>() ?? new DemoOptions();
-var schemaRegistryOptions = configuration.GetSection("SchemaRegistry").Get<SchemaRegistryClientOptions>() 
-    ?? new SchemaRegistryClientOptions(
-        new Uri("http://localhost:5002"),
-        TimeSpan.FromSeconds(10));
+var schemaRegistryUrl = configuration.GetSection("SchemaRegistry:BaseAddress").Value 
+    ?? Environment.GetEnvironmentVariable("PUBSUB_SchemaRegistry__BaseAddress") 
+    ?? "http://localhost:8081";
+var schemaRegistryTimeout = configuration.GetSection("SchemaRegistry:Timeout").Value != null
+    ? TimeSpan.Parse(configuration.GetSection("SchemaRegistry:Timeout").Value!)
+    : TimeSpan.FromSeconds(10);
+var schemaRegistryOptions = new SchemaRegistryClientOptions(
+    new Uri(schemaRegistryUrl),
+    schemaRegistryTimeout);
 
 Console.WriteLine("📡 Broker Configuration:");
 Console.WriteLine($"   Host: {brokerOptions.Host}");
@@ -70,6 +79,12 @@ SimpleHttpClientFactory? httpClientFactory = null;
 
 try
 {
+    // Register schema for DemoMessage first (using a separate HttpClient)
+    var topic = demoOptions.Topic ?? "default";
+    Console.WriteLine($"📝 Rejestrowanie schematu dla topiku: {topic}...");
+    await RegisterSchemaForDemoMessage(schemaRegistryOptions, topic);
+    Console.WriteLine($"✅ Schemat zarejestrowany pomyślnie!\n");
+    
     // Create HttpClientFactory for SchemaRegistry
     httpClientFactory = new SimpleHttpClientFactory();
     var schemaRegistryClientFactory = new SchemaRegistryClientFactory(httpClientFactory, schemaRegistryOptions);
@@ -113,7 +128,8 @@ try
     // Create subscriber
     var subscriber = subscriberFactory.CreateSubscriber(subscriberOptions, async (message) =>
     {
-        Console.WriteLine($"📨 Subscriber otrzymał: Id={message.Id}, Content={message.Content}, Type={message.MessageType}");
+        var timestamp = DateTimeOffset.FromUnixTimeMilliseconds(message.Timestamp).ToString("yyyy-MM-dd HH:mm:ss");
+        Console.WriteLine($"📨 Subscriber otrzymał: Id={message.Id}, Timestamp={timestamp}, Content={message.Content}, Type={message.MessageType}");
         await Task.CompletedTask;
     });
     
@@ -151,3 +167,62 @@ finally
 
 Console.WriteLine("\n👋 PubSub Demo finished.");
 return 0;
+
+static async Task RegisterSchemaForDemoMessage(
+    SchemaRegistryClientOptions options,
+    string topic)
+{
+    // Avro schema for DemoMessage
+    // Note: Using long for Timestamp instead of timestamp-millis logical type
+    // because Avro.Reflect doesn't automatically handle DateTimeOffset conversion
+    const string demoMessageSchema = """
+    {
+      "type": "record",
+      "name": "DemoMessage",
+      "namespace": "PubSubDemo.Services",
+      "fields": [
+        { "name": "Id", "type": "int" },
+        { "name": "Timestamp", "type": "long" },
+        { "name": "Content", "type": "string" },
+        { "name": "Source", "type": "string" },
+        { "name": "MessageType", "type": "string" }
+      ]
+    }
+    """;
+
+    try
+    {
+        using var httpClient = new HttpClient();
+        httpClient.BaseAddress = options.BaseAddress;
+        httpClient.Timeout = options.Timeout;
+
+        var endpoint = $"schema/topic/{topic}";
+        var requestBody = new { Schema = demoMessageSchema };
+        var json = JsonSerializer.Serialize(requestBody);
+        var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+        
+        var response = await httpClient.PostAsync(endpoint, content);
+        
+        if (response.IsSuccessStatusCode)
+        {
+            var result = await response.Content.ReadFromJsonAsync<JsonElement>();
+            var schemaId = result.GetProperty("id").GetInt32();
+            Console.WriteLine($"   Schema ID: {schemaId}");
+        }
+        else if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
+        {
+            Console.WriteLine("   Schemat już istnieje (Conflict) - używam istniejącego");
+        }
+        else
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"   ⚠️  Ostrzeżenie: Nie udało się zarejestrować schematu: {response.StatusCode}");
+            Console.WriteLine($"   {errorContent}");
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"   ⚠️  Ostrzeżenie: Błąd podczas rejestracji schematu: {ex.Message}");
+        Console.WriteLine("   Próba kontynuacji - schemat może już istnieć");
+    }
+}

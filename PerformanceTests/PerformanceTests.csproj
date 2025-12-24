@@ -11,4 +11,11 @@
     <PackageReference Include="NBomber" Version="6.1.2" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Publisher\Publisher.csproj" />
+    <ProjectReference Include="..\Subscriber\Subscriber.csproj" />
+    <ProjectReference Include="..\Shared\Shared.csproj" />
+    <ProjectReference Include="..\LoggerLib\LoggerLib.csproj" />
+  </ItemGroup>
+
 </Project>

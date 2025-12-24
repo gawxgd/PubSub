@@ -73,7 +73,7 @@ public sealed class MessagePublisherService<T> : IAsyncDisposable
                 var message = new DemoMessage
                 {
                     Id = ++messageNumber,
-                    Timestamp = DateTimeOffset.UtcNow,
+                    Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                     Content = $"{_options.MessagePrefix} message #{messageNumber}",
                     Source = "PubSubDemo",
                     MessageType = GetRandomMessageType()
@@ -124,7 +124,7 @@ public sealed class MessagePublisherService<T> : IAsyncDisposable
                 var message = new DemoMessage
                 {
                     Id = startNumber + i + 1,
-                    Timestamp = DateTimeOffset.UtcNow,
+                    Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                     Content = $"BATCH message #{i + 1}/{_options.BatchSize}",
                     Source = "PubSubDemo-Batch",
                     MessageType = "Batch"
@@ -172,7 +172,7 @@ public sealed class DemoMessage
     }
 
     public int Id { get; set; }
-    public DateTimeOffset Timestamp { get; set; }
+    public long Timestamp { get; set; }
     public string Content { get; set; } = string.Empty;
     public string Source { get; set; } = string.Empty;
     public string MessageType { get; set; } = string.Empty;
