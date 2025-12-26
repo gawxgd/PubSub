@@ -4,6 +4,7 @@ using System.Threading.Channels;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
+using MessageBroker.Outbound.Adapter;
 using Publisher.Configuration.Options;
 using Publisher.Domain.Logic;
 using Publisher.Domain.Port;
@@ -23,7 +24,7 @@ public sealed class TcpPublisherConnection(
 
     private readonly CancellationTokenSource _cancellationSource = new();
     private readonly TcpClient _client = new();
-    private readonly FrameMessageUseCase _frameMessageUseCase = new();
+    private readonly FrameMessageUseCase _frameMessageUseCase = new(new MessageFramer());
     private PipeWriter? _pipeWriter;
     private Task? _processChannelTask;
 
@@ -152,7 +153,8 @@ public sealed class TcpPublisherConnection(
                 }
 
                 sent = true;
-                Logger.LogDebug($"Sent batch with {count} records, topic: {options.Topic}, batch size: {batchBytes.Length} bytes");
+                Logger.LogDebug(
+                    $"Sent batch with {count} records, topic: {options.Topic}, batch size: {batchBytes.Length} bytes");
             }
             catch (IOException ex)
             {

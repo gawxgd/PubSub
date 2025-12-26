@@ -14,7 +14,8 @@ namespace MessageBroker.Inbound.Adapter;
 public class ConnectionManager(
     IConnectionRepository connectionRepository,
     ICommitLogFactory commitLogFactory,
-    ILogRecordBatchWriter batchWriter)
+    ILogRecordBatchWriter batchWriter,
+    IMessageDeframer messageDeframer)
     : IConnectionManager
 {
     private static readonly IAutoLogger Logger =
@@ -31,7 +32,7 @@ public class ConnectionManager(
         {
             Logger.LogDebug(
                 $"Started handler thread for connection {connectionId} with client: {acceptedSocket.RemoteEndPoint}");
-            
+
             IMessageProcessorUseCase messageProcessorUseCase = connectionType switch
             {
                 ConnectionType.Publisher => new ProcessReceivedPublisherMessageUseCase(commitLogFactory),
@@ -42,6 +43,7 @@ public class ConnectionManager(
             IHandleClientConnectionUseCase handleClientConnectionUseCase = new HandleClientConnectionUseCase(
                 acceptedSocket,
                 () => UnregisterConnectionAfterThreadFinish(connectionId),
+                messageDeframer,
                 messageProcessorUseCase);
 
             return handleClientConnectionUseCase.HandleConnection(cancellationTokenSource.Token);
