@@ -21,7 +21,7 @@ public sealed class BinaryCommitLogAppender : ICommitLogAppender
     private readonly ILogSegmentFactory _segmentFactory;
     private readonly string _directory;
     private readonly ITopicSegmentRegistry _segmentRegistry;
-    private AssignOffsetsUseCase _assignOffsetsUseCase = new AssignOffsetsUseCase();
+    private readonly AssignOffsetsUseCase _assignOffsetsUseCase = new();
 
     private readonly Channel<ReadOnlyMemory<byte>> _batchChannel =
         Channel.CreateBounded<ReadOnlyMemory<byte>>(new BoundedChannelOptions(100) //ToDo get from options
@@ -53,14 +53,19 @@ public sealed class BinaryCommitLogAppender : ICommitLogAppender
         _backgroundFlushTask = StartBackgroundFlushAsync();
     }
 
-    public async ValueTask AppendAsync(ReadOnlyMemory<byte> payload)
+    public async ValueTask<ulong> AppendAsync(ReadOnlyMemory<byte> payload)
     {
+        var baseOffset = _currentOffset;
+
         // ToDo do a hybrid batching by channel count and batch size
         if (!_batchChannel.Writer.TryWrite(payload))
         {
             await FlushChannelToLogSegmentAsync();
+            baseOffset = _currentOffset;
             await _batchChannel.Writer.WriteAsync(payload, _cancellationTokenSource.Token);
         }
+
+        return baseOffset;
     }
 
     public async ValueTask DisposeAsync()

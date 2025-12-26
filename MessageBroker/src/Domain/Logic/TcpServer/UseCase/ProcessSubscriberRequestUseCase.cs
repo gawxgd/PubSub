@@ -1,15 +1,15 @@
 ﻿using System.Net.Sockets;
-using System.Text;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
+using MessageBroker.Domain.Entities;
+using MessageBroker.Domain.Logic;
 using MessageBroker.Domain.Port;
 using MessageBroker.Domain.Port.CommitLog;
 using MessageBroker.Domain.Port.CommitLog.RecordBatch;
 
 namespace MessageBroker.Domain.Logic.TcpServer.UseCase;
 
-//ToDo update to send plain bytes
 public class ProcessSubscriberRequestUseCase(
     ICommitLogFactory commitLogFactory,
     ILogRecordBatchWriter batchWriter) : IMessageProcessorUseCase
@@ -17,9 +17,11 @@ public class ProcessSubscriberRequestUseCase(
     private static readonly IAutoLogger Logger =
         AutoLoggerFactory.CreateLogger<ProcessSubscriberRequestUseCase>(LogSource.MessageBroker);
 
+    private readonly TopicOffsetDeformatter _deformatter = new();
+
     public async Task ProcessAsync(ReadOnlyMemory<byte> message, Socket socket, CancellationToken cancellationToken)
     {
-        var (topic, offset) = ParseRequest(message);
+        var (topic, offset) = ParseMessage(message);
 
         Logger.LogDebug($"Processing subscriber request: topic={topic}, offset={offset}");
 
@@ -78,26 +80,15 @@ public class ProcessSubscriberRequestUseCase(
         Logger.LogInfo("Messages from commit log sent to subscriber");
     }
 
-    //ToDo move to seprate class
-    private static (string topic, ulong offset) ParseRequest(ReadOnlyMemory<byte> message)
+    private (string topic, ulong offset) ParseMessage(ReadOnlyMemory<byte> message)
     {
-        // Request format: "topic:offset\n"
-        var requestString = Encoding.UTF8.GetString(message.Span).TrimEnd('\n', '\r');
-        var parts = requestString.Split(':');
-
-        if (parts.Length != 2)
+        var topicOffset = _deformatter.Deformat(message);
+        if (topicOffset == null)
         {
-            Logger.LogWarning($"Invalid request format: {requestString}, using defaults");
-            return ("default", 0);
+            Logger.LogWarning("Failed to parse subscriber request, using defaults");
+            topicOffset = new TopicOffset("default", 0);
         }
 
-        var topic = parts[0];
-        if (!ulong.TryParse(parts[1], out var offset))
-        {
-            Logger.LogWarning($"Invalid offset in request: {parts[1]}, using 0");
-            offset = 0;
-        }
-
-        return (topic, offset);
+        return (topicOffset.Topic, topicOffset.Offset);
     }
 }
