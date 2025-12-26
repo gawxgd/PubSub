@@ -1,9 +1,10 @@
 using System.IO;
 using System.Net.Sockets;
-using System.Text;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
+using MessageBroker.Domain.Entities;
+using MessageBroker.Domain.Logic;
 using MessageBroker.Domain.Port;
 using MessageBroker.Domain.Port.CommitLog;
 
@@ -15,13 +16,14 @@ public class ProcessReceivedPublisherMessageUseCase(
     private static readonly IAutoLogger Logger =
         AutoLoggerFactory.CreateLogger<ProcessReceivedPublisherMessageUseCase>(LogSource.MessageBroker);
 
+    private readonly MessageWithTopicDeformatter _deformatter = new();
+
     public async Task ProcessAsync(ReadOnlyMemory<byte> message, Socket socket, CancellationToken cancellationToken)
     {
         Logger.LogDebug($"Processing publisher message: {message.Length} bytes");
 
         try
         {
-            //ToDo change to append bytes with correct offset without reading and writing
             var (topic, batchBytes) = ParseMessage(message);
             
             Logger.LogDebug($"Parsed message for topic '{topic}', batch size: {batchBytes.Length} bytes");
@@ -38,20 +40,14 @@ public class ProcessReceivedPublisherMessageUseCase(
         }
     }
 
-    private static (string topic, byte[] batchBytes) ParseMessage(ReadOnlyMemory<byte> message)
+    private (string topic, byte[] batchBytes) ParseMessage(ReadOnlyMemory<byte> message)
     {
-        var span = message.Span;
-        
-        // Find the separator ':'
-        var separatorIndex = span.IndexOf((byte)':');
-        if (separatorIndex == -1)
+        var messageWithTopic = _deformatter.Deformat(message);
+        if (messageWithTopic == null)
         {
-            throw new InvalidDataException("Invalid publisher message format: missing topic separator");
+            throw new InvalidDataException("Invalid publisher message format: failed to parse message");
         }
 
-        var topic = Encoding.UTF8.GetString(span.Slice(0, separatorIndex));
-        var batchBytes = span.Slice(separatorIndex + 1).ToArray();
-
-        return (topic, batchBytes);
+        return (messageWithTopic.Topic, messageWithTopic.Payload);
     }
 }
