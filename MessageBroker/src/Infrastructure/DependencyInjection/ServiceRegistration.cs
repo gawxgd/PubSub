@@ -36,6 +36,7 @@ public static class ServiceRegistration
         // Message framing
         services.AddSingleton<IMessageFramer, MessageFramer>();
         services.AddSingleton<IMessageDeframer, MessageDeframer>();
+        services.AddSingleton<SendPublishResponseUseCase>();
 
         // Connection management
         services.AddSingleton<IConnectionRepository, InMemoryConnectionRepository>();

@@ -15,7 +15,8 @@ public class ConnectionManager(
     IConnectionRepository connectionRepository,
     ICommitLogFactory commitLogFactory,
     ILogRecordBatchWriter batchWriter,
-    IMessageDeframer messageDeframer)
+    IMessageDeframer messageDeframer,
+    SendPublishResponseUseCase sendPublishResponseUseCase)
     : IConnectionManager
 {
     private static readonly IAutoLogger Logger =
@@ -35,7 +36,8 @@ public class ConnectionManager(
 
             IMessageProcessorUseCase messageProcessorUseCase = connectionType switch
             {
-                ConnectionType.Publisher => new ProcessReceivedPublisherMessageUseCase(commitLogFactory),
+                ConnectionType.Publisher => new ProcessReceivedPublisherMessageUseCase(commitLogFactory,
+                    sendPublishResponseUseCase),
                 ConnectionType.Subscriber => new ProcessSubscriberRequestUseCase(commitLogFactory, batchWriter),
                 _ => throw new ArgumentOutOfRangeException(nameof(connectionType), connectionType, null),
             };
