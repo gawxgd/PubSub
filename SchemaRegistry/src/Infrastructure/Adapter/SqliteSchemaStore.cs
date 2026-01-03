@@ -39,9 +39,8 @@ public sealed class SqliteSchemaStore : ISchemaStore
 
         command.ExecuteNonQuery();
     }
-
-    // map values from the database record to a SchemaEntity object
-    private static SchemaEntity Map(SqliteDataReader reader)
+    
+    private SchemaEntity MapDbRecordToSchema(SqliteDataReader reader)
         => new()
         {
             Id = reader.GetInt32(0),
@@ -66,7 +65,7 @@ public sealed class SqliteSchemaStore : ISchemaStore
         cmd.Parameters.AddWithValue("@id", id);
 
         using var reader = await cmd.ExecuteReaderAsync();
-        return await reader.ReadAsync() ? Map(reader) : null;
+        return await reader.ReadAsync() ? MapDbRecordToSchema(reader) : null;
     }
 
     public async Task<SchemaEntity?> GetByChecksumAsync(string checksum)
@@ -83,7 +82,7 @@ public sealed class SqliteSchemaStore : ISchemaStore
         cmd.Parameters.AddWithValue("@checksum", checksum);
 
         using var reader = await cmd.ExecuteReaderAsync();
-        return await reader.ReadAsync() ? Map(reader) : null;
+        return await reader.ReadAsync() ? MapDbRecordToSchema(reader) : null;
     }
 
     public async Task<SchemaEntity?> GetLatestForTopicAsync(string topic)
@@ -102,7 +101,7 @@ public sealed class SqliteSchemaStore : ISchemaStore
         cmd.Parameters.AddWithValue("@topic", topic);
 
         using var reader = await cmd.ExecuteReaderAsync();
-        return await reader.ReadAsync() ? Map(reader) : null;
+        return await reader.ReadAsync() ? MapDbRecordToSchema(reader) : null;
     }
 
     public async Task<IEnumerable<SchemaEntity>> GetAllForTopicAsync(string topic)
@@ -124,7 +123,7 @@ public sealed class SqliteSchemaStore : ISchemaStore
         using var reader = await cmd.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
-            result.Add(Map(reader));
+            result.Add(MapDbRecordToSchema(reader));
         }
 
         return result;
