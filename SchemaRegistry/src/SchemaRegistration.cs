@@ -14,7 +14,21 @@ public static class ServiceRegistration
         services.AddSingleton<ISchemaStore>(sp =>
         {
             var options = sp.GetRequiredService<IOptions<SchemaRegistryOptions>>().Value;
-            return new FileSchemaStore(options.FileStoreFolderPath);
+            
+            return options.StorageType switch
+            {
+                "Sqlite" => new SqliteSchemaStore(
+                    options.ConnectionString 
+                    ?? throw new InvalidOperationException(
+                        "ConnectionString is required for Sqlite storage")),
+
+                "File" => new FileSchemaStore(
+                    options.FileStoreFolderPath ?? throw new InvalidOperationException(
+                        "Folder path is required for file storage")),
+
+                _ => throw new InvalidOperationException(
+                    $"Unknown SchemaRegistry storage type: {options.StorageType}")
+            };
         });
 
         services.AddSingleton<ICompatibilityChecker, CompatibilityChecker>();
