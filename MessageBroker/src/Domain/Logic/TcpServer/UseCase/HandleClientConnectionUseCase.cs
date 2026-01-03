@@ -12,6 +12,7 @@ namespace MessageBroker.Domain.Logic.TcpServer.UseCase;
 public class HandleClientConnectionUseCase(
     Socket socket,
     Action onConnectionClosed,
+    IMessageDeframer messageDeframer,
     IMessageProcessorUseCase messageProcessorUseCase) : IHandleClientConnectionUseCase
 {
     private readonly string _connectedClientEndpoint = socket.RemoteEndPoint?.ToString() ?? "Unknown";
@@ -26,8 +27,6 @@ public class HandleClientConnectionUseCase(
             SingleReader = true,
             FullMode = BoundedChannelFullMode.Wait
         });
-
-    private readonly DeframeMessageUseCase _deframeMessageUseCase = new();
 
     private Socket Socket => socket;
 
@@ -104,7 +103,7 @@ public class HandleClientConnectionUseCase(
                 var result = await reader.ReadAsync(cancellationToken);
                 var buffer = result.Buffer;
 
-                while (_deframeMessageUseCase.TryReadFramedMessage(ref buffer, out var message))
+                while (messageDeframer.TryReadFramedMessage(ref buffer, out var message))
                 {
                     await _messageChannel.Writer.WriteAsync(message, cancellationToken);
                 }
@@ -124,8 +123,7 @@ public class HandleClientConnectionUseCase(
             Logger.LogInfo($"ProcessPipe completed for {_connectedClientEndpoint}");
         }
     }
-    
-    
+
 
     private async Task CleanupAsync(CancellationToken cancellationToken)
     {

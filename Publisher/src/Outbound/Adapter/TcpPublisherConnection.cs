@@ -1,9 +1,14 @@
+using System.Buffers;
 using System.IO.Pipelines;
 using System.Net.Sockets;
 using System.Threading.Channels;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
+using MessageBroker.Domain.Enums;
+using MessageBroker.Domain.Port;
+using MessageBroker.Inbound.Adapter;
+using MessageBroker.Outbound.Adapter;
 using Publisher.Configuration.Options;
 using Publisher.Domain.Logic;
 using Publisher.Domain.Port;
@@ -23,9 +28,13 @@ public sealed class TcpPublisherConnection(
 
     private readonly CancellationTokenSource _cancellationSource = new();
     private readonly TcpClient _client = new();
-    private readonly FrameMessageUseCase _frameMessageUseCase = new();
+    private readonly FrameMessageUseCase _frameMessageUseCase = new(new MessageFramer());
+    private readonly ReceivePublishResponseUseCase _receivePublishResponseUseCase = new(new MessageDeframer());
+    private readonly PublishResponseHandler _responseHandler = new();
     private PipeWriter? _pipeWriter;
+    private PipeReader? _pipeReader;
     private Task? _processChannelTask;
+    private Task? _receiveResponseTask;
 
     private PipeWriter PipeWriter =>
         _pipeWriter ?? throw new InvalidOperationException("PipeWriter has not been initialized.");
@@ -42,6 +51,7 @@ public sealed class TcpPublisherConnection(
     {
         await HandleConnectionToBroker();
         _processChannelTask = Task.Run(ProcessChannelAsync, _cancellationSource.Token);
+        _receiveResponseTask = Task.Run(ReceiveResponsesAsync, _cancellationSource.Token);
     }
 
     public async Task DisconnectAsync()
@@ -50,10 +60,15 @@ public sealed class TcpPublisherConnection(
 
         try
         {
-            await ProcessChannelTask;
+            await Task.WhenAll(ProcessChannelTask, _receiveResponseTask ?? Task.CompletedTask);
 
             await PipeWriter.FlushAsync();
             await PipeWriter.CompleteAsync();
+
+            if (_pipeReader != null)
+            {
+                await _pipeReader.CompleteAsync();
+            }
 
             _client.Client.Shutdown(SocketShutdown.Both);
             _client.Close();
@@ -77,7 +92,9 @@ public sealed class TcpPublisherConnection(
                 options.MessageBrokerConnectionUri.Host,
                 options.MessageBrokerConnectionUri.Port,
                 _cancellationSource.Token);
-            _pipeWriter = PipeWriter.Create(_client.GetStream());
+            var stream = _client.GetStream();
+            _pipeWriter = PipeWriter.Create(stream);
+            _pipeReader = PipeReader.Create(stream);
 
             Logger.LogInfo($"Connected to broker on {_client.Client.RemoteEndPoint}");
         }
@@ -152,7 +169,8 @@ public sealed class TcpPublisherConnection(
                 }
 
                 sent = true;
-                Logger.LogDebug($"Sent batch with {count} records, topic: {options.Topic}, batch size: {batchBytes.Length} bytes");
+                Logger.LogDebug(
+                    $"Sent batch with {count} records, topic: {options.Topic}, batch size: {batchBytes.Length} bytes");
             }
             catch (IOException ex)
             {
@@ -208,5 +226,50 @@ public sealed class TcpPublisherConnection(
                 SocketError.TryAgain => true,
             _ => false
         };
+    }
+
+    private async Task ReceiveResponsesAsync()
+    {
+        if (_pipeReader == null)
+        {
+            return;
+        }
+
+        try
+        {
+            while (!_cancellationSource.Token.IsCancellationRequested)
+            {
+                var result = await _pipeReader.ReadAsync(_cancellationSource.Token);
+                var buffer = result.Buffer;
+
+                ProcessResponsesFromBuffer(ref buffer);
+
+                _pipeReader.AdvanceTo(buffer.Start, buffer.End);
+
+                if (result.IsCompleted)
+                {
+                    break;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            Logger.LogInfo("Response receiving cancelled");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError($"Error receiving responses: {ex.Message}", ex);
+        }
+    }
+
+    private void ProcessResponsesFromBuffer(ref ReadOnlySequence<byte> buffer)
+    {
+        while (_receivePublishResponseUseCase.TryReceiveResponse(ref buffer, out var response))
+        {
+            if (response != null)
+            {
+                _responseHandler.Handle(response);
+            }
+        }
     }
 }
