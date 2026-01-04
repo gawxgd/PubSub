@@ -1,19 +1,24 @@
 using System.IO;
 using System.Net.Sockets;
-using System.Text;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
+using MessageBroker.Domain.Entities;
+using MessageBroker.Domain.Enums;
+using MessageBroker.Domain.Logic;
 using MessageBroker.Domain.Port;
 using MessageBroker.Domain.Port.CommitLog;
 
 namespace MessageBroker.Domain.Logic.TcpServer.UseCase;
 
 public class ProcessReceivedPublisherMessageUseCase(
-    ICommitLogFactory commitLogFactory) : IMessageProcessorUseCase
+    ICommitLogFactory commitLogFactory,
+    SendPublishResponseUseCase sendPublishResponseUseCase) : IMessageProcessorUseCase
 {
     private static readonly IAutoLogger Logger =
         AutoLoggerFactory.CreateLogger<ProcessReceivedPublisherMessageUseCase>(LogSource.MessageBroker);
+
+    private readonly MessageWithTopicDeformatter _deformatter = new();
 
     public async Task ProcessAsync(ReadOnlyMemory<byte> message, Socket socket, CancellationToken cancellationToken)
     {
@@ -21,37 +26,47 @@ public class ProcessReceivedPublisherMessageUseCase(
 
         try
         {
-            //ToDo change to append bytes with correct offset without reading and writing
             var (topic, batchBytes) = ParseMessage(message);
-            
+
             Logger.LogDebug($"Parsed message for topic '{topic}', batch size: {batchBytes.Length} bytes");
 
             var commitLogAppender = commitLogFactory.GetAppender(topic);
-            await commitLogAppender.AppendAsync(batchBytes);
+            var baseOffset = await commitLogAppender.AppendAsync(batchBytes);
 
-            Logger.LogInfo($"Appended batch ({batchBytes.Length} bytes) to commit log for topic '{topic}'");
+            var response = new PublishResponse(baseOffset, ErrorCode.None);
+            await sendPublishResponseUseCase.SendResponseAsync(socket, response, cancellationToken);
+
+            Logger.LogInfo(
+                $"Appended batch ({batchBytes.Length} bytes) to commit log for topic '{topic}', baseOffset={baseOffset}");
         }
         catch (InvalidDataException ex)
         {
             Logger.LogError($"Failed to parse message: {ex.Message}", ex);
-            throw;
+            var errorResponse = new PublishResponse(0, ErrorCode.InvalidMessageFormat);
+            await sendPublishResponseUseCase.SendResponseAsync(socket, errorResponse, cancellationToken);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("not configured"))
+        {
+            Logger.LogError($"Topic not found: {ex.Message}", ex);
+            var errorResponse = new PublishResponse(0, ErrorCode.TopicNotFound);
+            await sendPublishResponseUseCase.SendResponseAsync(socket, errorResponse, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError($"Internal error while processing message: {ex.Message}", ex);
+            var errorResponse = new PublishResponse(0, ErrorCode.InternalError);
+            await sendPublishResponseUseCase.SendResponseAsync(socket, errorResponse, cancellationToken);
         }
     }
 
-    private static (string topic, byte[] batchBytes) ParseMessage(ReadOnlyMemory<byte> message)
+    private (string topic, byte[] batchBytes) ParseMessage(ReadOnlyMemory<byte> message)
     {
-        var span = message.Span;
-        
-        // Find the separator ':'
-        var separatorIndex = span.IndexOf((byte)':');
-        if (separatorIndex == -1)
+        var messageWithTopic = _deformatter.Deformat(message);
+        if (messageWithTopic == null)
         {
-            throw new InvalidDataException("Invalid publisher message format: missing topic separator");
+            throw new InvalidDataException("Invalid publisher message format: failed to parse message");
         }
 
-        var topic = Encoding.UTF8.GetString(span.Slice(0, separatorIndex));
-        var batchBytes = span.Slice(separatorIndex + 1).ToArray();
-
-        return (topic, batchBytes);
+        return (messageWithTopic.Topic, messageWithTopic.Payload);
     }
 }

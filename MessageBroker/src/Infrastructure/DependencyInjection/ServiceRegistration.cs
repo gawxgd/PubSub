@@ -21,8 +21,8 @@ using MessageBroker.Inbound.CommitLog.TopicSegmentManager;
 using MessageBroker.Inbound.TcpServer.Service;
 using MessageBroker.Infrastructure.Configuration.Options;
 using MessageBroker.Infrastructure.Configuration.Options.CommitLog;
+using MessageBroker.Outbound.Adapter;
 using MessageBroker.Outbound.TcpServer.Service;
-using Microsoft.Extensions.Options;
 
 namespace MessageBroker.Infrastructure.DependencyInjection;
 
@@ -33,6 +33,11 @@ public static class ServiceRegistration
     /// </summary>
     public static void AddTcpServices(this IServiceCollection services)
     {
+        // Message framing
+        services.AddSingleton<IMessageFramer, MessageFramer>();
+        services.AddSingleton<IMessageDeframer, MessageDeframer>();
+        services.AddSingleton<SendPublishResponseUseCase>();
+
         // Connection management
         services.AddSingleton<IConnectionRepository, InMemoryConnectionRepository>();
         services.AddSingleton<IConnectionManager, ConnectionManager>();
