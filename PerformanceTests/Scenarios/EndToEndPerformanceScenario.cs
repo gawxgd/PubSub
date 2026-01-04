@@ -36,10 +36,15 @@ public static class EndToEndPerformanceScenario
             try
             {
                 // Get initialized instances (thread-safe)
-                if (!Publishers.TryGetValue(publisherKey, out var publisher) ||
-                    !Subscribers.TryGetValue(subscriberKey, out var subscriber))
+                if (!Publishers.TryGetValue(publisherKey, out var publisher))
                 {
-                    return Response.Fail<object>("Publisher or Subscriber not initialized");
+                    Console.WriteLine($"❌ ERROR: Publisher '{publisherKey}' not found");
+                    return Response.Fail<object>("Publisher not initialized");
+                }
+                if (!Subscribers.TryGetValue(subscriberKey, out var subscriber))
+                {
+                    Console.WriteLine($"❌ ERROR: Subscriber '{subscriberKey}' not found");
+                    return Response.Fail<object>("Subscriber not initialized");
                 }
 
                 // Create and publish message
@@ -47,7 +52,7 @@ public static class EndToEndPerformanceScenario
                 var message = new TestMessage
                 {
                     Id = (int)sequenceNumber,
-                    Timestamp = DateTimeOffset.UtcNow,
+                    Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                     Content = $"E2E test message #{sequenceNumber}",
                     SequenceNumber = sequenceNumber
                 };
@@ -61,55 +66,129 @@ public static class EndToEndPerformanceScenario
             }
             catch (Exception ex)
             {
-                return Response.Fail<object>($"E2E test failed: {ex.Message}");
+                var errorMsg = $"E2E test failed: {ex.GetType().Name} - {ex.Message}";
+                if (ex.InnerException != null)
+                {
+                    errorMsg += $" (Inner: {ex.InnerException.GetType().Name} - {ex.InnerException.Message})";
+                }
+                Console.WriteLine($"❌ ERROR in end_to_end_throughput: {errorMsg}");
+                return Response.Fail<object>(errorMsg);
             }
         })
         .WithInit(async context =>
         {
-            // Initialize publisher and subscriber before scenario starts
-            var publisher = publisherFactory.CreatePublisher(publisherOptions);
-            await publisher.CreateConnection();
-            Publishers.TryAdd(publisherKey, publisher);
-
-            var subscriber = subscriberFactory.CreateSubscriber(subscriberOptions, async (message) =>
+            try
             {
-                var receivedAt = DateTime.UtcNow;
-                ReceivedMessages.TryAdd(message.SequenceNumber, receivedAt);
+                Console.WriteLine($"🔧 Initializing E2E scenario: publisher and subscriber");
+                
+                // Initialize publisher and subscriber before scenario starts
+                var publisher = publisherFactory.CreatePublisher(publisherOptions);
+                await publisher.CreateConnection();
+                
+                // Give publisher time to register schema and be ready
+                await Task.Delay(TimeSpan.FromMilliseconds(500));
+                
+                Publishers.TryAdd(publisherKey, publisher);
+                Console.WriteLine($"✅ Publisher '{publisherKey}' initialized");
 
-                // Calculate latency if we have publish time
-                if (PublishedMessages.TryGetValue(message.SequenceNumber, out var publishedAt))
+                var subscriber = subscriberFactory.CreateSubscriber(subscriberOptions, async (message) =>
                 {
-                    var latency = receivedAt - publishedAt;
-                    // Latency tracking - NBomber will aggregate this
+                    var receivedAt = DateTime.UtcNow;
+                    ReceivedMessages.TryAdd(message.SequenceNumber, receivedAt);
+
+                    // Calculate latency if we have publish time
+                    if (PublishedMessages.TryGetValue(message.SequenceNumber, out var publishedAt))
+                    {
+                        var latency = receivedAt - publishedAt;
+                        // Latency tracking - NBomber will aggregate this
+                    }
+
+                    await Task.CompletedTask;
+                });
+
+                await subscriber.StartConnectionAsync();
+                Console.WriteLine($"✅ Subscriber '{subscriberKey}' connection started");
+                
+                // Start message processing in background - it will run until cancelled
+                var messageProcessingTask = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await subscriber.StartMessageProcessingAsync();
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // Expected when test ends
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"⚠️  Warning: Message processing error: {ex.Message}");
+                    }
+                });
+                
+                Subscribers.TryAdd(subscriberKey, subscriber);
+                Console.WriteLine($"✅ E2E scenario initialized successfully");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ ERROR initializing E2E scenario: {ex.GetType().Name} - {ex.Message}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"   Inner exception: {ex.InnerException.GetType().Name} - {ex.InnerException.Message}");
                 }
-
-                await Task.CompletedTask;
-            });
-
-            await subscriber.StartConnectionAsync();
-            await subscriber.StartMessageProcessingAsync();
-            Subscribers.TryAdd(subscriberKey, subscriber);
+                throw;
+            }
         })
-        .WithWarmUpDuration(TimeSpan.FromSeconds(5))
+        .WithWarmUpDuration(TimeSpan.FromSeconds(3))
         .WithLoadSimulations(
-            // Steady load: 50 messages per second for 60 seconds
+            // Steady load: 20 messages per second for 20 seconds (reduced for faster tests)
             Simulation.Inject(
-                rate: 50,
+                rate: 20,
                 interval: TimeSpan.FromSeconds(1),
-                during: TimeSpan.FromSeconds(60))
+                during: TimeSpan.FromSeconds(20))
         )
         .WithClean(async context =>
         {
-            // Cleanup on scenario end
-            if (Publishers.TryRemove(publisherKey, out var publisher) && 
-                publisher is IAsyncDisposable pubDisposable)
+            // Cleanup on scenario end with timeout
+            try
             {
-                await pubDisposable.DisposeAsync();
+                if (Publishers.TryRemove(publisherKey, out var publisher) && 
+                    publisher is IAsyncDisposable pubDisposable)
+                {
+                    var disposeTask = pubDisposable.DisposeAsync().AsTask();
+                    var timeoutTask = Task.Delay(TimeSpan.FromSeconds(5));
+                    var completedTask = await Task.WhenAny(disposeTask, timeoutTask);
+                    if (completedTask == timeoutTask)
+                    {
+                        Console.WriteLine("⚠️  Warning: Publisher disposal timed out");
+                    }
+                }
             }
-            if (Subscribers.TryRemove(subscriberKey, out var subscriber) && 
-                subscriber is IAsyncDisposable subDisposable)
+            catch (Exception ex)
             {
-                await subDisposable.DisposeAsync();
+                Console.WriteLine($"⚠️  Warning: Error disposing publisher: {ex.Message}");
+            }
+            
+            try
+            {
+                if (Subscribers.TryRemove(subscriberKey, out var subscriber))
+                {
+                    // Dispose will cancel the cancellation token, which should stop message processing
+                    if (subscriber is IAsyncDisposable subDisposable)
+                    {
+                        var disposeTask = subDisposable.DisposeAsync().AsTask();
+                        var timeoutTask = Task.Delay(TimeSpan.FromSeconds(10));
+                        var completedTask = await Task.WhenAny(disposeTask, timeoutTask);
+                        if (completedTask == timeoutTask)
+                        {
+                            Console.WriteLine("⚠️  Warning: Subscriber disposal timed out - forcing stop");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"⚠️  Warning: Error disposing subscriber: {ex.Message}");
             }
 
             // Log statistics

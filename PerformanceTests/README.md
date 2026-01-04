@@ -6,7 +6,7 @@ Projekt zawiera testy wydajnościowe dla systemu PubSub używające NBomber.
 
 - .NET 9.0
 - Uruchomiony MessageBroker (domyślnie na porcie 9096)
-- Uruchomiony SchemaRegistry (domyślnie na porcie 5002)
+- Uruchomiony SchemaRegistry (domyślnie na porcie 8081)
 
 ## Uruchomienie MessageBroker i SchemaRegistry
 
@@ -44,7 +44,7 @@ Testy można skonfigurować za pomocą zmiennych środowiskowych:
 
 - `BROKER_HOST` - host brokera (domyślnie: localhost)
 - `BROKER_PORT` - port brokera (domyślnie: 9096)
-- `SCHEMA_REGISTRY_URL` - URL Schema Registry (domyślnie: http://localhost:5002)
+- `SCHEMA_REGISTRY_URL` - URL Schema Registry (domyślnie: http://localhost:8081)
 - `TOPIC` - nazwa topiku (domyślnie: performance-test)
 
 ## Scenariusze testowe
@@ -69,12 +69,30 @@ Test latencji publikowania pojedynczej wiadomości.
 
 ## Uruchomienie
 
-```bash
-# Uruchom wszystkie testy
-dotnet run --project PerformanceTests
+### PowerShell (Windows)
+
+```powershell
+# Uruchom wszystkie testy z domyślną konfiguracją
+cd PerformanceTests
+dotnet run
 
 # Lub z konkretną konfiguracją
-BROKER_HOST=localhost BROKER_PORT=9096 dotnet run --project PerformanceTests
+$env:BROKER_HOST="localhost"
+$env:BROKER_PORT="9096"
+$env:SCHEMA_REGISTRY_URL="http://localhost:8081"
+$env:TOPIC="performance-test"
+dotnet run
+```
+
+### Bash/Linux/Mac
+
+```bash
+# Uruchom wszystkie testy
+cd PerformanceTests
+dotnet run
+
+# Lub z konkretną konfiguracją
+BROKER_HOST=localhost BROKER_PORT=9096 SCHEMA_REGISTRY_URL=http://localhost:8081 TOPIC=performance-test dotnet run
 ```
 
 ## Wyniki
@@ -86,14 +104,45 @@ Wyniki testów są zapisywane w folderze `reports/` w formatach:
 
 ## Przykładowe użycie
 
-```bash
-# Uruchom testy z domyślną konfiguracją
-dotnet run --project PerformanceTests
+### PowerShell (Windows)
 
-# Uruchom testy z niestandardową konfiguracją
-$env:BROKER_HOST="192.168.1.100"
-$env:BROKER_PORT="9096"
-$env:TOPIC="my-test-topic"
-dotnet run --project PerformanceTests
+```powershell
+# 1. Uruchom MessageBroker i SchemaRegistry (w osobnych terminalach)
+# Terminal 1:
+cd MessageBroker\src
+dotnet run
+
+# Terminal 2:
+cd SchemaRegistry\src
+$env:ASPNETCORE_URLS="http://localhost:8081"
+dotnet run
+
+# 2. W trzecim terminalu uruchom testy wydajnościowe
+cd PerformanceTests
+dotnet run
 ```
+
+### Pełny przykład z konfiguracją
+
+```powershell
+# Ustaw zmienne środowiskowe
+$env:BROKER_HOST="localhost"
+$env:BROKER_PORT="9096"
+$env:SCHEMA_REGISTRY_URL="http://localhost:8081"
+$env:TOPIC="my-performance-test"
+
+# Uruchom testy
+cd PerformanceTests
+dotnet run
+```
+
+## Co testy robią?
+
+1. **Sprawdzają dostępność** MessageBroker i SchemaRegistry przed uruchomieniem
+2. **Rejestrują schemat** dla `TestMessage` w SchemaRegistry
+3. **Uruchamiają 3 scenariusze testowe:**
+   - `publisher_throughput` - test przepustowości publikowania
+   - `end_to_end_throughput` - test end-to-end (publikowanie + odbieranie)
+   - `publisher_latency` - test latencji publikowania
+4. **Generują raporty** w folderze `reports/` (HTML, CSV, TXT)
 
