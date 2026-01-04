@@ -23,8 +23,7 @@ public class MessageReceiver<T>(
     {
         Logger.LogInfo("Starting message receiver");
 
-        var currentOffset = getCurrentOffset();
-        await requestSender.SendRequestAsync(currentOffset);
+        await requestSender.SendRequestAsync(getCurrentOffset());
 
         while (!cancellationToken.IsCancellationRequested)
         {
@@ -35,7 +34,7 @@ public class MessageReceiver<T>(
 
                 var completedTask = await Task.WhenAny(waitTask, delayTask);
 
-                ulong highestOffsetProcessed = currentOffset;
+                var highestOffsetProcessed = getCurrentOffset();
 
                 if (completedTask == waitTask && waitTask.Result)
                 {
@@ -58,11 +57,9 @@ public class MessageReceiver<T>(
                 else
                 {
                     Logger.LogDebug(
-                        $"No messages received in {maxWaitTime}. Sending fetch request again for offset {currentOffset}");
+                        $"No messages received in {maxWaitTime}. Sending fetch request again for offset {getCurrentOffset}");
                     await requestSender.SendRequestAsync(getCurrentOffset());
                 }
-
-                currentOffset = getCurrentOffset();
             }
             catch (OperationCanceledException)
             {

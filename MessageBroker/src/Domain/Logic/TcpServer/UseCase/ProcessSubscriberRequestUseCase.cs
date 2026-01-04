@@ -30,18 +30,16 @@ public class ProcessSubscriberRequestUseCase(
         try
         {
             commitLogReader = commitLogFactory.GetReader(topic);
-            ulong currentOffset = offset;
+            
+            // Send only one batch per request to prevent duplicate processing
+            var batch = commitLogReader.ReadBatchBytes(offset);
 
-            while (!cancellationToken.IsCancellationRequested)
+            if (batch == null)
             {
-                var batch = commitLogReader.ReadBatchBytes(currentOffset);
-
-                if (batch == null)
-                {
-                    Logger.LogDebug($"No more batches available at offset {currentOffset}");
-                    break;
-                }
-
+                Logger.LogDebug($"No more batches available at offset {offset}");
+            }
+            else
+            {
                 var (batchBytes, batchOffset, lastOffset) = batch.Value;
 
                 Logger.LogDebug(
@@ -51,8 +49,6 @@ public class ProcessSubscriberRequestUseCase(
 
                 Logger.LogDebug(
                     $"Send batch with offset {batchOffset} and last offset {lastOffset}");
-
-                currentOffset = lastOffset + 1;
             }
         }
         catch (FileNotFoundException)
