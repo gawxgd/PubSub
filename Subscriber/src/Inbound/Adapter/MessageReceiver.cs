@@ -43,7 +43,6 @@ public class MessageReceiver<T>(
                     {
                         var offset = await processMessageUseCase.ExecuteAsync(message);
                         var nextOffset = offset + 1;
-                        updateOffset(nextOffset);
 
                         if (nextOffset > highestOffsetProcessed)
                         {
@@ -53,13 +52,14 @@ public class MessageReceiver<T>(
 
                     Logger.LogDebug(
                         $"Processed all available messages, sending request for offset {highestOffsetProcessed}");
+                    updateOffset(highestOffsetProcessed);
                     await requestSender.SendRequestAsync(highestOffsetProcessed);
                 }
                 else
                 {
                     Logger.LogDebug(
                         $"No messages received in {maxWaitTime}. Sending fetch request again for offset {currentOffset}");
-                    await requestSender.SendRequestAsync(currentOffset);
+                    await requestSender.SendRequestAsync(getCurrentOffset());
                 }
 
                 currentOffset = getCurrentOffset();
