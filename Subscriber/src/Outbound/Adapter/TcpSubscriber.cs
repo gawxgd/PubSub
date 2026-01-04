@@ -1,4 +1,4 @@
-﻿using System.Threading.Channels;
+using System.Threading.Channels;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
@@ -52,18 +52,35 @@ public sealed class TcpSubscriber<T>(
 
     public async Task ReceiveAsync(byte[] message)
     {
-        var offset = await processMessageUseCase.ExecuteAsync(message);
-        _requestSender?.UpdateOffset(offset + 1);
+        await processMessageUseCase.ExecuteAsync(message);
     }
 
     public async Task StartMessageProcessingAsync()
     {
+        // Create MessageReceiver with callback to update offset in RequestSender
+        // IMPORTANT: RequestSender must be initialized before MessageReceiver
+        if (_requestSender == null)
+        {
+            Logger.LogWarning("RequestSender is null when creating MessageReceiver - offset updates may not work!");
+        }
+        
         _messageReceiver = new MessageReceiver<T>(
             responseChannel,
             processMessageUseCase,
             pollInterval,
             CancellationToken,
-            (offset) => _requestSender?.UpdateOffset(offset));
+            (offset) =>
+            {
+                if (_requestSender != null)
+                {
+                    _requestSender.UpdateOffset(offset);
+                    Logger.LogInfo($"✅ Updated subscriber offset to: {offset}");
+                }
+                else
+                {
+                    Logger.LogError($"❌ Cannot update offset to {offset} - RequestSender is null!");
+                }
+            });
 
         await _messageReceiver.StartReceivingAsync();
     }

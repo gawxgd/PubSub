@@ -37,8 +37,8 @@ public class RequestSender(
                 var framedMessage = _messageFramer.FrameMessage(requestBytes);
 
                 await requestChannel.Writer.WriteAsync(framedMessage, cancellationToken);
-                Logger.LogDebug(
-                    $"Sent request for topic: {topic}, offset: {_lastOffset} (framed: {framedMessage.Length} bytes)");
+                Logger.LogInfo(
+                    $"📤 Sent request for topic: {topic}, offset: {_lastOffset} (framed: {framedMessage.Length} bytes)");
 
                 // Wait before sending next request
                 await Task.Delay(pollInterval, cancellationToken);
@@ -68,7 +68,8 @@ public class RequestSender(
 
     public void UpdateOffset(ulong offset)
     {
+        var oldOffset = _lastOffset;
         _lastOffset = offset;
-        Logger.LogDebug($"Updated last offset to: {offset}");
+        Logger.LogInfo($"🔄 Updated last offset from {oldOffset} to {offset}");
     }
 }

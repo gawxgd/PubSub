@@ -1,4 +1,5 @@
 ﻿using System.Buffers;
+using System.Buffers.Binary;
 using System.IO.Pipelines;
 using System.Net.Sockets;
 using System.Threading.Channels;
@@ -107,13 +108,20 @@ public sealed class TcpSubscriberConnection(
     {
         try
         {
+            Logger.LogInfo("Read loop started - waiting for batches from broker");
+            var batchesReceived = 0;
+            
             while (!cancellationToken.IsCancellationRequested)
             {
                 var result = await _pipeReader!.ReadAsync(cancellationToken);
                 var buffer = result.Buffer;
 
+                Logger.LogDebug($"Read {buffer.Length} bytes from broker");
+
                 while (TryReadBatchMessage(ref buffer, out var batchBytes))
                 {
+                    batchesReceived++;
+                    Logger.LogInfo($"📥 Received batch #{batchesReceived} from broker: {batchBytes.Length} bytes");
                     await responseChannel.Writer.WriteAsync(batchBytes, cancellationToken);
                 }
 
@@ -121,7 +129,7 @@ public sealed class TcpSubscriberConnection(
 
                 if (result.IsCompleted || result.IsCanceled)
                 {
-                    Logger.LogInfo($"Disconnected from broker at {_client.Client.RemoteEndPoint}");
+                    Logger.LogInfo($"Disconnected from broker at {_client.Client.RemoteEndPoint} (received {batchesReceived} batches total)");
                     break;
                 }
             }
@@ -152,12 +160,51 @@ public sealed class TcpSubscriberConnection(
             return false;
 
         // Read header to get batchLength and recordBytesLength
+        // Use BinaryPrimitives to match MessageBroker's LittleEndian encoding
         Span<byte> headerSpan = stackalloc byte[minHeaderSize];
         buffer.Slice(0, minHeaderSize).CopyTo(headerSpan);
 
-        var baseOffset = BitConverter.ToUInt64(headerSpan.Slice(0, 8));
-        var batchLength = BitConverter.ToUInt32(headerSpan.Slice(8, 4));
-        var lastOffset = BitConverter.ToUInt64(headerSpan.Slice(12, 8));
+        var baseOffset = BinaryPrimitives.ReadUInt64LittleEndian(headerSpan.Slice(0, 8));
+        var batchLength = BinaryPrimitives.ReadUInt32LittleEndian(headerSpan.Slice(8, 4));
+        var lastOffset = BinaryPrimitives.ReadUInt64LittleEndian(headerSpan.Slice(12, 8));
+        var recordBytesLength = BinaryPrimitives.ReadUInt32LittleEndian(headerSpan.Slice(20, 4));
+        
+        // Debug logging
+        Logger.LogDebug($"Reading batch header: baseOffset={baseOffset}, batchLength={batchLength}, lastOffset={lastOffset}, recordBytesLength={recordBytesLength}, bufferLength={buffer.Length}");
+        
+        // Validate batchLength to avoid reading invalid data
+        if (batchLength == 0)
+        {
+            // If batchLength is 0, it might mean:
+            // 1. Empty batch (should not happen, but handle gracefully)
+            // 2. Wrong data alignment (maybe we're reading from wrong position)
+            // 3. End of stream or padding
+            Logger.LogWarning($"batchLength is 0 (baseOffset={baseOffset}, lastOffset={lastOffset}, recordBytesLength={recordBytesLength}), bufferLength={buffer.Length}. First 24 bytes hex: {Convert.ToHexString(headerSpan)}");
+            
+            // If all header values are 0, this might be padding or end of data
+            if (baseOffset == 0 && lastOffset == 0 && recordBytesLength == 0)
+            {
+                Logger.LogInfo("All header values are 0, likely end of data or padding. Skipping.");
+                if (buffer.Length >= minHeaderSize)
+                {
+                    buffer = buffer.Slice(minHeaderSize);
+                }
+                return false;
+            }
+            
+            // Otherwise, try to skip just the header and continue
+            if (buffer.Length >= minHeaderSize)
+            {
+                buffer = buffer.Slice(minHeaderSize);
+            }
+            return false;
+        }
+        
+        if (batchLength > int.MaxValue)
+        {
+            Logger.LogWarning($"batchLength {batchLength} exceeds int.MaxValue, skipping batch");
+            return false;
+        }
         // recordBytesLength is at offset 20, but we don't need to read it for size calculation
 
         // Calculate total batch size: header (20 bytes) + RecordBytesLength field (4 bytes) + batchLength

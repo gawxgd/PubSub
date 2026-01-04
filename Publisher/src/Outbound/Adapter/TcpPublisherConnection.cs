@@ -135,9 +135,28 @@ public sealed class TcpPublisherConnection(
 
     private async Task SendBatchAsync()
     {
-        var batchBytes = batchMessagesUseCase.Build();
         var count = batchMessagesUseCase.Count;
+        if (count == 0)
+        {
+            Logger.LogWarning("Attempted to send empty batch - skipping");
+            return;
+        }
+        
+        var batchBytes = batchMessagesUseCase.Build();
         batchMessagesUseCase.Clear();
+        
+        if (batchBytes == null || batchBytes.Length == 0)
+        {
+            Logger.LogError($"Built batch is empty or null! Count was: {count}");
+            return;
+        }
+        
+        if (batchBytes.Length < 38)
+        {
+            Logger.LogWarning($"⚠️  Built batch is too small: {batchBytes.Length} bytes (expected at least 38). Count: {count}");
+        }
+        
+        Logger.LogInfo($"📤 Building batch: {count} messages, batch size: {batchBytes.Length} bytes");
 
         var attempts = 0;
         var sent = false;

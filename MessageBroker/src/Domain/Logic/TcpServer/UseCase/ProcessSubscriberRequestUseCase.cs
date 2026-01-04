@@ -31,6 +31,7 @@ public class ProcessSubscriberRequestUseCase(
         {
             commitLogReader = commitLogFactory.GetReader(topic);
             ulong currentOffset = offset;
+            var batchesSent = 0;
 
             while (!cancellationToken.IsCancellationRequested)
             {
@@ -38,21 +39,52 @@ public class ProcessSubscriberRequestUseCase(
 
                 if (batch == null)
                 {
-                    Logger.LogDebug($"No more batches available at offset {currentOffset}");
+                    if (batchesSent == 0)
+                    {
+                        Logger.LogDebug($"No batches available at offset {currentOffset} for topic '{topic}' - topic may be empty or offset is beyond available data");
+                    }
+                    else
+                    {
+                        Logger.LogDebug($"No more batches available at offset {currentOffset} - sent {batchesSent} batches total");
+                    }
                     break;
                 }
 
                 var (batchBytes, batchOffset, lastOffset) = batch.Value;
 
                 Logger.LogDebug(
-                    $"Read batch with offset {batchOffset} and last offset {lastOffset}");
+                    $"Read batch with offset {batchOffset} and last offset {lastOffset}, size: {batchBytes.Length} bytes");
 
-                await socket.SendAsync(batchBytes, SocketFlags.None, cancellationToken);
-
-                Logger.LogDebug(
-                    $"Send batch with offset {batchOffset} and last offset {lastOffset}");
+                try
+                {
+                    // Send batch bytes directly - no framing needed for subscriber responses
+                    var bytesSent = await socket.SendAsync(batchBytes, SocketFlags.None, cancellationToken);
+                    
+                    if (bytesSent != batchBytes.Length)
+                    {
+                        Logger.LogWarning(
+                            $"Partial send: sent {bytesSent} of {batchBytes.Length} bytes for batch {batchOffset}-{lastOffset}");
+                    }
+                    
+                    batchesSent++;
+                    Logger.LogInfo(
+                        $"✅ Sent batch {batchesSent} to subscriber: offset {batchOffset} to {lastOffset}, {bytesSent}/{batchBytes.Length} bytes");
+                    
+                    // Small delay to ensure data is flushed
+                    await Task.Delay(10, cancellationToken);
+                }
+                catch (SocketException ex)
+                {
+                    Logger.LogError($"❌ Failed to send batch to subscriber: {ex.Message} (SocketError: {ex.SocketErrorCode})");
+                    throw;
+                }
 
                 currentOffset = lastOffset + 1;
+            }
+
+            if (batchesSent > 0)
+            {
+                Logger.LogInfo($"Successfully sent {batchesSent} batches to subscriber for topic '{topic}'");
             }
         }
         catch (FileNotFoundException)

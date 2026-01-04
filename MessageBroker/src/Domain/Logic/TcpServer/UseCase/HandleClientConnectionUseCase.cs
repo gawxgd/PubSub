@@ -1,3 +1,4 @@
+using System;
 using System.Buffers;
 using System.IO.Pipelines;
 using System.Net.Sockets;
@@ -157,7 +158,16 @@ public class HandleClientConnectionUseCase(
 
         await foreach (var message in _messageChannel.Reader.ReadAllAsync(cancellationToken))
         {
-            Logger.LogInfo($"[{_connectedClientEndpoint}] Received {message.Length} bytes");
+            Logger.LogInfo($"[{_connectedClientEndpoint}] 📨 Received deframed message: {message.Length} bytes");
+            var messageSpan = message.Span;
+            if (message.Length < 100)
+            {
+                Logger.LogInfo($"[{_connectedClientEndpoint}] Message hex (full): {Convert.ToHexString(messageSpan)}");
+            }
+            else
+            {
+                Logger.LogInfo($"[{_connectedClientEndpoint}] Message hex (first 100 bytes): {Convert.ToHexString(messageSpan.Slice(0, 100))}");
+            }
 
             await messageProcessorUseCase.ProcessAsync(message, Socket, cancellationToken);
         }

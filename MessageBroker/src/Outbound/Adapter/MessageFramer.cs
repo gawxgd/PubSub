@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.IO.Pipelines;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
@@ -15,9 +16,9 @@ public class MessageFramer : IMessageFramer
 
     public byte[] FrameMessage(byte[] message)
     {
-        var lengthPrefix = BitConverter.GetBytes(message.Length);
         var framedMessage = new byte[LengthFieldSize + message.Length];
-        lengthPrefix.CopyTo(framedMessage, 0);
+        // Use BinaryPrimitives to ensure LittleEndian encoding (consistent across systems)
+        BinaryPrimitives.WriteInt32LittleEndian(framedMessage.AsSpan(0, LengthFieldSize), message.Length);
         message.CopyTo(framedMessage, LengthFieldSize);
 
         Logger.LogDebug($"Framed message: length={message.Length} bytes");
