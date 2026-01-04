@@ -119,18 +119,6 @@ public class TcpSubscriberTests
     }
 
     [Fact]
-    public async Task ReceiveAsync_ShouldProcessBatchData()
-    {
-        var subscriber = CreateSubscriber(CreateBoundedChannel(), CreateBoundedChannel());
-        var batchData = new byte[] { 1, 2, 3, 4 };
-
-        // ReceiveAsync calls ProcessMessageUseCase.ExecuteAsync internally
-        // This test verifies the method doesn't throw with valid input
-        // Full integration would require mocking the entire batch deserialization chain
-        await Assert.ThrowsAnyAsync<Exception>(() => subscriber.ReceiveAsync(batchData));
-    }
-
-    [Fact]
     public async Task StartConnectionAsync_ShouldConnectSuccessfully()
     {
         var responseChannel = CreateBoundedChannel();
@@ -191,4 +179,3 @@ public class TcpSubscriberTests
         Assert.False(requestChannel.Writer.TryWrite(new byte[] { 1 }));
     }
 }
-

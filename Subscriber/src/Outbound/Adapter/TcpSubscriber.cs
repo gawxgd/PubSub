@@ -22,10 +22,12 @@ public sealed class TcpSubscriber<T>(
     private readonly CancellationTokenSource _cts = new();
     private CancellationToken CancellationToken => _cts.Token;
 
-    private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<TcpSubscriber<T>>(LogSource.MessageBroker);
+    private static readonly IAutoLogger Logger =
+        AutoLoggerFactory.CreateLogger<TcpSubscriber<T>>(LogSource.MessageBroker);
 
     private MessageReceiver<T>? _messageReceiver;
     private RequestSender? _requestSender;
+    private ulong _lastOffset = 0;
 
     async Task ISubscriber<T>.CreateConnection()
     {
@@ -50,25 +52,26 @@ public sealed class TcpSubscriber<T>(
         throw new SubscriberConnectionException("Max retry attempts exceeded", null);
     }
 
-    public async Task ReceiveAsync(byte[] message)
-    {
-        var offset = await processMessageUseCase.ExecuteAsync(message);
-        _requestSender?.UpdateOffset(offset + 1);
-    }
-
     public async Task StartMessageProcessingAsync()
     {
+        if (_requestSender == null)
+        {
+            throw new InvalidOperationException("RequestSender must be initialized before starting message processing");
+        }
+
         _messageReceiver = new MessageReceiver<T>(
             responseChannel,
             processMessageUseCase,
+            _requestSender,
+            GetCurrentOffset,
+            UpdateOffset,
             pollInterval,
-            CancellationToken,
-            (offset) => _requestSender?.UpdateOffset(offset));
+            CancellationToken);
 
         await _messageReceiver.StartReceivingAsync();
     }
 
-    public async Task StartConnectionAsync()
+    public async Task StartConnectionAsync(ulong? initialOffset = null)
     {
         try
         {
@@ -77,16 +80,18 @@ public sealed class TcpSubscriber<T>(
             _requestSender = new RequestSender(
                 requestChannel,
                 topic,
-                pollInterval,
                 CancellationToken);
 
-            _ = Task.Run(() => _requestSender.StartSendingAsync(), CancellationToken);
+            if (initialOffset.HasValue)
+            {
+                SetInitialOffset(initialOffset.Value);
+            }
         }
         catch (SubscriberConnectionException ex) when (ex.IsRetriable)
         {
             Logger.LogWarning($"Retriable connection error: {ex.Message}");
             await Task.Delay(pollInterval, CancellationToken);
-            await StartConnectionAsync();
+            await StartConnectionAsync(initialOffset);
         }
         catch (SubscriberConnectionException ex)
         {
@@ -98,6 +103,30 @@ public sealed class TcpSubscriber<T>(
             Logger.LogError($"Unexpected error: {ex.Message}");
             throw;
         }
+    }
+
+    private void SetInitialOffset(ulong offset)
+    {
+        _lastOffset = offset;
+
+        Logger.LogDebug($"Set initial offset to: {offset}");
+    }
+
+    private void UpdateOffset(ulong offset)
+    {
+        _lastOffset = offset;
+
+        Logger.LogDebug($"Updated last offset to: {offset}");
+    }
+
+    private ulong GetCurrentOffset()
+    {
+        return _lastOffset;
+    }
+
+    public ulong? GetCommittedOffset()
+    {
+        return _lastOffset > 0 ? _lastOffset - 1 : 0;
     }
 
     public async ValueTask DisposeAsync()
