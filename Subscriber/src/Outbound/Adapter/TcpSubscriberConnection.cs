@@ -18,132 +18,122 @@ public sealed class TcpSubscriberConnection(
     Channel<byte[]> responseChannel)
     : ISubscriberConnection, IAsyncDisposable
 {
-    private readonly TcpClient _client = new();
-    private CancellationTokenSource _cancellationSource = new();
+    private TcpClient? _client;
+    private NetworkStream? _stream;
     private PipeReader? _pipeReader;
     private PipeWriter? _pipeWriter;
+
+    // Jeden CTS na całe życie obiektu (stop przy Disconnect/Dispose)
+    private readonly CancellationTokenSource _cts = new();
+
+    // Read/Write loop uruchamiane raz, żyją cały czas
     private Task? _readLoopTask;
     private Task? _writeLoopTask;
+
+    private readonly SemaphoreSlim _reconnectLock = new(1, 1);
+    private const int ReconnectDelayMs = 1000;
 
     private static readonly IAutoLogger Logger =
         AutoLoggerFactory.CreateLogger<TcpSubscriberConnection>(LogSource.Subscriber);
 
+    private CancellationToken Token => _cts.Token;
+
     public async Task ConnectAsync()
     {
+        // Pierwsze połączenie lub manualne wywołanie – ustawia połączenie i odpala pętle, jeśli jeszcze nie żyją
         try
         {
-            // If already connected, disconnect first
-            if (_client.Connected)
-            {
-                Logger.LogDebug("Already connected, disconnecting first...");
-                await DisconnectAsync();
-                // Create new cancellation source for new connection
-                _cancellationSource.Dispose();
-                _cancellationSource = new CancellationTokenSource();
-            }
-            
-            await _client.ConnectAsync(host, port);
-            var stream = _client.GetStream();
-            _pipeReader = PipeReader.Create(stream);
-            _pipeWriter = PipeWriter.Create(stream);
+            await EstablishConnectionAsync().ConfigureAwait(false);
 
-            _readLoopTask = Task.Run(() => ReadLoopAsync(_cancellationSource.Token));
-            _writeLoopTask = Task.Run(() => WriteLoopAsync(_cancellationSource.Token));
-            
-            var remoteEndPoint = _client.Client.RemoteEndPoint?.ToString() ?? $"{host}:{port}";
-            Logger.LogInfo($"Connected to broker at {remoteEndPoint}");
+            // Pętle odpalamy tylko raz
+            if (_readLoopTask == null)
+                _readLoopTask = Task.Run(() => ReadLoopAsync(Token), Token);
+
+            if (_writeLoopTask == null)
+                _writeLoopTask = Task.Run(() => WriteLoopAsync(Token), Token);
         }
         catch (OperationCanceledException)
         {
-            Logger.LogInfo("Connection cancelled.");
+            Logger.LogInfo("Connect cancelled.");
             throw;
         }
         catch (SocketException ex)
         {
-            Logger.LogError($"Error during connection: {ex.Message}");
+            Logger.LogError($"Error during initial connection: {ex.Message}");
             bool isRetriable = IsRetriable(ex);
-
             throw new SubscriberConnectionException("TCP connection failed", ex, isRetriable);
         }
+        catch (Exception ex)
+        {
+            Logger.LogError($"Unexpected error during initial connection: {ex.Message}");
+            throw;
+        }
+    }
+
+    private async Task EstablishConnectionAsync()
+    {
+        // Tworzy nowego TcpClient, stream i PipeReader/PipeWriter.
+        // Wywoływane przy pierwszym Connect oraz z ReconnectAsync.
+        // Nie rusza pętli ani CTS.
+        CloseSocketResources();
+
+        _client = new TcpClient();
+        Logger.LogInfo($"Connecting to broker at {host}:{port}...");
+        await _client.ConnectAsync(host, port).ConfigureAwait(false);
+
+        _stream = _client.GetStream();
+        _pipeReader = PipeReader.Create(_stream);
+        _pipeWriter = PipeWriter.Create(_stream);
+
+        var remoteEndPoint = _client.Client.RemoteEndPoint?.ToString() ?? $"{host}:{port}";
+        Logger.LogInfo($"Connected to broker at {remoteEndPoint}");
     }
 
     public async Task DisconnectAsync()
     {
+        // Twarde zamknięcie – zatrzymuje pętle i połączenie
         try
         {
-            try
-            {
-                if (_client.Connected)
-                {
-                    _client.Client.Shutdown(SocketShutdown.Both);
-                }
-            }
-            catch (SocketException ex)
-            {
-                Logger.LogInfo(
-                    $"Socket already closed or disconnected while shutting down connection: {ex.SocketErrorCode}"
-                );
-            }
-            finally
-            {
-                if (_client.Connected)
-                {
-                    _client.Close();
-                }
-            }
+            Logger.LogInfo("Disconnecting from broker...");
 
-            await _cancellationSource.CancelAsync();
+            _cts.Cancel();
 
             if (_writeLoopTask != null)
             {
-                try
-                {
-                    await _writeLoopTask;
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogDebug($"Error waiting for write loop: {ex.Message}");
-                }
+                try { await _writeLoopTask.ConfigureAwait(false); }
+                catch (Exception ex) { Logger.LogDebug($"Error waiting for write loop: {ex.Message}"); }
+                _writeLoopTask = null;
             }
 
             if (_readLoopTask != null)
             {
-                try
-                {
-                    await _readLoopTask;
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogDebug($"Error waiting for read loop: {ex.Message}");
-                }
+                try { await _readLoopTask.ConfigureAwait(false); }
+                catch (Exception ex) { Logger.LogDebug($"Error waiting for read loop: {ex.Message}"); }
+                _readLoopTask = null;
             }
 
-            if (_pipeReader != null)
-                await _pipeReader.CompleteAsync();
+            await CompletePipesAsync().ConfigureAwait(false);
+            CloseSocketResources();
 
-            if (_pipeWriter != null)
-                await _pipeWriter.CompleteAsync();
-
-            // Don't complete channels here - they should remain open for reconnect
-            // Only complete on final disposal
-            Logger.LogInfo($"Disconnected from broker");
+            Logger.LogInfo("Disconnected from broker");
         }
         catch (Exception ex)
         {
             Logger.LogError($"Error during disconnect: {ex.Message}");
         }
     }
-    
+
     public async Task DisconnectAndCloseChannelsAsync()
     {
-        await DisconnectAsync();
+        await DisconnectAsync().ConfigureAwait(false);
         responseChannel.Writer.TryComplete();
         requestChannel.Writer.TryComplete();
     }
 
     public async ValueTask DisposeAsync()
     {
-        await DisconnectAsync();
+        await DisconnectAsync().ConfigureAwait(false);
+        _cts.Dispose();
     }
 
     private async Task ReadLoopAsync(CancellationToken cancellationToken)
@@ -152,35 +142,55 @@ public sealed class TcpSubscriberConnection(
         {
             Logger.LogInfo("Read loop started - waiting for batches from broker");
             var batchesReceived = 0;
-            
+
             while (!cancellationToken.IsCancellationRequested)
             {
-                // Check if connection is still alive
-                if (!_client.Connected)
+                try
                 {
-                    Logger.LogWarning("Connection lost, exiting read loop");
-                    throw new SubscriberConnectionException("TCP connection lost", null, true);
+                    var reader = _pipeReader;
+                    if (reader == null)
+                    {
+                        // Nie ma aktualnego połączenia – poczekaj i spróbuj ponownie
+                        await Task.Delay(100, cancellationToken).ConfigureAwait(false);
+                        continue;
+                    }
+
+                    var result = await reader.ReadAsync(cancellationToken).ConfigureAwait(false);
+                    var buffer = result.Buffer;
+
+                    if (result.IsCompleted && buffer.Length == 0)
+                    {
+                        // Broker zamknął połączenie (np. restart) → reconnect
+                        Logger.LogWarning("Read loop: stream completed (likely broker restart), attempting reconnect...");
+                        await ReconnectAsync().ConfigureAwait(false);
+                        continue;
+                    }
+
+                    Logger.LogDebug($"Read {buffer.Length} bytes from broker");
+
+                    while (TryReadBatchMessage(ref buffer, out var batchBytes))
+                    {
+                        batchesReceived++;
+                        Logger.LogInfo($"📥 Received batch #{batchesReceived} from broker: {batchBytes.Length} bytes");
+                        await responseChannel.Writer.WriteAsync(batchBytes, cancellationToken).ConfigureAwait(false);
+                    }
+
+                    reader.AdvanceTo(buffer.Start, buffer.End);
                 }
-                
-                var result = await _pipeReader!.ReadAsync(cancellationToken);
-                var buffer = result.Buffer;
-
-                Logger.LogDebug($"Read {buffer.Length} bytes from broker");
-
-                while (TryReadBatchMessage(ref buffer, out var batchBytes))
+                catch (IOException ex)
                 {
-                    batchesReceived++;
-                    Logger.LogInfo($"📥 Received batch #{batchesReceived} from broker: {batchBytes.Length} bytes");
-                    await responseChannel.Writer.WriteAsync(batchBytes, cancellationToken);
+                    Logger.LogWarning($"Read loop IO error: {ex.Message}, attempting reconnect...");
+                    await ReconnectAsync().ConfigureAwait(false);
                 }
-
-                _pipeReader.AdvanceTo(buffer.Start, buffer.End);
-
-                if (result.IsCompleted || result.IsCanceled)
+                catch (SocketException ex)
                 {
-                    var remoteEndPoint = _client.Connected ? _client.Client.RemoteEndPoint?.ToString() ?? "unknown" : "disconnected";
-                    Logger.LogInfo($"Disconnected from broker at {remoteEndPoint} (received {batchesReceived} batches total)");
-                    break;
+                    Logger.LogWarning($"Read loop socket error: {ex.Message}, attempting reconnect...");
+                    await ReconnectAsync().ConfigureAwait(false);
+                }
+                catch (SubscriberConnectionException ex)
+                {
+                    Logger.LogWarning($"Read loop connection exception: {ex.Message}, attempting reconnect...");
+                    await ReconnectAsync().ConfigureAwait(false);
                 }
             }
         }
@@ -188,140 +198,51 @@ public sealed class TcpSubscriberConnection(
         {
             Logger.LogInfo("Read loop cancelled");
         }
-        catch (IOException ex) when (ex.InnerException is SocketException socketEx)
-        {
-            var isRetriable = IsRetriable(socketEx);
-            Logger.LogWarning($"Read loop connection error: {ex.Message} (retriable: {isRetriable})");
-            throw new SubscriberConnectionException("TCP connection lost", null, true);
-        }
-        catch (SocketException ex)
-        {
-            var isRetriable = IsRetriable(ex);
-            Logger.LogWarning($"Read loop socket error: {ex.Message} (retriable: {isRetriable})");
-            throw new SubscriberConnectionException("TCP connection lost", null, true);
-        }
         catch (Exception ex)
         {
             Logger.LogError($"Unexpected error in read loop: {ex.Message}");
-            throw new SubscriberConnectionException("TCP connection lost", null, true);
         }
-    }
-
-    private bool TryReadBatchMessage(ref ReadOnlySequence<byte> buffer, out byte[] batchBytes)
-    {
-        //ToDO FIXX DO NOT DELET THIS COMMENT
-        batchBytes = Array.Empty<byte>();
-
-        // Need at least 24 bytes: 8 for baseOffset + 4 for batchLength + 8 for lastOffset + 4 for recordBytesLength
-        const int minHeaderSize = 24;
-        if (buffer.Length < minHeaderSize)
-            return false;
-
-        // Read header to get batchLength and recordBytesLength
-        // Use BinaryPrimitives to match MessageBroker's LittleEndian encoding
-        Span<byte> headerSpan = stackalloc byte[minHeaderSize];
-        buffer.Slice(0, minHeaderSize).CopyTo(headerSpan);
-
-        var baseOffset = BinaryPrimitives.ReadUInt64LittleEndian(headerSpan.Slice(0, 8));
-        var batchLength = BinaryPrimitives.ReadUInt32LittleEndian(headerSpan.Slice(8, 4));
-        var lastOffset = BinaryPrimitives.ReadUInt64LittleEndian(headerSpan.Slice(12, 8));
-        var recordBytesLength = BinaryPrimitives.ReadUInt32LittleEndian(headerSpan.Slice(20, 4));
-        
-        // Debug logging
-        Logger.LogDebug($"Reading batch header: baseOffset={baseOffset}, batchLength={batchLength}, lastOffset={lastOffset}, recordBytesLength={recordBytesLength}, bufferLength={buffer.Length}");
-        
-        // Validate batchLength to avoid reading invalid data
-        if (batchLength == 0)
-        {
-            // If batchLength is 0, it might mean:
-            // 1. Empty batch (should not happen, but handle gracefully)
-            // 2. Wrong data alignment (maybe we're reading from wrong position)
-            // 3. End of stream or padding
-            Logger.LogWarning($"batchLength is 0 (baseOffset={baseOffset}, lastOffset={lastOffset}, recordBytesLength={recordBytesLength}), bufferLength={buffer.Length}. First 24 bytes hex: {Convert.ToHexString(headerSpan)}");
-            
-            // If all header values are 0, this might be padding or end of data
-            if (baseOffset == 0 && lastOffset == 0 && recordBytesLength == 0)
-            {
-                Logger.LogInfo("All header values are 0, likely end of data or padding. Skipping.");
-                if (buffer.Length >= minHeaderSize)
-                {
-                    buffer = buffer.Slice(minHeaderSize);
-                }
-                return false;
-            }
-            
-            // Otherwise, try to skip just the header and continue
-            if (buffer.Length >= minHeaderSize)
-            {
-                buffer = buffer.Slice(minHeaderSize);
-            }
-            return false;
-        }
-        
-        if (batchLength > int.MaxValue)
-        {
-            Logger.LogWarning($"batchLength {batchLength} exceeds int.MaxValue, skipping batch");
-            return false;
-        }
-        // recordBytesLength is at offset 20, but we don't need to read it for size calculation
-
-        // Calculate total batch size: header (20 bytes) + RecordBytesLength field (4 bytes) + batchLength
-        // batchLength already includes: MagicNumber + CRC + CompressedFlag + Timestamp + RecordBytes
-        // But RecordBytesLength field (4 bytes) is NOT included in batchLength
-        const int headerSize = 20; // BaseOffset + BatchLength + LastOffset
-        var totalBatchSize = headerSize + sizeof(uint) + (int)batchLength;
-
-        // Check if we have the full batch
-        if (buffer.Length < totalBatchSize)
-            return false;
-
-        // Extract full batch bytes
-        batchBytes = buffer.Slice(0, totalBatchSize).ToArray();
-        buffer = buffer.Slice(totalBatchSize);
-
-        Logger.LogInfo(
-            $"Received batch: baseOffset={baseOffset}, lastOffset={lastOffset}, batchLength={batchLength} bytes");
-        return true;
     }
 
     private async Task WriteLoopAsync(CancellationToken cancellationToken)
     {
         try
         {
-            await foreach (var message in requestChannel.Reader.ReadAllAsync(cancellationToken))
+            await foreach (var message in requestChannel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
             {
-                try
+                while (!cancellationToken.IsCancellationRequested)
                 {
-                    // Check if connection is still alive before writing
-                    if (!_client.Connected)
+                    try
                     {
-                        Logger.LogWarning("Connection lost while trying to send request, exiting write loop");
-                        throw new SubscriberConnectionException("TCP connection lost", null, true);
+                        var writer = _pipeWriter;
+                        if (writer == null)
+                        {
+                            Logger.LogWarning("Write loop: no active writer, attempting reconnect...");
+                            await ReconnectAsync().ConfigureAwait(false);
+                            continue;
+                        }
+
+                        var span = writer.GetSpan(message.Length);
+                        message.CopyTo(span);
+                        writer.Advance(message.Length);
+                        var result = await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
+
+                        Logger.LogDebug($"Sent request to broker: {message.Length} bytes");
+
+                        if (result.IsCompleted)
+                        {
+                            // Stream się zamknął – broker restart lub koniec połączenia
+                            Logger.LogWarning("Write loop: flush completed (likely broker restart), attempting reconnect...");
+                            await ReconnectAsync().ConfigureAwait(false);
+                        }
+
+                        break;
                     }
-                    
-                    var writer = _pipeWriter!;
-                    var span = writer.GetSpan(message.Length);
-                    message.CopyTo(span);
-                    writer.Advance(message.Length);
-                    await writer.FlushAsync(cancellationToken);
-                    Logger.LogDebug($"Sent request to broker: {message.Length} bytes");
-                }
-                catch (IOException ex) when (ex.InnerException is SocketException socketEx)
-                {
-                    var isRetriable = IsRetriable(socketEx);
-                    Logger.LogWarning($"Write loop connection error: {ex.Message} (retriable: {isRetriable})");
-                    throw new SubscriberConnectionException("TCP connection lost", null, true);
-                }
-                catch (SocketException ex)
-                {
-                    var isRetriable = IsRetriable(ex);
-                    Logger.LogWarning($"Write loop socket error: {ex.Message} (retriable: {isRetriable})");
-                    throw new SubscriberConnectionException("TCP connection lost", null, true);
-                }
-                catch (InvalidOperationException ex) when (ex.Message.Contains("PipeWriter") || ex.Message.Contains("completed"))
-                {
-                    Logger.LogWarning($"Write loop pipe error: {ex.Message} - connection may be closed");
-                    throw new SubscriberConnectionException("TCP connection lost", null, true);
+                    catch (Exception ex) when (ex is IOException || ex is SocketException || ex is InvalidOperationException)
+                    {
+                        Logger.LogWarning($"Write loop error: {ex.Message}, attempting reconnect...");
+                        await ReconnectAsync().ConfigureAwait(false);
+                    }
                 }
             }
         }
@@ -332,22 +253,134 @@ public sealed class TcpSubscriberConnection(
         catch (Exception ex)
         {
             Logger.LogError($"Unexpected error in write loop: {ex.Message}");
-            throw new SubscriberConnectionException("TCP connection lost", null, true);
         }
         finally
         {
-            if (_pipeWriter != null)
+            var writer = _pipeWriter;
+            if (writer != null)
             {
-                try
-                {
-                    await _pipeWriter.CompleteAsync();
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogDebug($"Error completing pipe writer: {ex.Message}");
-                }
+                try { await writer.CompleteAsync().ConfigureAwait(false); }
+                catch (Exception ex) { Logger.LogDebug($"Error completing pipe writer: {ex.Message}"); }
             }
         }
+    }
+
+    private async Task ReconnectAsync()
+    {
+        if (Token.IsCancellationRequested)
+            return;
+
+        await _reconnectLock.WaitAsync(Token).ConfigureAwait(false);
+        try
+        {
+            if (Token.IsCancellationRequested)
+                return;
+
+            Logger.LogInfo("Attempting reconnect...");
+
+            await CompletePipesAsync().ConfigureAwait(false);
+            CloseSocketResources();
+
+            await Task.Delay(ReconnectDelayMs, Token).ConfigureAwait(false);
+            await EstablishConnectionAsync().ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            Logger.LogInfo("Reconnect cancelled (shutting down).");
+        }
+        catch (SocketException ex)
+        {
+            Logger.LogError($"Socket error during reconnect: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError($"Unexpected error during reconnect: {ex.Message}");
+        }
+        finally
+        {
+            _reconnectLock.Release();
+        }
+    }
+
+    private async Task CompletePipesAsync()
+    {
+        var reader = _pipeReader;
+        if (reader != null)
+        {
+            try { await reader.CompleteAsync().ConfigureAwait(false); }
+            catch (Exception ex) { Logger.LogDebug($"Error completing pipe reader: {ex.Message}"); }
+            _pipeReader = null;
+        }
+
+        var writer = _pipeWriter;
+        if (writer != null)
+        {
+            try { await writer.CompleteAsync().ConfigureAwait(false); }
+            catch (Exception ex) { Logger.LogDebug($"Error completing pipe writer: {ex.Message}"); }
+            _pipeWriter = null;
+        }
+    }
+
+    private void CloseSocketResources()
+    {
+        if (_stream != null)
+        {
+            try { _stream.Dispose(); }
+            catch (Exception ex) { Logger.LogDebug($"Error disposing stream: {ex.Message}"); }
+            _stream = null;
+        }
+
+        if (_client != null)
+        {
+            try
+            {
+                if (_client.Connected)
+                    _client.Client.Shutdown(SocketShutdown.Both);
+            }
+            catch (SocketException ex)
+            {
+                Logger.LogInfo($"Socket already closed while shutting down: {ex.SocketErrorCode}");
+            }
+            finally
+            {
+                _client.Close();
+                _client = null;
+            }
+        }
+    }
+
+    private bool TryReadBatchMessage(ref ReadOnlySequence<byte> buffer, out byte[] batchBytes)
+    {
+        batchBytes = Array.Empty<byte>();
+        const int minHeaderSize = 24;
+        if (buffer.Length < minHeaderSize) return false;
+
+        Span<byte> headerSpan = stackalloc byte[minHeaderSize];
+        buffer.Slice(0, minHeaderSize).CopyTo(headerSpan);
+
+        var baseOffset = BinaryPrimitives.ReadUInt64LittleEndian(headerSpan.Slice(0, 8));
+        var batchLength = BinaryPrimitives.ReadUInt32LittleEndian(headerSpan.Slice(8, 4));
+        var lastOffset = BinaryPrimitives.ReadUInt64LittleEndian(headerSpan.Slice(12, 8));
+        var recordBytesLength = BinaryPrimitives.ReadUInt32LittleEndian(headerSpan.Slice(20, 4));
+
+        Logger.LogDebug($"Reading batch header: baseOffset={baseOffset}, batchLength={batchLength}, lastOffset={lastOffset}, recordBytesLength={recordBytesLength}, bufferLength={buffer.Length}");
+
+        if (batchLength == 0)
+        {
+            buffer = buffer.Slice(minHeaderSize);
+            return false;
+        }
+
+        const int headerSize = 20;
+        var totalBatchSize = headerSize + sizeof(uint) + (int)batchLength;
+
+        if (buffer.Length < totalBatchSize) return false;
+
+        batchBytes = buffer.Slice(0, totalBatchSize).ToArray();
+        buffer = buffer.Slice(totalBatchSize);
+
+        Logger.LogInfo($"Received batch: baseOffset={baseOffset}, lastOffset={lastOffset}, batchLength={batchLength} bytes");
+        return true;
     }
 
     private bool IsRetriable(SocketException ex)
