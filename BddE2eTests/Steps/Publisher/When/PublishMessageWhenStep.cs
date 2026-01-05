@@ -28,6 +28,28 @@ public class PublishMessageWhenStep(ScenarioContext scenarioContext)
         }
     }
 
+    [When(@"the publisher sends (\d+) messages to topic ""(.*)""")]
+    public async Task WhenThePublisherSendsMessagesToTopic(int messageCount, string topic)
+    {
+        await TestContext.Progress.WriteLineAsync($"[When Step] Sending {messageCount} messages to topic '{topic}'...");
+        
+        for (var i = 0; i < messageCount; i++)
+        {
+            var message = $"msg{i}";
+            await TestContext.Progress.WriteLineAsync($"[When Step] Sending message {i + 1}/{messageCount}: '{message}'...");
+            
+            var evt = new TestEvent
+            {
+                Message = message,
+                Topic = topic
+            };
+            
+            await _context.Publisher.PublishAsync(evt);
+        }
+        
+        await TestContext.Progress.WriteLineAsync($"[When Step] All {messageCount} messages sent!");
+    }
+
     [When(@"the publisher sends messages in order:")]
     public async Task WhenThePublisherSendsMessagesInOrder(Table table)
     {
