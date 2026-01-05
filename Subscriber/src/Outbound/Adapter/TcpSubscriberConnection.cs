@@ -1,4 +1,4 @@
-﻿using System.Buffers;
+using System.Buffers;
 using System.Buffers.Binary;
 using System.IO.Pipelines;
 using System.Net.Sockets;
@@ -19,7 +19,7 @@ public sealed class TcpSubscriberConnection(
     : ISubscriberConnection, IAsyncDisposable
 {
     private readonly TcpClient _client = new();
-    private readonly CancellationTokenSource _cancellationSource = new();
+    private CancellationTokenSource _cancellationSource = new();
     private PipeReader? _pipeReader;
     private PipeWriter? _pipeWriter;
     private Task? _readLoopTask;
@@ -32,6 +32,16 @@ public sealed class TcpSubscriberConnection(
     {
         try
         {
+            // If already connected, disconnect first
+            if (_client.Connected)
+            {
+                Logger.LogDebug("Already connected, disconnecting first...");
+                await DisconnectAsync();
+                // Create new cancellation source for new connection
+                _cancellationSource.Dispose();
+                _cancellationSource = new CancellationTokenSource();
+            }
+            
             await _client.ConnectAsync(host, port);
             var stream = _client.GetStream();
             _pipeReader = PipeReader.Create(stream);
@@ -39,7 +49,9 @@ public sealed class TcpSubscriberConnection(
 
             _readLoopTask = Task.Run(() => ReadLoopAsync(_cancellationSource.Token));
             _writeLoopTask = Task.Run(() => WriteLoopAsync(_cancellationSource.Token));
-            Logger.LogInfo($"Connected to broker at {_client.Client.RemoteEndPoint}");
+            
+            var remoteEndPoint = _client.Client.RemoteEndPoint?.ToString() ?? $"{host}:{port}";
+            Logger.LogInfo($"Connected to broker at {remoteEndPoint}");
         }
         catch (OperationCanceledException)
         {
@@ -61,7 +73,10 @@ public sealed class TcpSubscriberConnection(
         {
             try
             {
-                _client.Client.Shutdown(SocketShutdown.Both);
+                if (_client.Connected)
+                {
+                    _client.Client.Shutdown(SocketShutdown.Both);
+                }
             }
             catch (SocketException ex)
             {
@@ -71,16 +86,37 @@ public sealed class TcpSubscriberConnection(
             }
             finally
             {
-                _client.Close();
+                if (_client.Connected)
+                {
+                    _client.Close();
+                }
             }
 
             await _cancellationSource.CancelAsync();
 
             if (_writeLoopTask != null)
-                await _writeLoopTask;
+            {
+                try
+                {
+                    await _writeLoopTask;
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogDebug($"Error waiting for write loop: {ex.Message}");
+                }
+            }
 
             if (_readLoopTask != null)
-                await _readLoopTask;
+            {
+                try
+                {
+                    await _readLoopTask;
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogDebug($"Error waiting for read loop: {ex.Message}");
+                }
+            }
 
             if (_pipeReader != null)
                 await _pipeReader.CompleteAsync();
@@ -88,15 +124,21 @@ public sealed class TcpSubscriberConnection(
             if (_pipeWriter != null)
                 await _pipeWriter.CompleteAsync();
 
-            responseChannel.Writer.TryComplete();
-            requestChannel.Writer.TryComplete();
-
-            Logger.LogInfo($"Disconnected from broker at {_client.Client.RemoteEndPoint}");
+            // Don't complete channels here - they should remain open for reconnect
+            // Only complete on final disposal
+            Logger.LogInfo($"Disconnected from broker");
         }
         catch (Exception ex)
         {
             Logger.LogError($"Error during disconnect: {ex.Message}");
         }
+    }
+    
+    public async Task DisconnectAndCloseChannelsAsync()
+    {
+        await DisconnectAsync();
+        responseChannel.Writer.TryComplete();
+        requestChannel.Writer.TryComplete();
     }
 
     public async ValueTask DisposeAsync()
@@ -113,6 +155,13 @@ public sealed class TcpSubscriberConnection(
             
             while (!cancellationToken.IsCancellationRequested)
             {
+                // Check if connection is still alive
+                if (!_client.Connected)
+                {
+                    Logger.LogWarning("Connection lost, exiting read loop");
+                    throw new SubscriberConnectionException("TCP connection lost", null, true);
+                }
+                
                 var result = await _pipeReader!.ReadAsync(cancellationToken);
                 var buffer = result.Buffer;
 
@@ -129,7 +178,8 @@ public sealed class TcpSubscriberConnection(
 
                 if (result.IsCompleted || result.IsCanceled)
                 {
-                    Logger.LogInfo($"Disconnected from broker at {_client.Client.RemoteEndPoint} (received {batchesReceived} batches total)");
+                    var remoteEndPoint = _client.Connected ? _client.Client.RemoteEndPoint?.ToString() ?? "unknown" : "disconnected";
+                    Logger.LogInfo($"Disconnected from broker at {remoteEndPoint} (received {batchesReceived} batches total)");
                     break;
                 }
             }
@@ -141,12 +191,19 @@ public sealed class TcpSubscriberConnection(
         catch (IOException ex) when (ex.InnerException is SocketException socketEx)
         {
             var isRetriable = IsRetriable(socketEx);
-            throw new SubscriberConnectionException($"Read loop failed, retriable connection {isRetriable}", socketEx,
-                isRetriable);
+            Logger.LogWarning($"Read loop connection error: {ex.Message} (retriable: {isRetriable})");
+            throw new SubscriberConnectionException("TCP connection lost", null, true);
+        }
+        catch (SocketException ex)
+        {
+            var isRetriable = IsRetriable(ex);
+            Logger.LogWarning($"Read loop socket error: {ex.Message} (retriable: {isRetriable})");
+            throw new SubscriberConnectionException("TCP connection lost", null, true);
         }
         catch (Exception ex)
         {
             Logger.LogError($"Unexpected error in read loop: {ex.Message}");
+            throw new SubscriberConnectionException("TCP connection lost", null, true);
         }
     }
 
@@ -233,22 +290,63 @@ public sealed class TcpSubscriberConnection(
         {
             await foreach (var message in requestChannel.Reader.ReadAllAsync(cancellationToken))
             {
-                var writer = _pipeWriter!;
-                var span = writer.GetSpan(message.Length);
-                message.CopyTo(span);
-                writer.Advance(message.Length);
-                await writer.FlushAsync(cancellationToken);
-                Logger.LogDebug($"Sent request to broker: {message.Length} bytes");
+                try
+                {
+                    // Check if connection is still alive before writing
+                    if (!_client.Connected)
+                    {
+                        Logger.LogWarning("Connection lost while trying to send request, exiting write loop");
+                        throw new SubscriberConnectionException("TCP connection lost", null, true);
+                    }
+                    
+                    var writer = _pipeWriter!;
+                    var span = writer.GetSpan(message.Length);
+                    message.CopyTo(span);
+                    writer.Advance(message.Length);
+                    await writer.FlushAsync(cancellationToken);
+                    Logger.LogDebug($"Sent request to broker: {message.Length} bytes");
+                }
+                catch (IOException ex) when (ex.InnerException is SocketException socketEx)
+                {
+                    var isRetriable = IsRetriable(socketEx);
+                    Logger.LogWarning($"Write loop connection error: {ex.Message} (retriable: {isRetriable})");
+                    throw new SubscriberConnectionException("TCP connection lost", null, true);
+                }
+                catch (SocketException ex)
+                {
+                    var isRetriable = IsRetriable(ex);
+                    Logger.LogWarning($"Write loop socket error: {ex.Message} (retriable: {isRetriable})");
+                    throw new SubscriberConnectionException("TCP connection lost", null, true);
+                }
+                catch (InvalidOperationException ex) when (ex.Message.Contains("PipeWriter") || ex.Message.Contains("completed"))
+                {
+                    Logger.LogWarning($"Write loop pipe error: {ex.Message} - connection may be closed");
+                    throw new SubscriberConnectionException("TCP connection lost", null, true);
+                }
             }
         }
         catch (OperationCanceledException)
         {
             Logger.LogInfo("Write loop cancelled");
         }
+        catch (Exception ex)
+        {
+            Logger.LogError($"Unexpected error in write loop: {ex.Message}");
+            throw new SubscriberConnectionException("TCP connection lost", null, true);
+        }
         finally
         {
             if (_pipeWriter != null)
-                await _pipeWriter.CompleteAsync();
+            {
+                try
+                {
+                    await _pipeWriter.CompleteAsync();
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogDebug($"Error completing pipe writer: {ex.Message}");
+                }
+            }
         }
     }
 

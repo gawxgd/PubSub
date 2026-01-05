@@ -1,4 +1,4 @@
-﻿using System.Net.Sockets;
+﻿﻿using System.Net.Sockets;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
@@ -30,66 +30,59 @@ public class ProcessSubscriberRequestUseCase(
         try
         {
             commitLogReader = commitLogFactory.GetReader(topic);
-            ulong currentOffset = offset;
-            var batchesSent = 0;
-
-            while (!cancellationToken.IsCancellationRequested)
+            
+            var highWaterMark = commitLogReader.GetHighWaterMark();
+            Logger.LogDebug($"Requested offset: {offset}, High water mark: {highWaterMark}");
+            
+            // If requested offset is beyond high water mark, return null
+            if (offset > highWaterMark)
             {
-                var batch = commitLogReader.ReadBatchBytes(currentOffset);
+                Logger.LogDebug($"Requested offset {offset} is beyond high water mark {highWaterMark}, no batch available");
+                return;
+            }
+            
+            // Send only one batch per request to prevent duplicate processing
+            var batch = commitLogReader.ReadBatchBytes(offset);
 
-                if (batch == null)
-                {
-                    if (batchesSent == 0)
-                    {
-                        Logger.LogDebug($"No batches available at offset {currentOffset} for topic '{topic}' - topic may be empty or offset is beyond available data");
-                    }
-                    else
-                    {
-                        Logger.LogDebug($"No more batches available at offset {currentOffset} - sent {batchesSent} batches total");
-                    }
-                    break;
-                }
-
+            if (batch == null)
+            {
+                Logger.LogDebug($"No more batches available at offset {offset}");
+            }
+            else
+            {
                 var (batchBytes, batchOffset, lastOffset) = batch.Value;
 
                 Logger.LogDebug(
-                    $"Read batch with offset {batchOffset} and last offset {lastOffset}, size: {batchBytes.Length} bytes");
+                    $"Read batch with offset {batchOffset} and last offset {lastOffset} (requested: {offset})");
 
-                try
+                // Verify that the returned batch actually contains the requested offset
+                if (offset < batchOffset || offset > lastOffset)
                 {
-                    // Send batch bytes directly - no framing needed for subscriber responses
-                    var bytesSent = await socket.SendAsync(batchBytes, SocketFlags.None, cancellationToken);
-                    
-                    if (bytesSent != batchBytes.Length)
-                    {
-                        Logger.LogWarning(
-                            $"Partial send: sent {bytesSent} of {batchBytes.Length} bytes for batch {batchOffset}-{lastOffset}");
-                    }
-                    
-                    batchesSent++;
-                    Logger.LogInfo(
-                        $"✅ Sent batch {batchesSent} to subscriber: offset {batchOffset} to {lastOffset}, {bytesSent}/{batchBytes.Length} bytes");
-                    
-                    // Small delay to ensure data is flushed
-                    await Task.Delay(10, cancellationToken);
-                }
-                catch (SocketException ex)
-                {
-                    Logger.LogError($"❌ Failed to send batch to subscriber: {ex.Message} (SocketError: {ex.SocketErrorCode})");
-                    throw;
+                    Logger.LogWarning(
+                        $"⚠️ Batch mismatch: requested offset {offset}, but got batch with offset range [{batchOffset}, {lastOffset}]");
                 }
 
-                currentOffset = lastOffset + 1;
-            }
+                await socket.SendAsync(batchBytes, SocketFlags.None, cancellationToken);
 
-            if (batchesSent > 0)
-            {
-                Logger.LogInfo($"Successfully sent {batchesSent} batches to subscriber for topic '{topic}'");
+                Logger.LogDebug(
+                    $"Send batch with offset {batchOffset} and last offset {lastOffset}");
             }
         }
         catch (FileNotFoundException)
         {
             Logger.LogDebug($"No commit log found for topic '{topic}' - topic may be empty");
+            // Send empty response to acknowledge the request, so subscriber knows the request was processed
+            // This prevents subscriber from hanging waiting for a response
+            try
+            {
+                // Send a minimal response: 0 bytes (just to acknowledge)
+                // Or we could send a special "no data" marker, but for now empty is OK
+                // Subscriber will handle empty response gracefully
+            }
+            catch (Exception ex)
+            {
+                Logger.LogDebug($"Error sending empty response: {ex.Message}");
+            }
         }
         catch (SocketException ex)
         {

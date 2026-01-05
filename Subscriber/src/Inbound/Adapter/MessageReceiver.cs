@@ -4,70 +4,104 @@ using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
 using Subscriber.Domain.UseCase;
 using Subscriber.Outbound.Adapter;
+using Subscriber.Outbound.Exceptions;
 
 namespace Subscriber.Inbound.Adapter;
 
-public class MessageReceiver<T>(
-    Channel<byte[]> responseChannel,
-    ProcessMessageUseCase<T> processMessageUseCase,
-    RequestSender requestSender,
-    Func<ulong> getCurrentOffset,
-    Action<ulong> updateOffset,
-    TimeSpan maxWaitTime,
-    CancellationToken cancellationToken) where T : new()
+public class MessageReceiver<T>
+    where T : new()
 {
+    private readonly Channel<byte[]> _responseChannel;
+    private readonly ProcessMessageUseCase<T> _processMessageUseCase;
+    private readonly RequestSender _requestSender; // jeden sender, przekazany z TcpSubscriber
+    private readonly Func<ulong> _getCurrentOffset;
+    private readonly Action<ulong> _updateOffset;
+    private readonly TimeSpan _maxWaitTime;
+    private readonly CancellationToken _cancellationToken;
+
     private static readonly IAutoLogger Logger =
         AutoLoggerFactory.CreateLogger<MessageReceiver<T>>(LogSource.Subscriber);
+
+    public MessageReceiver(
+        Channel<byte[]> responseChannel,
+        ProcessMessageUseCase<T> processMessageUseCase,
+        RequestSender requestSender,
+        Func<ulong> getCurrentOffset,
+        Action<ulong> updateOffset,
+        TimeSpan maxWaitTime,
+        CancellationToken cancellationToken)
+    {
+        _responseChannel = responseChannel;
+        _processMessageUseCase = processMessageUseCase;
+        _requestSender = requestSender;
+        _getCurrentOffset = getCurrentOffset;
+        _updateOffset = updateOffset;
+        _maxWaitTime = maxWaitTime;
+        _cancellationToken = cancellationToken;
+    }
 
     public async Task StartReceivingAsync()
     {
         Logger.LogInfo("Starting message receiver");
 
-        await requestSender.SendRequestAsync(getCurrentOffset());
+        // Wyślij initial request
+        await _requestSender.SendRequestAsync(_getCurrentOffset());
 
-        while (!cancellationToken.IsCancellationRequested)
+        while (!_cancellationToken.IsCancellationRequested)
         {
             try
             {
-                var waitTask = responseChannel.Reader.WaitToReadAsync(cancellationToken).AsTask();
-                var delayTask = Task.Delay(maxWaitTime, cancellationToken);
+                var waitTask = _responseChannel.Reader.WaitToReadAsync(_cancellationToken).AsTask();
+                var delayTask = Task.Delay(_maxWaitTime, _cancellationToken);
 
                 var completedTask = await Task.WhenAny(waitTask, delayTask);
 
-                var highestOffsetProcessed = getCurrentOffset();
+                var highestOffsetProcessed = _getCurrentOffset();
 
                 if (completedTask == waitTask && waitTask.Result)
                 {
-                    while (responseChannel.Reader.TryRead(out var message))
+                    while (_responseChannel.Reader.TryRead(out var message))
                     {
-                        var offset = await processMessageUseCase.ExecuteAsync(message);
-                        var nextOffset = offset + 1;
-
-                        if (nextOffset > highestOffsetProcessed)
+                        ulong offset;
+                        try
                         {
-                            highestOffsetProcessed = nextOffset;
+                            offset = await _processMessageUseCase.ExecuteAsync(message);
                         }
+                        catch (Exception ex)
+                        {
+                            Logger.LogError($"Error processing message: {ex.Message}", ex);
+                            throw;
+                        }
+
+                        var nextOffset = offset + 1;
+                        if (nextOffset > highestOffsetProcessed)
+                            highestOffsetProcessed = nextOffset;
                     }
 
-                    Logger.LogDebug(
-                        $"Processed all available messages, sending request for offset {highestOffsetProcessed}");
-                    updateOffset(highestOffsetProcessed);
-                    await requestSender.SendRequestAsync(highestOffsetProcessed);
+                    _updateOffset(highestOffsetProcessed);
+
+                    // wysyłamy request — jeśli padnie, wychodzimy i pozwalamy TcpSubscriber zrobić reconnect
+                    await _requestSender.SendRequestAsync(highestOffsetProcessed);
                 }
                 else
                 {
-                    Logger.LogDebug(
-                        $"No messages received in {maxWaitTime}. Sending fetch request again for offset {getCurrentOffset}");
-                    await requestSender.SendRequestAsync(getCurrentOffset());
+                    // brak wiadomości w maxWaitTime — wysyłamy heartbeat request
+                    await _requestSender.SendRequestAsync(_getCurrentOffset());
                 }
             }
             catch (OperationCanceledException)
             {
                 break;
             }
+            catch (SubscriberConnectionException ex)
+            {
+                Logger.LogWarning($"Connection lost: {ex.Message}. Stopping receiver so TcpSubscriber can reconnect.");
+                throw;
+            }
             catch (Exception ex)
             {
-                Logger.LogError($"Error while processing message: {ex.Message}", ex);
+                Logger.LogError($"Unexpected error: {ex.Message}", ex);
+                throw;
             }
         }
 
