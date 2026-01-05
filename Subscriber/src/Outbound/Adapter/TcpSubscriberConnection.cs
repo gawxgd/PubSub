@@ -140,8 +140,9 @@ public sealed class TcpSubscriberConnection(
         }
         catch (IOException ex) when (ex.InnerException is SocketException socketEx)
         {
-            bool isRetriable = IsRetriable(socketEx);
-            throw new SubscriberConnectionException("Read loop failed", socketEx, isRetriable);
+            var isRetriable = IsRetriable(socketEx);
+            throw new SubscriberConnectionException($"Read loop failed, retriable connection {isRetriable}", socketEx,
+                isRetriable);
         }
         catch (Exception ex)
         {
