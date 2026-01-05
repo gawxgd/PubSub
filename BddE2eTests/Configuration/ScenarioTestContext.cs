@@ -19,6 +19,7 @@ public class ScenarioTestContext(ScenarioContext scenarioContext)
     private const string SubscriberOptionsBuilderKey = "SubscriberOptionsBuilder";
     private const string SchemaRegistryClientBuilderKey = "SchemaRegistryClientBuilder";
     private const string PublishExceptionKey = "PublishException";
+    private const string CommittedOffsetKey = "CommittedOffset";
 
     private static readonly TestOptions TestOptions = TestOptionsLoader.Load();
 
@@ -104,5 +105,11 @@ public class ScenarioTestContext(ScenarioContext scenarioContext)
     {
         get => scenarioContext.TryGetValue(PublishExceptionKey, out Exception? ex) ? ex : null;
         set => scenarioContext.Set(value, PublishExceptionKey);
+    }
+
+    public ulong? CommittedOffset
+    {
+        get => scenarioContext.TryGetValue(CommittedOffsetKey, out ulong? offset) ? offset : null;
+        set => scenarioContext.Set(value, CommittedOffsetKey);
     }
 }
