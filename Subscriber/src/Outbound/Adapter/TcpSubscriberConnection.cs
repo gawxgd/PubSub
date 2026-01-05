@@ -40,12 +40,10 @@ public sealed class TcpSubscriberConnection(
 
     public async Task ConnectAsync()
     {
-        // Pierwsze połączenie lub manualne wywołanie – ustawia połączenie i odpala pętle, jeśli jeszcze nie żyją
         try
         {
             await EstablishConnectionAsync().ConfigureAwait(false);
 
-            // Pętle odpalamy tylko raz
             if (_readLoopTask == null)
                 _readLoopTask = Task.Run(() => ReadLoopAsync(Token), Token);
 
@@ -72,9 +70,6 @@ public sealed class TcpSubscriberConnection(
 
     private async Task EstablishConnectionAsync()
     {
-        // Tworzy nowego TcpClient, stream i PipeReader/PipeWriter.
-        // Wywoływane przy pierwszym Connect oraz z ReconnectAsync.
-        // Nie rusza pętli ani CTS.
         CloseSocketResources();
 
         _client = new TcpClient();
@@ -91,7 +86,6 @@ public sealed class TcpSubscriberConnection(
 
     public async Task DisconnectAsync()
     {
-        // Twarde zamknięcie – zatrzymuje pętle i połączenie
         try
         {
             Logger.LogInfo("Disconnecting from broker...");
@@ -150,7 +144,6 @@ public sealed class TcpSubscriberConnection(
                     var reader = _pipeReader;
                     if (reader == null)
                     {
-                        // Nie ma aktualnego połączenia – poczekaj i spróbuj ponownie
                         await Task.Delay(100, cancellationToken).ConfigureAwait(false);
                         continue;
                     }
@@ -160,9 +153,8 @@ public sealed class TcpSubscriberConnection(
 
                     if (result.IsCompleted && buffer.Length == 0)
                     {
-                        // Broker zamknął połączenie (np. restart) → reconnect
                         Logger.LogWarning("Read loop: stream completed (likely broker restart), attempting reconnect...");
-                        await ReconnectAsync().ConfigureAwait(false);
+                        _ = ReconnectAsync();
                         continue;
                     }
 
@@ -180,17 +172,17 @@ public sealed class TcpSubscriberConnection(
                 catch (IOException ex)
                 {
                     Logger.LogWarning($"Read loop IO error: {ex.Message}, attempting reconnect...");
-                    await ReconnectAsync().ConfigureAwait(false);
+                    _ = ReconnectAsync();
                 }
                 catch (SocketException ex)
                 {
                     Logger.LogWarning($"Read loop socket error: {ex.Message}, attempting reconnect...");
-                    await ReconnectAsync().ConfigureAwait(false);
+                    _ = ReconnectAsync();
                 }
                 catch (SubscriberConnectionException ex)
                 {
                     Logger.LogWarning($"Read loop connection exception: {ex.Message}, attempting reconnect...");
-                    await ReconnectAsync().ConfigureAwait(false);
+                    _ = ReconnectAsync();
                 }
             }
         }
@@ -218,7 +210,8 @@ public sealed class TcpSubscriberConnection(
                         if (writer == null)
                         {
                             Logger.LogWarning("Write loop: no active writer, attempting reconnect...");
-                            await ReconnectAsync().ConfigureAwait(false);
+                            _ = ReconnectAsync();
+                            await Task.Delay(100, cancellationToken).ConfigureAwait(false);
                             continue;
                         }
 
@@ -231,9 +224,8 @@ public sealed class TcpSubscriberConnection(
 
                         if (result.IsCompleted)
                         {
-                            // Stream się zamknął – broker restart lub koniec połączenia
                             Logger.LogWarning("Write loop: flush completed (likely broker restart), attempting reconnect...");
-                            await ReconnectAsync().ConfigureAwait(false);
+                            _ = ReconnectAsync();
                         }
 
                         break;
@@ -241,7 +233,8 @@ public sealed class TcpSubscriberConnection(
                     catch (Exception ex) when (ex is IOException || ex is SocketException || ex is InvalidOperationException)
                     {
                         Logger.LogWarning($"Write loop error: {ex.Message}, attempting reconnect...");
-                        await ReconnectAsync().ConfigureAwait(false);
+                        _ = ReconnectAsync();
+                        await Task.Delay(100, cancellationToken).ConfigureAwait(false);
                     }
                 }
             }
@@ -270,31 +263,46 @@ public sealed class TcpSubscriberConnection(
         if (Token.IsCancellationRequested)
             return;
 
-        await _reconnectLock.WaitAsync(Token).ConfigureAwait(false);
+        // jeśli reconnect już trwa, kolejne wywołania po prostu się odbiją
+        if (!await _reconnectLock.WaitAsync(0, Token).ConfigureAwait(false))
+            return;
+
         try
         {
             if (Token.IsCancellationRequested)
                 return;
 
-            Logger.LogInfo("Attempting reconnect...");
+            Logger.LogInfo("Reconnect loop started...");
 
-            await CompletePipesAsync().ConfigureAwait(false);
-            CloseSocketResources();
+            while (!Token.IsCancellationRequested)
+            {
+                try
+                {
+                    await CompletePipesAsync().ConfigureAwait(false);
+                    CloseSocketResources();
 
-            await Task.Delay(ReconnectDelayMs, Token).ConfigureAwait(false);
-            await EstablishConnectionAsync().ConfigureAwait(false);
-        }
-        catch (OperationCanceledException)
-        {
-            Logger.LogInfo("Reconnect cancelled (shutting down).");
-        }
-        catch (SocketException ex)
-        {
-            Logger.LogError($"Socket error during reconnect: {ex.Message}");
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError($"Unexpected error during reconnect: {ex.Message}");
+                    await Task.Delay(ReconnectDelayMs, Token).ConfigureAwait(false);
+                    await EstablishConnectionAsync().ConfigureAwait(false);
+
+                    Logger.LogInfo("Reconnect succeeded");
+                    return;
+                }
+                catch (OperationCanceledException)
+                {
+                    Logger.LogInfo("Reconnect cancelled (shutting down).");
+                    return;
+                }
+                catch (SocketException ex)
+                {
+                    Logger.LogWarning($"Reconnect socket error: {ex.Message}, will retry in {ReconnectDelayMs} ms...");
+                    await Task.Delay(ReconnectDelayMs, Token).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError($"Unexpected error during reconnect: {ex.Message}, will retry in {ReconnectDelayMs} ms...");
+                    await Task.Delay(ReconnectDelayMs, Token).ConfigureAwait(false);
+                }
+            }
         }
         finally
         {
