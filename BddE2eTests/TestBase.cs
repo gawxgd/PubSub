@@ -26,13 +26,40 @@ public class TestBase
     private static string? _commitLogDirectory;
     private static bool _loggerInitialized;
 
+    public static async Task RestartBrokerAsync()
+    {
+        if (_brokerHost != null)
+        {
+            TestContext.Progress.WriteLine("[TestBase] Stopping broker...");
+            await _brokerHost.StopAsync();
+            _brokerHost.Dispose();
+            _brokerHost = null;
+            TestContext.Progress.WriteLine("[TestBase] Broker stopped");
+        }
+
+        TestContext.Progress.WriteLine("[TestBase] Creating new broker host...");
+        _brokerHost = CreateBrokerHostWithExistingCommitLog();
+
+        TestContext.Progress.WriteLine("[TestBase] Starting broker...");
+        await _brokerHost.StartAsync();
+
+        TestContext.Progress.WriteLine("[TestBase] Waiting for broker startup...");
+        await WaitForBrokerStartupAsync();
+        TestContext.Progress.WriteLine("[TestBase] Broker restarted");
+    }
+
+    private static IHost CreateBrokerHostWithExistingCommitLog()
+    {
+        return CreateBrokerHost();
+    }
+
     [BeforeScenario(Order = 0)]
     public async Task SetUpScenario()
     {
         TestContext.Progress.WriteLine("[TestBase] === Starting new scenario setup ===");
         
         TestContext.Progress.WriteLine("[TestBase] Creating broker host...");
-        _brokerHost = CreateBrokerHost();
+        _brokerHost = CreateBrokerHostWithNewCommitLog();
         
         if (!_loggerInitialized)
         {
@@ -106,10 +133,14 @@ public class TestBase
         TestContext.Progress.WriteLine("[TestBase] Teardown complete!");
     }
 
-    private static IHost CreateBrokerHost()
+    private static IHost CreateBrokerHostWithNewCommitLog()
     {
         _commitLogDirectory = CreateTemporaryCommitLogDirectory();
+        return CreateBrokerHost();
+    }
 
+    private static IHost CreateBrokerHost()
+    {
         return Host.CreateDefaultBuilder([])
             .ConfigureMessageBroker([])
             .ConfigureAppConfiguration((config) =>

@@ -45,7 +45,7 @@ public sealed class TcpSubscriber<T>(
                 retryCount++;
                 var delay = TimeSpan.FromSeconds(Math.Min(retryCount, maxRetryAttempts));
                 Logger.LogDebug($"Retry {retryCount}: {ex.Message}. Waiting {delay}...");
-                await Task.Delay(delay);
+                await Task.Delay(delay, CancellationToken);
             }
         }
 
