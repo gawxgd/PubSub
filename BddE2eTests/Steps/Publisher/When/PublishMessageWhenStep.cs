@@ -2,6 +2,7 @@ using NUnit.Framework;
 using Reqnroll;
 using BddE2eTests.Configuration;
 using BddE2eTests.Configuration.TestEvents;
+using Publisher.Domain.Port;
 
 namespace BddE2eTests.Steps.Publisher.When;
 
@@ -16,7 +17,8 @@ public class PublishMessageWhenStep(ScenarioContext scenarioContext)
         try
         {
             await TestContext.Progress.WriteLineAsync($"[When Step] Sending message '{message}' to topic '{topic}'...");
-            await PublishSingleMessage(message, topic);
+            var publisher = _context.GetDefaultPublisher();
+            await PublishSingleMessage(publisher, message, topic);
             await TestContext.Progress.WriteLineAsync($"[When Step] Message sent!");
 
             _context.SentMessage = message;
@@ -53,19 +55,31 @@ public class PublishMessageWhenStep(ScenarioContext scenarioContext)
     [When(@"the publisher sends messages in order:")]
     public async Task WhenThePublisherSendsMessagesInOrder(Table table)
     {
-        await TestContext.Progress.WriteLineAsync($"[When Step] Sending {table.Rows.Count} messages in order...");
+        var publisher = _context.GetDefaultPublisher();
+        await PublishMessagesInOrderAsync(publisher, "default publisher", table);
+    }
+
+    [When(@"the publisher (.+) sends messages in order:")]
+    public async Task WhenThePublisherSendsMessagesInOrder(string publisherName, Table table)
+    {
+        var publisher = _context.GetPublisher(publisherName);
+        await PublishMessagesInOrderAsync(publisher, $"publisher '{publisherName}'", table);
+    }
+
+    private async Task PublishMessagesInOrderAsync(IPublisher<TestEvent> publisher, string publisherDescription, Table table)
+    {
+        await TestContext.Progress.WriteLineAsync($"[When Step] Sending {table.Rows.Count} messages in order using {publisherDescription}...");
         foreach (var row in table.Rows)
         {
             var message = row["Message"];
             await TestContext.Progress.WriteLineAsync($"[When Step] Sending '{message}'...");
-            await PublishSingleMessage(message, _context.Topic);
+            await PublishSingleMessage(publisher, message, _context.Topic);
         }
         await TestContext.Progress.WriteLineAsync("[When Step] All messages sent!");
     }
 
-    private async Task PublishSingleMessage(string message, string topic)
+    private async Task PublishSingleMessage(IPublisher<TestEvent> publisher, string message, string topic)
     {
-        var publisher = _context.Publisher;
         var evt = new TestEvent
         {
             Message = message,
