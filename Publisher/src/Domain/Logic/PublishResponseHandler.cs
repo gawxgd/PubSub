@@ -17,11 +17,6 @@ public sealed class PublishResponseHandler
         if (response.ErrorCode != ErrorCode.None)
         {
             Logger.LogError($"Broker returned error: errorCode={response.ErrorCode}, baseOffset={response.BaseOffset}");
-
-            if (response.ErrorCode == ErrorCode.TopicNotFound || response.ErrorCode == ErrorCode.InvalidTopic)
-            {
-                throw new PublisherException($"Broker error: {response.ErrorCode}");
-            }
         }
         else
         {

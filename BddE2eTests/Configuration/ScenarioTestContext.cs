@@ -21,6 +21,8 @@ public class ScenarioTestContext(ScenarioContext scenarioContext)
     private const string PublishExceptionKey = "PublishException";
 
     private static readonly TestOptions TestOptions = TestOptionsLoader.Load();
+    
+    public SchemaRegistryTestOptions SchemaRegistryOptions => TestOptions.SchemaRegistry;
 
     public IPublisher<TestEvent> Publisher
     {

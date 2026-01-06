@@ -5,6 +5,7 @@ using System.Threading.Channels;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
+using MessageBroker.Domain.Entities;
 using MessageBroker.Domain.Enums;
 using MessageBroker.Domain.Port;
 using MessageBroker.Inbound.Adapter;
@@ -35,6 +36,15 @@ public sealed class TcpPublisherConnection(
     private PipeReader? _pipeReader;
     private Task? _processChannelTask;
     private Task? _receiveResponseTask;
+    private readonly Channel<PublishResponse> _responseChannel = Channel.CreateBounded<PublishResponse>(
+        new BoundedChannelOptions(100)
+        {
+            FullMode = BoundedChannelFullMode.DropOldest,
+            SingleReader = false,
+            SingleWriter = true
+        });
+    public ChannelReader<PublishResponse> Responses => _responseChannel. Reader;
+    
 
     private PipeWriter PipeWriter =>
         _pipeWriter ?? throw new InvalidOperationException("PipeWriter has not been initialized.");
@@ -74,6 +84,7 @@ public sealed class TcpPublisherConnection(
             _client.Close();
 
             deadLetterChannel.Writer.TryComplete();
+            _responseChannel.Writer. TryComplete();
 
             _client.Dispose();
             _cancellationSource.Dispose();
@@ -268,6 +279,7 @@ public sealed class TcpPublisherConnection(
         {
             if (response != null)
             {
+                _responseChannel.Writer.TryWrite(response);
                 _responseHandler.Handle(response);
             }
         }

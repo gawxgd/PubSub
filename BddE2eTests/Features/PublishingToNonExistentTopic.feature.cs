@@ -131,6 +131,59 @@ namespace BddE2eTests.Features
             }
             await this.ScenarioCleanupAsync();
         }
+        
+        [NUnit.Framework.TestAttribute()]
+        [NUnit.Framework.DescriptionAttribute("Publisher tries to publish a message to a topic that does exist in the Schema Reg" +
+            "istry but there are no designated files in the Commit Log")]
+        public async System.Threading.Tasks.Task PublisherTriesToPublishAMessageToATopicThatDoesExistInTheSchemaRegistryButThereAreNoDesignatedFilesInTheCommitLog()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Publisher tries to publish a message to a topic that does exist in the Schema Reg" +
+                    "istry but there are no designated files in the Commit Log", null, tagsOfScenario, argumentsOfScenario, featureTags);
+#line 14
+    this.ScenarioInitialize(scenarioInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                testRunner.SkipScenario();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+                global::Reqnroll.Table table8 = new global::Reqnroll.Table(new string[] {
+                            "Setting",
+                            "Value"});
+                table8.AddRow(new string[] {
+                            "Topic",
+                            "non-existent"});
+                table8.AddRow(new string[] {
+                            "Broker",
+                            "127.0.0.1:9096"});
+                table8.AddRow(new string[] {
+                            "Queue Size",
+                            "1000"});
+                table8.AddRow(new string[] {
+                            "Max Retry Attempts",
+                            "3"});
+                table8.AddRow(new string[] {
+                            "Max Send Attempts",
+                            "3"});
+#line 15
+        await testRunner.GivenAsync("a publisher is configured with the following options:", ((string)(null)), table8, "Given ");
+#line hidden
+#line 22
+        await testRunner.AndAsync("the schema registry contains a schema for topic \"non-existent\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 23
+        await testRunner.WhenAsync("the publisher sends message \"message-content\" to topic \"non-existent\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 24
+        await testRunner.ThenAsync("the publisher reports that the topic is not available", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
     }
 }
 #pragma warning restore

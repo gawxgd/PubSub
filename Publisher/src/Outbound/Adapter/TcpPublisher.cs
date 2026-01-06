@@ -2,6 +2,7 @@ using System.Threading.Channels;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
+using MessageBroker.Domain.Entities;
 using MessageBroker.Domain.Port.CommitLog.RecordBatch;
 using Publisher.Configuration.Options;
 using Publisher.Domain.Logic;
@@ -19,6 +20,7 @@ public sealed class TcpPublisher<T>(
     private readonly IAutoLogger _logger = AutoLoggerFactory.CreateLogger<TcpPublisher<T>>(LogSource.Publisher);
     private readonly TimeSpan _baseRetryDelay = TimeSpan.FromSeconds(1);
     private readonly CancellationTokenSource _cancellationTokenSource = new();
+    public ChannelReader<PublishResponse>?  Responses => _currentPublisherConnection?. Responses;
 
     private readonly Channel<byte[]> _channel = Channel.CreateBounded<byte[]>(
         new BoundedChannelOptions((int)options.MaxPublisherQueueSize)
