@@ -17,8 +17,8 @@ public class PublishMessageWhenStep(ScenarioContext scenarioContext)
         try
         {
             await TestContext.Progress.WriteLineAsync($"[When Step] Sending message '{message}' to topic '{topic}'...");
-            var publisher = _context.GetDefaultPublisher();
-            await PublishSingleMessage(publisher, message, topic);
+            _context.TryGetPublisher(out var publisher);
+            await PublishSingleMessage(publisher!, message, topic);
             await TestContext.Progress.WriteLineAsync($"[When Step] Message sent!");
 
             _context.SentMessage = message;
@@ -55,8 +55,8 @@ public class PublishMessageWhenStep(ScenarioContext scenarioContext)
     [When(@"the publisher sends messages in order:")]
     public async Task WhenThePublisherSendsMessagesInOrder(Table table)
     {
-        var publisher = _context.GetDefaultPublisher();
-        await PublishMessagesInOrderAsync(publisher, "default publisher", table);
+        _context.TryGetPublisher(out var publisher);
+        await PublishMessagesInOrderAsync(publisher!, "default publisher", table);
     }
 
     [When(@"the publisher (.+) sends messages in order:")]

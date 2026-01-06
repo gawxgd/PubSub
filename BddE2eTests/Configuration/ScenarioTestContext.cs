@@ -144,16 +144,6 @@ public class ScenarioTestContext(ScenarioContext scenarioContext)
         return publisher;
     }
 
-    public IPublisher<TestEvent> GetDefaultPublisher()
-    {
-        return Publisher;
-    }
-
-    public bool TryGetPublisher(string name, out IPublisher<TestEvent>? publisher)
-    {
-        return Publishers.TryGetValue(name, out publisher);
-    }
-
     public IEnumerable<IPublisher<TestEvent>> GetAllPublishers()
     {
         return Publishers.Values;
@@ -207,16 +197,6 @@ public class ScenarioTestContext(ScenarioContext scenarioContext)
             throw new KeyNotFoundException($"Received messages channel for subscriber '{name}' not found. Available subscribers: {string.Join(", ", SubscriberReceivedMessages.Keys)}");
         }
         return messages;
-    }
-
-    public bool TryGetSubscriber(string name, out ISubscriber<TestEvent>? subscriber)
-    {
-        return Subscribers.TryGetValue(name, out subscriber);
-    }
-
-    public bool TryGetSubscriberReceivedMessages(string name, out Channel<TestEvent>? messages)
-    {
-        return SubscriberReceivedMessages.TryGetValue(name, out messages);
     }
 
     public IEnumerable<ISubscriber<TestEvent>> GetAllSubscribers()
