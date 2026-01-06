@@ -1,7 +1,10 @@
 using Reqnroll;
 using Publisher.Configuration;
 using BddE2eTests.Configuration;
+using BddE2eTests.Configuration.Builder;
+using BddE2eTests.Configuration.Options;
 using BddE2eTests.Configuration.TestEvents;
+using Publisher.Domain.Port;
 
 namespace BddE2eTests.Steps.Publisher.Given;
 
@@ -21,46 +24,39 @@ public class ConfigurePublisherGivenStep(ScenarioContext scenarioContext)
     private const int CleanupTimeoutSeconds = 5;
 
     private readonly ScenarioTestContext _context = new(scenarioContext);
+    private static readonly TestOptions TestOptions = TestOptionsLoader.Load();
 
     [Given(@"a publisher is configured with the following options:")]
     public async Task GivenAPublisherIsConfiguredWithTheFollowingOptions(Table table)
     {
         await TestContext.Progress.WriteLineAsync("[Publisher Step] Starting publisher configuration...");
-        var builder = _context.GetOrCreatePublisherOptionsBuilder();
-        var schemaRegistryBuilder = _context.GetOrCreateSchemaRegistryClientBuilder();
-        string? topic = null;
+        var publisher = await CreatePublisherFromTableAsync(table);
+        
+        _context.Publisher = publisher;
+        _context.Topic = ExtractTopicFromTable(table);
+    }
 
-        foreach (var row in table.Rows)
+    [Given(@"publishers (.+) are configured with the following options:")]
+    public async Task GivenPublishersAreConfiguredWithTheFollowingOptions(string publisherNames, Table table)
+    {
+        var names = ParseNames(publisherNames);
+        await TestContext.Progress.WriteLineAsync($"[Publisher Step] Starting configuration for {names.Length} publishers: {string.Join(", ", names)}...");
+        
+        foreach (var name in names)
         {
-            var setting = row[SettingColumn];
-            var value = row[ValueColumn];
-
-            switch (setting.ToLowerInvariant())
-            {
-                case TopicSetting:
-                    topic = value;
-                    builder.WithTopic(value);
-                    break;
-                case BrokerSetting:
-                    var brokerParts = value.Split(BrokerSeparator);
-                    if (brokerParts.Length == 2)
-                    {
-                        builder.WithBrokerHost(brokerParts[0])
-                            .WithBrokerPort(int.Parse(brokerParts[1]));
-                    }
-
-                    break;
-                case QueueSizeSetting:
-                    builder.WithMaxPublisherQueueSize(uint.Parse(value));
-                    break;
-                case MaxRetryAttemptsSetting:
-                    builder.WithMaxRetryAttempts(uint.Parse(value));
-                    break;
-                case MaxSendAttemptsSetting:
-                    builder.WithMaxSendAttempts(uint.Parse(value));
-                    break;
-            }
+            await TestContext.Progress.WriteLineAsync($"[Publisher Step] Configuring publisher '{name}'...");
+            var publisher = await CreatePublisherFromTableAsync(table);
+            _context.SetPublisher(name, publisher);
         }
+        
+        _context.Topic = ExtractTopicFromTable(table);
+        await TestContext.Progress.WriteLineAsync($"[Publisher Step] All {names.Length} publishers configured!");
+    }
+
+    private async Task<IPublisher<TestEvent>> CreatePublisherFromTableAsync(Table table)
+    {
+        var builder = CreatePublisherOptionsBuilderFromTable(table);
+        var topic = ExtractTopicFromTable(table);
 
         if (string.IsNullOrEmpty(topic))
         {
@@ -70,6 +66,7 @@ public class ConfigurePublisherGivenStep(ScenarioContext scenarioContext)
         await TestContext.Progress.WriteLineAsync($"[Publisher Step] Building options for topic: {topic}");
         var publisherOptions = builder.Build();
 
+        var schemaRegistryBuilder = _context.GetOrCreateSchemaRegistryClientBuilder();
         await TestContext.Progress.WriteLineAsync("[Publisher Step] Creating schema registry client factory...");
         var schemaRegistryClientFactory = schemaRegistryBuilder.BuildFactory();
 
@@ -83,8 +80,67 @@ public class ConfigurePublisherGivenStep(ScenarioContext scenarioContext)
         await publisher.CreateConnection();
         await TestContext.Progress.WriteLineAsync("[Publisher Step] Publisher connected!");
 
-        _context.Publisher = publisher;
-        _context.Topic = topic;
+        return publisher;
+    }
+
+    private PublisherOptionsBuilder CreatePublisherOptionsBuilderFromTable(Table table)
+    {
+        var builder = new PublisherOptionsBuilder(TestOptions.Publisher);
+
+        foreach (var row in table.Rows)
+        {
+            var setting = row[SettingColumn];
+            var value = row[ValueColumn];
+
+            switch (setting.ToLowerInvariant())
+            {
+                case TopicSetting:
+                    builder.WithTopic(value);
+                    break;
+                case BrokerSetting:
+                    var brokerParts = value.Split(BrokerSeparator);
+                    if (brokerParts.Length == 2)
+                    {
+                        builder.WithBrokerHost(brokerParts[0])
+                            .WithBrokerPort(int.Parse(brokerParts[1]));
+                    }
+                    break;
+                case QueueSizeSetting:
+                    builder.WithMaxPublisherQueueSize(uint.Parse(value));
+                    break;
+                case MaxRetryAttemptsSetting:
+                    builder.WithMaxRetryAttempts(uint.Parse(value));
+                    break;
+                case MaxSendAttemptsSetting:
+                    builder.WithMaxSendAttempts(uint.Parse(value));
+                    break;
+            }
+        }
+
+        return builder;
+    }
+
+    private string ExtractTopicFromTable(Table table)
+    {
+        foreach (var row in table.Rows)
+        {
+            var setting = row[SettingColumn];
+            var value = row[ValueColumn];
+
+            if (setting.ToLowerInvariant() == TopicSetting)
+            {
+                return value;
+            }
+        }
+
+        return string.Empty;
+    }
+
+    private string[] ParseNames(string names)
+    {
+        return names.Split([',', ' '], StringSplitOptions.RemoveEmptyEntries)
+            .Select(n => n.Trim())
+            .ToArray();
     }
 
     [AfterScenario]
@@ -95,28 +151,41 @@ public class ConfigurePublisherGivenStep(ScenarioContext scenarioContext)
         if (_context.TryGetPublisher(out var publisher)
             && publisher is IAsyncDisposable publisherDisposable)
         {
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(CleanupTimeoutSeconds));
-            try
-            {
-                var disposeTask = publisherDisposable.DisposeAsync().AsTask();
-                var completedTask = await Task.WhenAny(disposeTask, Task.Delay(Timeout.Infinite, cts.Token));
+            await DisposePublisherAsync(publisherDisposable, "default");
+        }
 
-                if (completedTask != disposeTask)
-                {
-                    await TestContext.Progress.WriteLineAsync(
-                        $"[Cleanup] WARNING: Publisher dispose timed out after {CleanupTimeoutSeconds}s");
-                }
-            }
-            catch (OperationCanceledException)
+        foreach (var pub in _context.GetAllPublishers())
+        {
+            if (pub is IAsyncDisposable disposable)
             {
-                await TestContext.Progress.WriteLineAsync("[Cleanup] Publisher dispose was cancelled");
-            }
-            catch (Exception ex)
-            {
-                await TestContext.Progress.WriteLineAsync($"[Cleanup] Error disposing publisher: {ex.Message}");
+                await DisposePublisherAsync(disposable, "named");
             }
         }
 
         await TestContext.Progress.WriteLineAsync("[Cleanup] Publisher cleanup complete");
+    }
+
+    private async Task DisposePublisherAsync(IAsyncDisposable publisherDisposable, string type)
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(CleanupTimeoutSeconds));
+        try
+        {
+            var disposeTask = publisherDisposable.DisposeAsync().AsTask();
+            var completedTask = await Task.WhenAny(disposeTask, Task.Delay(Timeout.Infinite, cts.Token));
+
+            if (completedTask != disposeTask)
+            {
+                await TestContext.Progress.WriteLineAsync(
+                    $"[Cleanup] WARNING: {type} Publisher dispose timed out after {CleanupTimeoutSeconds}s");
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            await TestContext.Progress.WriteLineAsync($"[Cleanup] {type} Publisher dispose was cancelled");
+        }
+        catch (Exception ex)
+        {
+            await TestContext.Progress.WriteLineAsync($"[Cleanup] Error disposing {type} publisher: {ex.Message}");
+        }
     }
 }
