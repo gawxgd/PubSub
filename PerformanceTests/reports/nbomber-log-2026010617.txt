@@ -1,0 +1,31 @@
+2026-01-06 17:25:31.957 +01:00 [INF] [ThreadId:13] NBomber 6.1.2 started a new session: 2026-01-06_16.25.88_session_dcf25eb7
+2026-01-06 17:25:32.013 +01:00 [INF] [ThreadId:13] NBomber started as single node
+2026-01-06 17:25:32.017 +01:00 [INF] [ThreadId:13] License validation....
+2026-01-06 17:25:32.018 +01:00 [WRN] [ThreadId:13] THIS VERSION IS FREE ONLY FOR PERSONAL USE. You can't use it for an organization.
+2026-01-06 17:25:32.034 +01:00 [INF] [ThreadId:13] Reports folder: C:\src\github\sandrawar\PubSub\PerformanceTests\bin\Debug\net9.0\reports
+2026-01-06 17:25:32.035 +01:00 [INF] [ThreadId:13] Plugins: no plugins were loaded
+2026-01-06 17:25:32.036 +01:00 [INF] [ThreadId:13] Reporting sinks: no reporting sinks were loaded
+2026-01-06 17:25:32.037 +01:00 [INF] [ThreadId:13] Starting init...
+2026-01-06 17:25:32.045 +01:00 [INF] [ThreadId:13] Target scenarios: publisher_throughput, end_to_end_throughput, publisher_latency, kafka_publisher_throughput, kafka_end_to_end_throughput, kafka_publisher_latency
+2026-01-06 17:25:32.047 +01:00 [INF] [ThreadId:13] Start init scenario: publisher_throughput
+2026-01-06 17:25:32.585 +01:00 [INF] [ThreadId:6] Start init scenario: end_to_end_throughput
+2026-01-06 17:25:33.111 +01:00 [INF] [ThreadId:14] Start init scenario: publisher_latency
+2026-01-06 17:25:33.625 +01:00 [INF] [ThreadId:10] Start init scenario: kafka_publisher_throughput
+2026-01-06 17:25:33.752 +01:00 [INF] [ThreadId:10] Start init scenario: kafka_end_to_end_throughput
+2026-01-06 17:25:35.781 +01:00 [INF] [ThreadId:15] Start init scenario: kafka_publisher_latency
+2026-01-06 17:25:35.793 +01:00 [INF] [ThreadId:15] Init finished
+2026-01-06 17:25:35.851 +01:00 [INF] [ThreadId:15] Starting warm up...
+2026-01-06 17:25:35.852 +01:00 [INF] [ThreadId:15] Warm up for scenarios: publisher_throughput, end_to_end_throughput, publisher_latency, kafka_publisher_throughput, kafka_end_to_end_throughput, kafka_publisher_latency
+2026-01-06 17:25:35.860 +01:00 [INF] [ThreadId:15] Warm up duration: 00:00:03
+2026-01-06 17:25:39.913 +01:00 [INF] [ThreadId:10] Starting bombing...
+2026-01-06 17:25:59.986 +01:00 [INF] [ThreadId:29] Waiting on scenarios completion...
+2026-01-06 17:26:03.012 +01:00 [INF] [ThreadId:25] Stopping scenarios...
+2026-01-06 17:26:03.021 +01:00 [INF] [ThreadId:25] Start cleaning scenario: publisher_throughput
+2026-01-06 17:26:03.062 +01:00 [INF] [ThreadId:29] Start cleaning scenario: end_to_end_throughput
+2026-01-06 17:26:08.079 +01:00 [INF] [ThreadId:29] Start cleaning scenario: publisher_latency
+2026-01-06 17:26:13.090 +01:00 [INF] [ThreadId:30] Start cleaning scenario: kafka_publisher_throughput
+2026-01-06 17:26:13.127 +01:00 [INF] [ThreadId:30] Start cleaning scenario: kafka_end_to_end_throughput
+2026-01-06 17:26:13.235 +01:00 [INF] [ThreadId:14] Start cleaning scenario: kafka_publisher_latency
+2026-01-06 17:26:13.252 +01:00 [INF] [ThreadId:14] Calculating final statistics...
+2026-01-06 17:26:13.724 +01:00 [INF] [ThreadId:31] Reports saved in folder: C:\src\github\sandrawar\PubSub\PerformanceTests\reports
+2026-01-06 17:26:13.724 +01:00 [WRN] [ThreadId:31] THIS VERSION IS FREE ONLY FOR PERSONAL USE. You can't use it for an organization.

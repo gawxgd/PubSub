@@ -1,12 +1,13 @@
 # Performance Tests dla PubSub System
 
-Projekt zawiera testy wydajnościowe dla systemu PubSub używające NBomber.
+Projekt zawiera testy wydajnościowe dla systemu PubSub używające NBomber. Testy mogą również mierzyć wydajność Kafki dla porównania.
 
 ## Wymagania
 
 - .NET 9.0
 - Uruchomiony MessageBroker (domyślnie na porcie 9096)
 - Uruchomiony SchemaRegistry (domyślnie na porcie 8081)
+- (Opcjonalnie) Kafka i Confluent Schema Registry dla testów porównawczych
 
 ## Uruchomienie MessageBroker i SchemaRegistry
 
@@ -42,30 +43,60 @@ dotnet run
 
 Testy można skonfigurować za pomocą zmiennych środowiskowych:
 
+### PubSub System (wymagane)
 - `BROKER_HOST` - host brokera (domyślnie: localhost)
 - `BROKER_PORT` - port brokera (domyślnie: 9096)
 - `SCHEMA_REGISTRY_URL` - URL Schema Registry (domyślnie: http://localhost:8081)
 - `TOPIC` - nazwa topiku (domyślnie: performance-test)
 
+### Kafka (opcjonalne - dla testów porównawczych)
+- `ENABLE_KAFKA_TESTS` - włącz testy Kafki (domyślnie: false, ustaw na "true" aby włączyć)
+- `KAFKA_BOOTSTRAP_SERVERS` - adresy serwerów Kafki (domyślnie: localhost:9092)
+- `KAFKA_SCHEMA_REGISTRY_URL` - URL Confluent Schema Registry (domyślnie: http://localhost:8081)
+- `KAFKA_TOPIC` - nazwa topiku Kafki (domyślnie: {TOPIC}-kafka)
+- `KAFKA_CONSUMER_GROUP_ID` - ID grupy konsumentów (domyślnie: performance-test-consumer-group)
+
 ## Scenariusze testowe
 
-### 1. Publisher Throughput (`publisher_throughput`)
+### PubSub System
+
+#### 1. Publisher Throughput (`publisher_throughput`)
 Test przepustowości publikowania wiadomości.
-- Warm-up: 5 sekund
-- Load: Ramp up od 10 do 100 wiadomości/sekundę przez 30 sekund
+- Warm-up: 3 sekundy
+- Load: Stałe 10 wiadomości/sekundę przez 15 sekund
 - Mierzy: liczbę wiadomości na sekundę, które można opublikować
 
-### 2. End-to-End Throughput (`end_to_end_throughput`)
+#### 2. End-to-End Throughput (`end_to_end_throughput`)
 Test end-to-end: publikowanie i odbieranie wiadomości.
-- Warm-up: 5 sekund
-- Load: Stałe 50 wiadomości/sekundę przez 60 sekund
+- Warm-up: 3 sekundy
+- Load: Stałe 20 wiadomości/sekundę przez 20 sekund
 - Mierzy: przepustowość całego systemu, utratę wiadomości
 
-### 3. Publisher Latency (`publisher_latency`)
+#### 3. Publisher Latency (`publisher_latency`)
 Test latencji publikowania pojedynczej wiadomości.
-- Warm-up: 5 sekund
-- Load: Stałe 10 wiadomości/sekundę przez 30 sekund
+- Warm-up: 3 sekundy
+- Load: Stałe 10 wiadomości/sekundę przez 15 sekund
 - Mierzy: czas opublikowania pojedynczej wiadomości
+
+### Kafka (tylko gdy `ENABLE_KAFKA_TESTS=true`)
+
+#### 4. Kafka Publisher Throughput (`kafka_publisher_throughput`)
+Test przepustowości publikowania wiadomości do Kafki.
+- Warm-up: 3 sekundy
+- Load: Stałe 10 wiadomości/sekundę przez 15 sekund
+- Mierzy: liczbę wiadomości na sekundę, które można opublikować do Kafki
+
+#### 5. Kafka End-to-End Throughput (`kafka_end_to_end_throughput`)
+Test end-to-end dla Kafki: publikowanie i odbieranie wiadomości.
+- Warm-up: 3 sekundy
+- Load: Stałe 20 wiadomości/sekundę przez 20 sekund
+- Mierzy: przepustowość całego systemu Kafki, utratę wiadomości
+
+#### 6. Kafka Publisher Latency (`kafka_publisher_latency`)
+Test latencji publikowania pojedynczej wiadomości do Kafki.
+- Warm-up: 3 sekundy
+- Load: Stałe 10 wiadomości/sekundę przez 15 sekund
+- Mierzy: czas opublikowania pojedynczej wiadomości do Kafki
 
 ## Uruchomienie
 
@@ -136,13 +167,53 @@ cd PerformanceTests
 dotnet run
 ```
 
+### Uruchomienie z testami Kafki (porównanie)
+
+```powershell
+# Ustaw zmienne środowiskowe dla PubSub
+$env:BROKER_HOST="localhost"
+$env:BROKER_PORT="9096"
+$env:SCHEMA_REGISTRY_URL="http://localhost:8081"
+$env:TOPIC="performance-test"
+
+# Włącz testy Kafki
+$env:ENABLE_KAFKA_TESTS="true"
+$env:KAFKA_BOOTSTRAP_SERVERS="localhost:9092"
+$env:KAFKA_SCHEMA_REGISTRY_URL="http://localhost:8081"
+$env:KAFKA_TOPIC="performance-test-kafka"
+
+# Uruchom testy (PubSub + Kafka)
+cd PerformanceTests
+dotnet run
+```
+
+**Uwaga:** Przed uruchomieniem testów Kafki upewnij się, że:
+1. Kafka jest uruchomiona (np. przez Docker Compose)
+2. Confluent Schema Registry jest dostępny (może być ten sam co dla PubSub)
+3. Topic w Kafce zostanie utworzony automatycznie przy pierwszym publish
+
 ## Co testy robią?
 
 1. **Sprawdzają dostępność** MessageBroker i SchemaRegistry przed uruchomieniem
 2. **Rejestrują schemat** dla `TestMessage` w SchemaRegistry
-3. **Uruchamiają 3 scenariusze testowe:**
+3. **Uruchamiają scenariusze testowe PubSub:**
    - `publisher_throughput` - test przepustowości publikowania
    - `end_to_end_throughput` - test end-to-end (publikowanie + odbieranie)
    - `publisher_latency` - test latencji publikowania
-4. **Generują raporty** w folderze `reports/` (HTML, CSV, TXT)
+4. **Jeśli włączone (`ENABLE_KAFKA_TESTS=true`), uruchamiają również testy Kafki:**
+   - Rejestrują schemat w Confluent Schema Registry
+   - `kafka_publisher_throughput` - test przepustowości publikowania do Kafki
+   - `kafka_end_to_end_throughput` - test end-to-end dla Kafki
+   - `kafka_publisher_latency` - test latencji publikowania do Kafki
+5. **Generują raporty** w folderze `reports/` (HTML, CSV, TXT) z wynikami wszystkich testów
+
+## Porównanie wyników
+
+Raporty NBomber zawierają szczegółowe metryki dla każdego scenariusza, co pozwala na bezpośrednie porównanie wydajności:
+- **Throughput** - liczba wiadomości na sekundę
+- **Latency** - czas odpowiedzi (min, średnia, max, percentyle)
+- **Success rate** - procent udanych operacji
+- **Message loss** - dla testów E2E
+
+Wszystkie metryki są dostępne w raportach HTML, CSV i TXT w folderze `reports/`.
 

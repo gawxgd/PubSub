@@ -3,6 +3,7 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using Confluent.SchemaRegistry;
 using LoggerLib.Outbound.Adapter;
 using NBomber.CSharp;
 using NBomber.Contracts;
@@ -26,19 +27,33 @@ Console.WriteLine("║   PubSub Performance Tests with NBomber   ║");
 Console.WriteLine("╚════════════════════════════════════════════╝");
 Console.WriteLine();
 
-// Configuration
+// Configuration - PubSub System
 var brokerHost = Environment.GetEnvironmentVariable("BROKER_HOST") ?? "127.0.0.1";
 var brokerPort = int.Parse(Environment.GetEnvironmentVariable("BROKER_PORT") ?? "9096");
 var schemaRegistryUrl = Environment.GetEnvironmentVariable("SCHEMA_REGISTRY_URL") ?? "http://localhost:8081";
 var topic = Environment.GetEnvironmentVariable("TOPIC") ?? "performance-test";
 
+// Configuration - Kafka (optional, defaults to 127.0.0.1 to force IPv4)
+var kafkaBootstrapServers = Environment.GetEnvironmentVariable("KAFKA_BOOTSTRAP_SERVERS") ?? "127.0.0.1:9092";
+var kafkaSchemaRegistryUrl = Environment.GetEnvironmentVariable("KAFKA_SCHEMA_REGISTRY_URL") ?? "http://localhost:8081";
+var kafkaTopic = Environment.GetEnvironmentVariable("KAFKA_TOPIC") ?? $"{topic}-kafka";
+var kafkaConsumerGroupId = Environment.GetEnvironmentVariable("KAFKA_CONSUMER_GROUP_ID") ?? "performance-test-consumer-group";
+var enableKafkaTests = Environment.GetEnvironmentVariable("ENABLE_KAFKA_TESTS")?.ToLower() == "true";
+
 var brokerUri = new Uri($"messageBroker://{brokerHost}:{brokerPort}");
 var schemaRegistryUri = new Uri(schemaRegistryUrl);
 
-Console.WriteLine("Configuration:");
+Console.WriteLine("Configuration - PubSub System:");
 Console.WriteLine($"   Broker: {brokerUri}");
 Console.WriteLine($"   Schema Registry: {schemaRegistryUri}");
 Console.WriteLine($"   Topic: {topic}");
+Console.WriteLine();
+Console.WriteLine("Configuration - Kafka:");
+Console.WriteLine($"   Bootstrap Servers: {kafkaBootstrapServers}");
+Console.WriteLine($"   Schema Registry: {kafkaSchemaRegistryUrl}");
+Console.WriteLine($"   Topic: {kafkaTopic}");
+Console.WriteLine($"   Consumer Group: {kafkaConsumerGroupId}");
+Console.WriteLine($"   Kafka Tests Enabled: {enableKafkaTests}");
 Console.WriteLine();
 
 // Check if broker is available
@@ -194,9 +209,12 @@ var subscriberOptions = new SubscriberOptions
     // MaxQueueSize is read-only with default value of 65536
 };
 
-// Create scenarios
+// Create PubSub scenarios
+var scenarios = new List<ScenarioProps>();
+
 ScenarioProps publisherPerformanceScenario =
     PublisherPerformanceScenario.Create(publisherFactory, publisherOptions);
+scenarios.Add(publisherPerformanceScenario);
 
 ScenarioProps endToEndScenario =
     EndToEndPerformanceScenario.Create(
@@ -204,26 +222,62 @@ ScenarioProps endToEndScenario =
         publisherOptions,
         subscriberFactory,
         subscriberOptions);
+scenarios.Add(endToEndScenario);
 
 ScenarioProps publisherLatencyScenario =
     PublisherLatencyScenario.Create(publisherFactory, publisherOptions);
+scenarios.Add(publisherLatencyScenario);
+
+// Create Kafka scenarios if enabled
+if (enableKafkaTests)
+{
+    Console.WriteLine("\nPreparing Kafka tests...");
+    Console.WriteLine("   Note: Using JSON serialization (no Schema Registry required)\n");
+    
+    ScenarioProps kafkaPublisherPerformanceScenario =
+        KafkaPublisherPerformanceScenario.Create(kafkaBootstrapServers, kafkaSchemaRegistryUrl, kafkaTopic);
+    scenarios.Add(kafkaPublisherPerformanceScenario);
+    
+    ScenarioProps kafkaEndToEndScenario =
+        KafkaEndToEndPerformanceScenario.Create(kafkaBootstrapServers, kafkaSchemaRegistryUrl, kafkaTopic, kafkaConsumerGroupId);
+    scenarios.Add(kafkaEndToEndScenario);
+    
+    ScenarioProps kafkaPublisherLatencyScenario =
+        KafkaPublisherLatencyScenario.Create(kafkaBootstrapServers, kafkaSchemaRegistryUrl, kafkaTopic);
+    scenarios.Add(kafkaPublisherLatencyScenario);
+    
+    Console.WriteLine("Kafka scenarios added.\n");
+}
 
 // Run tests with progress logging
 Console.WriteLine("\nStarting performance tests...");
-Console.WriteLine("   Estimated duration: ~1 minute");
-Console.WriteLine("   - Publisher Throughput: ~18s (3s warm-up + 15s test)");
-Console.WriteLine("   - End-to-End Throughput: ~23s (3s warm-up + 20s test)");
-Console.WriteLine("   - Publisher Latency: ~18s (3s warm-up + 15s test)");
+if (enableKafkaTests)
+{
+    Console.WriteLine("   Estimated duration: ~2 minutes (PubSub + Kafka)");
+    Console.WriteLine("   PubSub Tests:");
+    Console.WriteLine("   - Publisher Throughput: ~18s (3s warm-up + 15s test)");
+    Console.WriteLine("   - End-to-End Throughput: ~23s (3s warm-up + 20s test)");
+    Console.WriteLine("   - Publisher Latency: ~18s (3s warm-up + 15s test)");
+    Console.WriteLine("   Kafka Tests:");
+    Console.WriteLine("   - Kafka Publisher Throughput: ~18s (3s warm-up + 15s test)");
+    Console.WriteLine("   - Kafka End-to-End Throughput: ~23s (3s warm-up + 20s test)");
+    Console.WriteLine("   - Kafka Publisher Latency: ~18s (3s warm-up + 15s test)");
+}
+else
+{
+    Console.WriteLine("   Estimated duration: ~1 minute");
+    Console.WriteLine("   - Publisher Throughput: ~18s (3s warm-up + 15s test)");
+    Console.WriteLine("   - End-to-End Throughput: ~23s (3s warm-up + 20s test)");
+    Console.WriteLine("   - Publisher Latency: ~18s (3s warm-up + 15s test)");
+    Console.WriteLine();
+    Console.WriteLine("   Note: Set ENABLE_KAFKA_TESTS=true to include Kafka performance tests");
+}
 Console.WriteLine();
 
 var startTime = DateTime.UtcNow;
 
 NBomberRunner
-    .RegisterScenarios(
-        publisherPerformanceScenario,
-        endToEndScenario,
-        publisherLatencyScenario
-    )
+    .RegisterScenarios(scenarios.ToArray())
     .WithReportFolder("reports")
     .Run();
 
@@ -289,5 +343,63 @@ static async Task RegisterSchemaForTestMessage(Uri schemaRegistryBaseAddress, st
     catch (Exception ex)
     {
         throw new InvalidOperationException($"Failed to register schema for TestMessage: {ex.Message}", ex);
+    }
+}
+
+static async Task RegisterSchemaInKafkaSchemaRegistry(string schemaRegistryUrl, string topic)
+{
+    // JSON Schema for TestMessage
+    const string testMessageJsonSchema = """
+    {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "Id": {
+          "type": "integer"
+        },
+        "Timestamp": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "Content": {
+          "type": "string"
+        },
+        "Source": {
+          "type": "string"
+        },
+        "SequenceNumber": {
+          "type": "integer",
+          "format": "int64"
+        }
+      },
+      "required": ["Id", "Timestamp", "Content", "Source", "SequenceNumber"]
+    }
+    """;
+
+    try
+    {
+        // Confluent Schema Registry uses different API format
+        var schemaRegistryConfig = new SchemaRegistryConfig { Url = schemaRegistryUrl };
+        using var schemaRegistry = new CachedSchemaRegistryClient(schemaRegistryConfig);
+        
+        // Register schema for the topic (subject name is typically {topic}-value)
+        var subjectName = $"{topic}-value";
+        var schema = new Confluent.SchemaRegistry.Schema(testMessageJsonSchema, SchemaType.Json);
+        
+        var schemaId = await schemaRegistry.RegisterSchemaAsync(subjectName, schema);
+        Console.WriteLine($"   Kafka JSON Schema ID: {schemaId}");
+    }
+    catch (Exception ex)
+    {
+        // If schema already exists, that's OK
+        if (ex.Message.Contains("already exists", StringComparison.OrdinalIgnoreCase) ||
+            ex.Message.Contains("409", StringComparison.OrdinalIgnoreCase))
+        {
+            Console.WriteLine("   Kafka schema already exists - using existing");
+        }
+        else
+        {
+            throw new InvalidOperationException($"Failed to register Kafka schema for TestMessage: {ex.Message}", ex);
+        }
     }
 }
