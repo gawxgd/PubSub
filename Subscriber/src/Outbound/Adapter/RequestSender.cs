@@ -30,13 +30,13 @@ public class RequestSender(
 
         await requestChannel.Writer.WriteAsync(framedMessage, cancellationToken);
         Logger.LogInfo(
-            $"📤 Sent request for topic: {topic}, offset: {offset} (framed: {framedMessage.Length} bytes)");
+            $"Sent request for topic: {topic}, offset: {offset} (framed: {framedMessage.Length} bytes)");
     }
 
     public void UpdateOffset(ulong offset)
     {
         var oldOffset = _lastOffset;
         _lastOffset = offset;
-        Logger.LogInfo($"🔄 Updated last offset from {oldOffset} to: {offset}");
+        Logger.LogInfo($"Updated last offset from {oldOffset} to: {offset}");
     }
 }

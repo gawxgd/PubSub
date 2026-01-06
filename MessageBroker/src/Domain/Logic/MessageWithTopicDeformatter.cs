@@ -49,14 +49,14 @@ public class MessageWithTopicDeformatter
         
         if (payloadLength < 38)
         {
-            Logger.LogWarning($"⚠️  Payload too small: {payloadLength} bytes (expected at least 38). Topic: '{topic}'");
+            Logger.LogWarning($"Payload too small: {payloadLength} bytes (expected at least 38). Topic: '{topic}'");
             Logger.LogWarning($"Message structure: topic='{topic}' ({separatorIndex} bytes) + separator (1 byte) + payload ({payloadLength} bytes)");
             Logger.LogWarning($"Payload hex: {Convert.ToHexString(span.Slice(separatorIndex + 1, Math.Min(payloadLength, 50)))}");
         }
         
         var payload = span.Slice(separatorIndex + 1).ToArray();
 
-        Logger.LogInfo($"✅ Deformatted message: topic='{topic}', payload={payloadLength} bytes");
+        Logger.LogInfo($"Deformatted message: topic='{topic}', payload={payloadLength} bytes");
         return new MessageWithTopic(topic, payload);
     }
 }

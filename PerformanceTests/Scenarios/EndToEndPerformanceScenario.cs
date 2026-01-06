@@ -35,19 +35,17 @@ public static class EndToEndPerformanceScenario
         {
             try
             {
-                // Get initialized instances (thread-safe)
                 if (!Publishers.TryGetValue(publisherKey, out var publisher))
                 {
-                    Console.WriteLine($"❌ ERROR: Publisher '{publisherKey}' not found");
+                    Console.WriteLine($"ERROR: Publisher '{publisherKey}' not found");
                     return Response.Fail<object>("Publisher not initialized");
                 }
                 if (!Subscribers.TryGetValue(subscriberKey, out var subscriber))
                 {
-                    Console.WriteLine($"❌ ERROR: Subscriber '{subscriberKey}' not found");
+                    Console.WriteLine($"ERROR: Subscriber '{subscriberKey}' not found");
                     return Response.Fail<object>("Subscriber not initialized");
                 }
 
-                // Create and publish message
                 var sequenceNumber = Interlocked.Increment(ref messageCounter);
                 var message = new TestMessage
                 {
@@ -71,7 +69,7 @@ public static class EndToEndPerformanceScenario
                 {
                     errorMsg += $" (Inner: {ex.InnerException.GetType().Name} - {ex.InnerException.Message})";
                 }
-                Console.WriteLine($"❌ ERROR in end_to_end_throughput: {errorMsg}");
+                Console.WriteLine($"ERROR in end_to_end_throughput: {errorMsg}");
                 return Response.Fail<object>(errorMsg);
             }
         })
@@ -79,37 +77,32 @@ public static class EndToEndPerformanceScenario
         {
             try
             {
-                Console.WriteLine($"🔧 Initializing E2E scenario: publisher and subscriber");
+                Console.WriteLine($"Initializing E2E scenario: publisher and subscriber");
                 
-                // Initialize publisher and subscriber before scenario starts
                 var publisher = publisherFactory.CreatePublisher(publisherOptions);
                 await publisher.CreateConnection();
                 
-                // Give publisher time to register schema and be ready
                 await Task.Delay(TimeSpan.FromMilliseconds(500));
                 
                 Publishers.TryAdd(publisherKey, publisher);
-                Console.WriteLine($"✅ Publisher '{publisherKey}' initialized");
+                Console.WriteLine($" Publisher '{publisherKey}' initialized");
 
                 var subscriber = subscriberFactory.CreateSubscriber(subscriberOptions, async (message) =>
                 {
                     var receivedAt = DateTime.UtcNow;
                     ReceivedMessages.TryAdd(message.SequenceNumber, receivedAt);
 
-                    // Calculate latency if we have publish time
                     if (PublishedMessages.TryGetValue(message.SequenceNumber, out var publishedAt))
                     {
                         var latency = receivedAt - publishedAt;
-                        // Latency tracking - NBomber will aggregate this
                     }
 
                     await Task.CompletedTask;
                 });
 
                 await subscriber.StartConnectionAsync();
-                Console.WriteLine($"✅ Subscriber '{subscriberKey}' connection started");
+                Console.WriteLine($"Subscriber '{subscriberKey}' connection started");
                 
-                // Start message processing in background - it will run until cancelled
                 var messageProcessingTask = Task.Run(async () =>
                 {
                     try
@@ -127,11 +120,11 @@ public static class EndToEndPerformanceScenario
                 });
                 
                 Subscribers.TryAdd(subscriberKey, subscriber);
-                Console.WriteLine($"✅ E2E scenario initialized successfully");
+                Console.WriteLine($"E2E scenario initialized successfully");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ ERROR initializing E2E scenario: {ex.GetType().Name} - {ex.Message}");
+                Console.WriteLine($"ERROR initializing E2E scenario: {ex.GetType().Name} - {ex.Message}");
                 if (ex.InnerException != null)
                 {
                     Console.WriteLine($"   Inner exception: {ex.InnerException.GetType().Name} - {ex.InnerException.Message}");
@@ -160,13 +153,13 @@ public static class EndToEndPerformanceScenario
                     var completedTask = await Task.WhenAny(disposeTask, timeoutTask);
                     if (completedTask == timeoutTask)
                     {
-                        Console.WriteLine("⚠️  Warning: Publisher disposal timed out");
+                        Console.WriteLine("Warning: Publisher disposal timed out");
                     }
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"⚠️  Warning: Error disposing publisher: {ex.Message}");
+                Console.WriteLine($"arning: Error disposing publisher: {ex.Message}");
             }
             
             try
@@ -181,18 +174,17 @@ public static class EndToEndPerformanceScenario
                         var completedTask = await Task.WhenAny(disposeTask, timeoutTask);
                         if (completedTask == timeoutTask)
                         {
-                            Console.WriteLine("⚠️  Warning: Subscriber disposal timed out - forcing stop");
+                            Console.WriteLine("Warning: Subscriber disposal timed out - forcing stop");
                         }
                     }
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"⚠️  Warning: Error disposing subscriber: {ex.Message}");
+                Console.WriteLine($"Warning: Error disposing subscriber: {ex.Message}");
             }
 
-            // Log statistics
-            Console.WriteLine($"\n📊 E2E Test Statistics:");
+            Console.WriteLine($"\n E2E Test Statistics:");
             Console.WriteLine($"   Published messages: {PublishedMessages.Count}");
             Console.WriteLine($"   Received messages: {ReceivedMessages.Count}");
             Console.WriteLine($"   Message loss: {PublishedMessages.Count - ReceivedMessages.Count}");

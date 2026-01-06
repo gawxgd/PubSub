@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+﻿﻿using System.Collections.Concurrent;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text;
@@ -35,14 +35,14 @@ var topic = Environment.GetEnvironmentVariable("TOPIC") ?? "performance-test";
 var brokerUri = new Uri($"messageBroker://{brokerHost}:{brokerPort}");
 var schemaRegistryUri = new Uri(schemaRegistryUrl);
 
-Console.WriteLine("📡 Configuration:");
+Console.WriteLine("Configuration:");
 Console.WriteLine($"   Broker: {brokerUri}");
 Console.WriteLine($"   Schema Registry: {schemaRegistryUri}");
 Console.WriteLine($"   Topic: {topic}");
 Console.WriteLine();
 
 // Check if broker is available
-Console.WriteLine($"🔍 Checking broker availability at {brokerHost}:{brokerPort}...");
+Console.WriteLine($"Checking broker availability at {brokerHost}:{brokerPort}...");
 try
 {
     using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
@@ -53,13 +53,13 @@ try
         // Connect with timeout
         var connectTask = tcpClient.ConnectAsync(brokerHost, brokerPort);
         await connectTask.WaitAsync(cts.Token);
-        Console.WriteLine($"✅ MessageBroker is available at {brokerHost}:{brokerPort}");
+        Console.WriteLine($"MessageBroker is available at {brokerHost}:{brokerPort}");
     }
     catch (OperationCanceledException)
     {
-        Console.WriteLine($"❌ ERROR: Timeout connecting to MessageBroker at {brokerHost}:{brokerPort}");
+        Console.WriteLine($"ERROR: Timeout connecting to MessageBroker at {brokerHost}:{brokerPort}");
         Console.WriteLine();
-        Console.WriteLine("📋 To start MessageBroker and SchemaRegistry:");
+        Console.WriteLine("To start MessageBroker and SchemaRegistry:");
         Console.WriteLine("   1. Using Docker Compose:");
         Console.WriteLine("      docker compose up -d messagebroker schemaregistry");
         Console.WriteLine();
@@ -78,36 +78,36 @@ try
     }
     catch (System.Net.Sockets.SocketException ex)
     {
-        Console.WriteLine($"❌ ERROR: Cannot connect to MessageBroker at {brokerHost}:{brokerPort}");
+        Console.WriteLine($"ERROR: Cannot connect to MessageBroker at {brokerHost}:{brokerPort}");
         Console.WriteLine($"   Socket Error: {ex.SocketErrorCode} - {ex.Message}");
         Console.WriteLine();
-        Console.WriteLine("💡 Troubleshooting:");
+        Console.WriteLine("Troubleshooting:");
         Console.WriteLine($"   - Check if MessageBroker is running: netstat -an | findstr {brokerPort}");
         Console.WriteLine($"   - Try connecting manually: Test-NetConnection -ComputerName {brokerHost} -Port {brokerPort}");
         Console.WriteLine();
-        Console.WriteLine("📋 Please ensure MessageBroker is running before starting performance tests.");
+        Console.WriteLine("Please ensure MessageBroker is running before starting performance tests.");
         Environment.Exit(1);
     }
 }
 catch (Exception ex)
 {
-    Console.WriteLine($"❌ ERROR: Unexpected error checking MessageBroker at {brokerHost}:{brokerPort}");
+    Console.WriteLine($"ERROR: Unexpected error checking MessageBroker at {brokerHost}:{brokerPort}");
     Console.WriteLine($"   Error: {ex.Message}");
     Console.WriteLine($"   Type: {ex.GetType().Name}");
     Console.WriteLine();
-    Console.WriteLine("📋 Please ensure MessageBroker is running before starting performance tests.");
+    Console.WriteLine("Please ensure MessageBroker is running before starting performance tests.");
     Environment.Exit(1);
 }
 
 // Check if SchemaRegistry is available
-Console.WriteLine("🔍 Checking SchemaRegistry availability...");
+Console.WriteLine("Checking SchemaRegistry availability...");
 try
 {
     using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
     var response = await httpClient.GetAsync($"{schemaRegistryUrl}/swagger");
     if (response.IsSuccessStatusCode || response.StatusCode == System.Net.HttpStatusCode.NotFound)
     {
-        Console.WriteLine("✅ SchemaRegistry is available");
+        Console.WriteLine("SchemaRegistry is available");
     }
     else
     {
@@ -116,22 +116,22 @@ try
 }
 catch (Exception ex)
 {
-    Console.WriteLine($"⚠️  WARNING: Cannot connect to SchemaRegistry at {schemaRegistryUrl}");
+    Console.WriteLine($"WARNING: Cannot connect to SchemaRegistry at {schemaRegistryUrl}");
     Console.WriteLine($"   Error: {ex.Message}");
     Console.WriteLine("   Performance tests will try to register schema automatically.");
 }
 Console.WriteLine();
 
 // Register schema for TestMessage - MUST succeed before creating publishers
-Console.WriteLine($"📝 Registering schema for topic: {topic}...");
+Console.WriteLine($"Registering schema for topic: {topic}...");
 try
 {
     await RegisterSchemaForTestMessage(schemaRegistryUri, topic);
-    Console.WriteLine($"✅ Schema registered successfully!\n");
+    Console.WriteLine($"Schema registered successfully!\n");
     
     // Verify schema is available by trying to get it
     await Task.Delay(TimeSpan.FromMilliseconds(200)); // Small delay to ensure schema is committed
-    Console.WriteLine($"🔍 Verifying schema is available...");
+    Console.WriteLine($"Verifying schema is available...");
     using var verifyClient = new HttpClient();
     verifyClient.BaseAddress = schemaRegistryUri;
     verifyClient.Timeout = TimeSpan.FromSeconds(5);
@@ -140,23 +140,23 @@ try
     {
         var verifyResult = await verifyResponse.Content.ReadFromJsonAsync<JsonElement>();
         var schemaId = verifyResult.GetProperty("id").GetInt32();
-        Console.WriteLine($"✅ Schema verified - ID: {schemaId}\n");
+        Console.WriteLine($"Schema verified - ID: {schemaId}\n");
     }
     else
     {
-        Console.WriteLine($"⚠️  WARNING: Schema verification failed: {verifyResponse.StatusCode}");
+        Console.WriteLine($"WARNING: Schema verification failed: {verifyResponse.StatusCode}");
         Console.WriteLine("   Tests may fail if Publisher cannot get schema.\n");
     }
 }
 catch (Exception ex)
 {
-    Console.WriteLine($"❌ ERROR: Failed to register schema: {ex.GetType().Name} - {ex.Message}");
+    Console.WriteLine($"ERROR: Failed to register schema: {ex.GetType().Name} - {ex.Message}");
     if (ex.InnerException != null)
     {
         Console.WriteLine($"   Inner: {ex.InnerException.GetType().Name} - {ex.InnerException.Message}");
     }
     Console.WriteLine();
-    Console.WriteLine("⚠️  CRITICAL: Schema registration failed! Tests will likely fail.");
+    Console.WriteLine("CRITICAL: Schema registration failed! Tests will likely fail.");
     Console.WriteLine("   Please ensure SchemaRegistry is running and accessible.");
     Console.WriteLine("   Continuing anyway - tests will show the actual error...");
     Console.WriteLine();
@@ -209,7 +209,7 @@ ScenarioProps publisherLatencyScenario =
     PublisherLatencyScenario.Create(publisherFactory, publisherOptions);
 
 // Run tests with progress logging
-Console.WriteLine("\n🚀 Starting performance tests...");
+Console.WriteLine("\nStarting performance tests...");
 Console.WriteLine("   Estimated duration: ~1 minute");
 Console.WriteLine("   - Publisher Throughput: ~18s (3s warm-up + 15s test)");
 Console.WriteLine("   - End-to-End Throughput: ~23s (3s warm-up + 20s test)");
@@ -228,7 +228,7 @@ NBomberRunner
     .Run();
 
 var duration = DateTime.UtcNow - startTime;
-Console.WriteLine($"\n⏱️  Total test duration: {duration.TotalSeconds:F1} seconds");
+Console.WriteLine($"\nTotal test duration: {duration.TotalSeconds:F1} seconds");
 
 // Cleanup
 httpClientFactory.Dispose();
@@ -237,8 +237,8 @@ if (schemaRegistryClient is IDisposable disposable)
     disposable.Dispose();
 }
 
-Console.WriteLine("\n✅ Performance tests completed!");
-Console.WriteLine("📊 Check reports folder for detailed results.");
+Console.WriteLine("\nPerformance tests completed!");
+Console.WriteLine("Check reports folder for detailed results.");
 
 static async Task RegisterSchemaForTestMessage(Uri schemaRegistryBaseAddress, string topic)
 {

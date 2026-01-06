@@ -23,10 +23,8 @@ public sealed class TcpSubscriberConnection(
     private PipeReader? _pipeReader;
     private PipeWriter? _pipeWriter;
 
-    // Jeden CTS na całe życie obiektu (stop przy Disconnect/Dispose)
     private readonly CancellationTokenSource _cts = new();
 
-    // Read/Write loop uruchamiane raz, żyją cały czas
     private Task? _readLoopTask;
     private Task? _writeLoopTask;
 
@@ -163,7 +161,7 @@ public sealed class TcpSubscriberConnection(
                     while (TryReadBatchMessage(ref buffer, out var batchBytes))
                     {
                         batchesReceived++;
-                        Logger.LogInfo($"📥 Received batch #{batchesReceived} from broker: {batchBytes.Length} bytes");
+                        Logger.LogInfo($"Received batch #{batchesReceived} from broker: {batchBytes.Length} bytes");
                         await responseChannel.Writer.WriteAsync(batchBytes, cancellationToken).ConfigureAwait(false);
                     }
 
@@ -263,7 +261,6 @@ public sealed class TcpSubscriberConnection(
         if (Token.IsCancellationRequested)
             return;
 
-        // jeśli reconnect już trwa, kolejne wywołania po prostu się odbiją
         if (!await _reconnectLock.WaitAsync(0, Token).ConfigureAwait(false))
             return;
 

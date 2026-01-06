@@ -100,7 +100,7 @@ public sealed class TcpSubscriber<T>(
                 _messageReceiver = new MessageReceiver<T>(
                     responseChannel,
                     processMessageUseCase,
-                    _requestSender!,              // <-- tu przekazujesz obiekt, nie lambdę
+                    _requestSender!,             
                     GetCurrentOffset,
                     offset =>
                     {

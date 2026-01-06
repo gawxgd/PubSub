@@ -25,10 +25,9 @@ public static class PublisherLatencyScenario
         {
             try
             {
-                // Get publisher instance (thread-safe)
                 if (!Publishers.TryGetValue(publisherKey, out var publisher))
                 {
-                    Console.WriteLine($"❌ ERROR: Publisher '{publisherKey}' not found");
+                    Console.WriteLine($"ERROR: Publisher '{publisherKey}' not found");
                     return Response.Fail<object>("Publisher not initialized");
                 }
 
@@ -56,7 +55,7 @@ public static class PublisherLatencyScenario
                 {
                     errorMsg += $" (Inner: {ex.InnerException.GetType().Name} - {ex.InnerException.Message})";
                 }
-                Console.WriteLine($"❌ ERROR in publisher_latency: {errorMsg}");
+                Console.WriteLine($"ERROR in publisher_latency: {errorMsg}");
                 return Response.Fail<object>(errorMsg);
             }
         })
@@ -64,20 +63,19 @@ public static class PublisherLatencyScenario
         {
             try
             {
-                Console.WriteLine($"🔧 Initializing publisher for scenario: {publisherKey}");
-                // Initialize publisher before scenario starts
+                Console.WriteLine($"Initializing publisher for scenario: {publisherKey}");
+
                 var publisher = publisherFactory.CreatePublisher(options);
                 await publisher.CreateConnection();
                 
-                // Give publisher time to register schema and be ready
                 await Task.Delay(TimeSpan.FromMilliseconds(500));
                 
                 Publishers.TryAdd(publisherKey, publisher);
-                Console.WriteLine($"✅ Publisher '{publisherKey}' initialized successfully");
+                Console.WriteLine($"Publisher '{publisherKey}' initialized successfully");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ ERROR initializing publisher '{publisherKey}': {ex.GetType().Name} - {ex.Message}");
+                Console.WriteLine($"ERROR initializing publisher '{publisherKey}': {ex.GetType().Name} - {ex.Message}");
                 if (ex.InnerException != null)
                 {
                     Console.WriteLine($"   Inner exception: {ex.InnerException.GetType().Name} - {ex.InnerException.Message}");
@@ -107,13 +105,13 @@ public static class PublisherLatencyScenario
                     var completedTask = await Task.WhenAny(disposeTask, timeoutTask);
                     if (completedTask == timeoutTask)
                     {
-                        Console.WriteLine("⚠️  Warning: Publisher disposal timed out");
+                        Console.WriteLine("Warning: Publisher disposal timed out");
                     }
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"⚠️  Warning: Error disposing publisher: {ex.Message}");
+                Console.WriteLine($"Warning: Error disposing publisher: {ex.Message}");
             }
         });
     }

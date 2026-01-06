@@ -13,7 +13,7 @@ public class MessageReceiver<T>
 {
     private readonly Channel<byte[]> _responseChannel;
     private readonly ProcessMessageUseCase<T> _processMessageUseCase;
-    private readonly RequestSender _requestSender; // jeden sender, przekazany z TcpSubscriber
+    private readonly RequestSender _requestSender; 
     private readonly Func<ulong> _getCurrentOffset;
     private readonly Action<ulong> _updateOffset;
     private readonly TimeSpan _maxWaitTime;
@@ -44,7 +44,6 @@ public class MessageReceiver<T>
     {
         Logger.LogInfo("Starting message receiver");
 
-        // Wyślij initial request
         await _requestSender.SendRequestAsync(_getCurrentOffset());
 
         while (!_cancellationToken.IsCancellationRequested)
@@ -80,12 +79,10 @@ public class MessageReceiver<T>
 
                     _updateOffset(highestOffsetProcessed);
 
-                    // wysyłamy request — jeśli padnie, wychodzimy i pozwalamy TcpSubscriber zrobić reconnect
                     await _requestSender.SendRequestAsync(highestOffsetProcessed);
                 }
                 else
                 {
-                    // brak wiadomości w maxWaitTime — wysyłamy heartbeat request
                     await _requestSender.SendRequestAsync(_getCurrentOffset());
                 }
             }
