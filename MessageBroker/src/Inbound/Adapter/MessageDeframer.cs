@@ -35,11 +35,11 @@ public class MessageDeframer : IMessageDeframer
         // Use BinaryPrimitives to match MessageFramer's LittleEndian encoding
         var messageLength = BinaryPrimitives.ReadInt32LittleEndian(lengthSpan);
         
-        Logger.LogInfo($"📏 Read message length: {messageLength} bytes (from hex: {Convert.ToHexString(lengthSpan)})");
+        Logger.LogInfo($"Read message length: {messageLength} bytes (from hex: {Convert.ToHexString(lengthSpan)})");
 
         if (messageLength < 0 || messageLength > 10 * 1024 * 1024) // Max 10MB
         {
-            Logger.LogWarning($"❌ Invalid message length: {messageLength} bytes (hex: {Convert.ToHexString(lengthSpan)})");
+            Logger.LogWarning($"Invalid message length: {messageLength} bytes (hex: {Convert.ToHexString(lengthSpan)})");
             // Try to skip invalid length and continue
             if (buffer.Length >= LengthFieldSize)
             {
@@ -58,7 +58,7 @@ public class MessageDeframer : IMessageDeframer
         message = buffer.Slice(LengthFieldSize, messageLength).ToArray();
         buffer = buffer.Slice(requiredLength);
 
-        Logger.LogInfo($"✅ Deframed message: length={messageLength} bytes (framed: {requiredLength} bytes total)");
+        Logger.LogInfo($"Deframed message: length={messageLength} bytes (framed: {requiredLength} bytes total)");
         if (messageLength < 50)
         {
             Logger.LogDebug($"Message hex (full {messageLength} bytes): {Convert.ToHexString(message)}");

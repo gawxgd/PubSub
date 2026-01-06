@@ -23,14 +23,14 @@ public class ProcessReceivedPublisherMessageUseCase(
 
     public async Task ProcessAsync(ReadOnlyMemory<byte> message, Socket socket, CancellationToken cancellationToken)
     {
-        Logger.LogInfo($"📥 Processing publisher message: {message.Length} bytes");
+        Logger.LogInfo($"Processing publisher message: {message.Length} bytes");
         Logger.LogDebug($"Message hex (first 100 bytes): {Convert.ToHexString(message.Span.Slice(0, Math.Min(100, message.Length)))}");
 
         try
         {
             var (topic, batchBytes) = ParseMessage(message);
 
-            Logger.LogInfo($"✅ Parsed message for topic '{topic}', batch size: {batchBytes.Length} bytes");
+            Logger.LogInfo($"Parsed message for topic '{topic}', batch size: {batchBytes.Length} bytes");
 
             var commitLogAppender = commitLogFactory.GetAppender(topic);
             var baseOffset = await commitLogAppender.AppendAsync(batchBytes);

@@ -59,7 +59,7 @@ public class ProcessSubscriberRequestUseCase(
                 if (offset < batchOffset || offset > lastOffset)
                 {
                     Logger.LogWarning(
-                        $"⚠️ Batch mismatch: requested offset {offset}, but got batch with offset range [{batchOffset}, {lastOffset}]");
+                        $"Batch mismatch: requested offset {offset}, but got batch with offset range [{batchOffset}, {lastOffset}]");
                 }
 
                 await socket.SendAsync(batchBytes, SocketFlags.None, cancellationToken);

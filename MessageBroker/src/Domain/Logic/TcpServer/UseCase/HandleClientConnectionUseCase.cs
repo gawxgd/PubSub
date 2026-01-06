@@ -158,7 +158,7 @@ public class HandleClientConnectionUseCase(
 
         await foreach (var message in _messageChannel.Reader.ReadAllAsync(cancellationToken))
         {
-            Logger.LogInfo($"[{_connectedClientEndpoint}] 📨 Received deframed message: {message.Length} bytes");
+            Logger.LogInfo($"[{_connectedClientEndpoint}] Received deframed message: {message.Length} bytes");
             var messageSpan = message.Span;
             if (message.Length < 100)
             {
