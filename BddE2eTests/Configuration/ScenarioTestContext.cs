@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Threading.Channels;
 using BddE2eTests.Configuration.Builder;
 using BddE2eTests.Configuration.Options;
@@ -12,7 +13,10 @@ public class ScenarioTestContext(ScenarioContext scenarioContext)
 {
     private const string PublisherKey = "Publisher";
     private const string SubscriberKey = "Subscriber";
+    private const string PublishersKey = "Publishers";
+    private const string SubscribersKey = "Subscribers";
     private const string ReceivedMessagesKey = "ReceivedMessages";
+    private const string SubscriberReceivedMessagesKey = "SubscriberReceivedMessages";
     private const string TopicKey = "Topic";
     private const string SentMessageKey = "SentMessage";
     private const string PublisherOptionsBuilderKey = "PublisherOptionsBuilder";
@@ -111,5 +115,92 @@ public class ScenarioTestContext(ScenarioContext scenarioContext)
     {
         get => scenarioContext.TryGetValue(CommittedOffsetKey, out ulong? offset) ? offset : null;
         set => scenarioContext.Set(value, CommittedOffsetKey);
+    }
+
+    private Dictionary<string, IPublisher<TestEvent>> Publishers
+    {
+        get
+        {
+            if (!scenarioContext.TryGetValue(PublishersKey, out Dictionary<string, IPublisher<TestEvent>>? publishers))
+            {
+                publishers = new Dictionary<string, IPublisher<TestEvent>>();
+                scenarioContext.Set(publishers, PublishersKey);
+            }
+            return publishers;
+        }
+    }
+
+    public void SetPublisher(string name, IPublisher<TestEvent> publisher)
+    {
+        Publishers[name] = publisher;
+    }
+
+    public IPublisher<TestEvent> GetPublisher(string name)
+    {
+        if (!Publishers.TryGetValue(name, out var publisher))
+        {
+            throw new KeyNotFoundException($"Publisher '{name}' not found. Available publishers: {string.Join(", ", Publishers.Keys)}");
+        }
+        return publisher;
+    }
+
+    public IEnumerable<IPublisher<TestEvent>> GetAllPublishers()
+    {
+        return Publishers.Values;
+    }
+
+    private Dictionary<string, ISubscriber<TestEvent>> Subscribers
+    {
+        get
+        {
+            if (!scenarioContext.TryGetValue(SubscribersKey, out Dictionary<string, ISubscriber<TestEvent>>? subscribers))
+            {
+                subscribers = new Dictionary<string, ISubscriber<TestEvent>>();
+                scenarioContext.Set(subscribers, SubscribersKey);
+            }
+            return subscribers;
+        }
+    }
+
+    private Dictionary<string, Channel<TestEvent>> SubscriberReceivedMessages
+    {
+        get
+        {
+            if (!scenarioContext.TryGetValue(SubscriberReceivedMessagesKey, out Dictionary<string, Channel<TestEvent>>? messages))
+            {
+                messages = new Dictionary<string, Channel<TestEvent>>();
+                scenarioContext.Set(messages, SubscriberReceivedMessagesKey);
+            }
+            return messages;
+        }
+    }
+
+    public void SetSubscriber(string name, ISubscriber<TestEvent> subscriber, Channel<TestEvent> receivedMessages)
+    {
+        Subscribers[name] = subscriber;
+        SubscriberReceivedMessages[name] = receivedMessages;
+    }
+
+    public ISubscriber<TestEvent> GetSubscriber(string name)
+    {
+        if (!Subscribers.TryGetValue(name, out var subscriber))
+        {
+            throw new KeyNotFoundException($"Subscriber '{name}' not found. Available subscribers: {string.Join(", ", Subscribers.Keys)}");
+        }
+        return subscriber;
+    }
+
+    public Channel<TestEvent> GetSubscriberReceivedMessages(string name)
+    {
+        if (!SubscriberReceivedMessages.TryGetValue(name, out var messages))
+        {
+            throw new KeyNotFoundException($"Received messages channel for subscriber '{name}' not found. Available subscribers: {string.Join(", ", SubscriberReceivedMessages.Keys)}");
+        }
+        return messages;
+    }
+
+    public IEnumerable<ISubscriber<TestEvent>> GetAllSubscribers()
+    {
+        return Subscribers.Values;
     }
 }

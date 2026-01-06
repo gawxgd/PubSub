@@ -101,44 +101,44 @@ namespace BddE2eTests.Features
             else
             {
                 await this.ScenarioStartAsync();
-                global::Reqnroll.Table table9 = new global::Reqnroll.Table(new string[] {
+                global::Reqnroll.Table table17 = new global::Reqnroll.Table(new string[] {
                             "Setting",
                             "Value"});
-                table9.AddRow(new string[] {
+                table17.AddRow(new string[] {
                             "Topic",
                             "default"});
-                table9.AddRow(new string[] {
+                table17.AddRow(new string[] {
                             "Broker",
                             "127.0.0.1:9096"});
-                table9.AddRow(new string[] {
+                table17.AddRow(new string[] {
                             "Queue Size",
                             "1000"});
-                table9.AddRow(new string[] {
+                table17.AddRow(new string[] {
                             "Max Retry Attempts",
                             "3"});
-                table9.AddRow(new string[] {
+                table17.AddRow(new string[] {
                             "Max Send Attempts",
                             "3"});
 #line 7
-        await testRunner.GivenAsync("a publisher is configured with the following options:", ((string)(null)), table9, "Given ");
+        await testRunner.GivenAsync("a publisher is configured with the following options:", ((string)(null)), table17, "Given ");
 #line hidden
-                global::Reqnroll.Table table10 = new global::Reqnroll.Table(new string[] {
+                global::Reqnroll.Table table18 = new global::Reqnroll.Table(new string[] {
                             "Setting",
                             "Value"});
-                table10.AddRow(new string[] {
+                table18.AddRow(new string[] {
                             "Topic",
                             "default"});
-                table10.AddRow(new string[] {
+                table18.AddRow(new string[] {
                             "Broker",
                             "127.0.0.1:9098"});
-                table10.AddRow(new string[] {
+                table18.AddRow(new string[] {
                             "Poll Interval",
                             "100"});
-                table10.AddRow(new string[] {
+                table18.AddRow(new string[] {
                             "Max Retry Attempts",
                             "3"});
 #line 14
-        await testRunner.AndAsync("a subscriber is configured with the following options:", ((string)(null)), table10, "And ");
+        await testRunner.AndAsync("a subscriber is configured with the following options:", ((string)(null)), table18, "And ");
 #line hidden
 #line 20
         await testRunner.WhenAsync("the publisher sends message \"Hello World\" to topic \"default\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
@@ -167,66 +167,66 @@ namespace BddE2eTests.Features
             else
             {
                 await this.ScenarioStartAsync();
-                global::Reqnroll.Table table11 = new global::Reqnroll.Table(new string[] {
+                global::Reqnroll.Table table19 = new global::Reqnroll.Table(new string[] {
                             "Setting",
                             "Value"});
-                table11.AddRow(new string[] {
+                table19.AddRow(new string[] {
                             "Topic",
                             "default"});
-                table11.AddRow(new string[] {
+                table19.AddRow(new string[] {
                             "Broker",
                             "127.0.0.1:9096"});
-                table11.AddRow(new string[] {
+                table19.AddRow(new string[] {
                             "Queue Size",
                             "1000"});
-                table11.AddRow(new string[] {
+                table19.AddRow(new string[] {
                             "Max Retry Attempts",
                             "3"});
-                table11.AddRow(new string[] {
+                table19.AddRow(new string[] {
                             "Max Send Attempts",
                             "3"});
 #line 24
-        await testRunner.GivenAsync("a publisher is configured with the following options:", ((string)(null)), table11, "Given ");
+        await testRunner.GivenAsync("a publisher is configured with the following options:", ((string)(null)), table19, "Given ");
 #line hidden
-                global::Reqnroll.Table table12 = new global::Reqnroll.Table(new string[] {
+                global::Reqnroll.Table table20 = new global::Reqnroll.Table(new string[] {
                             "Setting",
                             "Value"});
-                table12.AddRow(new string[] {
+                table20.AddRow(new string[] {
                             "Topic",
                             "default"});
-                table12.AddRow(new string[] {
+                table20.AddRow(new string[] {
                             "Broker",
                             "127.0.0.1:9098"});
-                table12.AddRow(new string[] {
+                table20.AddRow(new string[] {
                             "Poll Interval",
                             "100"});
-                table12.AddRow(new string[] {
+                table20.AddRow(new string[] {
                             "Max Retry Attempts",
                             "3"});
 #line 31
-        await testRunner.AndAsync("a subscriber is configured with the following options:", ((string)(null)), table12, "And ");
+        await testRunner.AndAsync("a subscriber is configured with the following options:", ((string)(null)), table20, "And ");
 #line hidden
-                global::Reqnroll.Table table13 = new global::Reqnroll.Table(new string[] {
+                global::Reqnroll.Table table21 = new global::Reqnroll.Table(new string[] {
                             "Message"});
-                table13.AddRow(new string[] {
+                table21.AddRow(new string[] {
                             "p1"});
-                table13.AddRow(new string[] {
+                table21.AddRow(new string[] {
                             "p2"});
-                table13.AddRow(new string[] {
+                table21.AddRow(new string[] {
                             "p3"});
 #line 37
-        await testRunner.WhenAsync("the publisher sends messages in order:", ((string)(null)), table13, "When ");
+        await testRunner.WhenAsync("the publisher sends messages in order:", ((string)(null)), table21, "When ");
 #line hidden
-                global::Reqnroll.Table table14 = new global::Reqnroll.Table(new string[] {
+                global::Reqnroll.Table table22 = new global::Reqnroll.Table(new string[] {
                             "Message"});
-                table14.AddRow(new string[] {
+                table22.AddRow(new string[] {
                             "p1"});
-                table14.AddRow(new string[] {
+                table22.AddRow(new string[] {
                             "p2"});
-                table14.AddRow(new string[] {
+                table22.AddRow(new string[] {
                             "p3"});
 #line 42
-        await testRunner.ThenAsync("the subscriber receives messages in order:", ((string)(null)), table14, "Then ");
+        await testRunner.ThenAsync("the subscriber receives messages in order:", ((string)(null)), table22, "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
