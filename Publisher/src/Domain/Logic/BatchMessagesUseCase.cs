@@ -27,11 +27,6 @@ public sealed class BatchMessagesUseCase(ILogRecordBatchWriter batchWriter)
 
     public byte[] Build()
     {
-        if (_messages.Count == 0)
-        {
-            throw new InvalidOperationException("Cannot build batch from empty message list");
-        }
-        
         var timestamp = (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
         var records = _messages.Select((msg, index) => new LogRecord(
@@ -49,19 +44,7 @@ public sealed class BatchMessagesUseCase(ILogRecordBatchWriter batchWriter)
 
         using var stream = new MemoryStream();
         batchWriter.WriteTo(recordBatch, stream);
-        var batchBytes = stream.ToArray();
-        
-        if (batchBytes == null || batchBytes.Length == 0)
-        {
-            throw new InvalidOperationException($"Built batch is empty! Had {_messages.Count} messages");
-        }
-        
-        if (batchBytes.Length < 38)
-        {
-            throw new InvalidOperationException($"Built batch is too small: {batchBytes.Length} bytes (expected at least 38). Had {_messages.Count} messages");
-        }
-        
-        return batchBytes;
+        return stream.ToArray();
     }
 
     public void Clear()
