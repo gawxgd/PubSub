@@ -48,13 +48,13 @@ var schemaRegistryOptions = new SchemaRegistryClientOptions(
     new Uri(schemaRegistryUrl),
     schemaRegistryTimeout);
 
-Console.WriteLine("📡 Broker Configuration:");
+Console.WriteLine("Broker Configuration:");
 Console.WriteLine($"   Host: {brokerOptions.Host}");
 Console.WriteLine($"   Port: {brokerOptions.Port}");
 Console.WriteLine($"   Queue Size: {brokerOptions.MaxQueueSize}");
 Console.WriteLine();
 
-Console.WriteLine("📋 Schema Registry Configuration:");
+Console.WriteLine("Schema Registry Configuration:");
 Console.WriteLine($"   Base Address: {schemaRegistryOptions.BaseAddress}");
 Console.WriteLine($"   Timeout: {schemaRegistryOptions.Timeout}");
 Console.WriteLine();
@@ -73,10 +73,10 @@ var batchMaxDelay = demoOptions.BatchMaxDelay > TimeSpan.Zero
 if (batchMaxDelay.TotalMilliseconds < 100)
 {
     batchMaxDelay = TimeSpan.FromMilliseconds(100);
-    Console.WriteLine($"⚠️  BatchMaxDelay adjusted to minimum 100ms for proper batching");
+    Console.WriteLine($"BatchMaxDelay adjusted to minimum 100ms for proper batching");
 }
 
-Console.WriteLine("⚙️  Demo Configuration:");
+Console.WriteLine("⚙Demo Configuration:");
 Console.WriteLine($"   Message Interval: {demoOptions.MessageInterval}ms");
 Console.WriteLine($"   Message Prefix: {demoOptions.MessagePrefix}");
 Console.WriteLine($"   Batch Size: {demoOptions.BatchSize}");
@@ -91,7 +91,7 @@ Console.CancelKeyPress += (sender, eventArgs) =>
 {
     eventArgs.Cancel = true;
     cts.Cancel();
-    Console.WriteLine("\n\n🛑 Shutdown signal received...");
+    Console.WriteLine("\n\nShutdown signal received...");
 };
 
 IPublisher<DemoMessage>? publisher = null;
@@ -102,16 +102,16 @@ try
 {
     // Register schema for DemoMessage first (using a separate HttpClient)
     var topic = demoOptions.Topic ?? "default";
-    Console.WriteLine($"📝 Rejestrowanie schematu dla topiku: {topic}...");
+    Console.WriteLine($"Rejestrowanie schematu dla topiku: {topic}...");
     try
     {
         await RegisterSchemaForDemoMessage(schemaRegistryOptions, topic);
-        Console.WriteLine($"✅ Schemat zarejestrowany pomyślnie!\n");
+        Console.WriteLine($"Schemat zarejestrowany pomyślnie!\n");
     }
     catch (Exception ex) when (ex.Message.Contains("actively refused") || ex.Message.Contains("connection") || ex.Message.Contains("SchemaRegistry"))
     {
-        Console.WriteLine($"\n❌ Błąd Schema Registry: {ex.Message}");
-        Console.WriteLine("\n💡 Wskazówka: Upewnij się, że Schema Registry jest uruchomiony.");
+        Console.WriteLine($"\nBłąd Schema Registry: {ex.Message}");
+        Console.WriteLine("\nWskazówka: Upewnij się, że Schema Registry jest uruchomiony.");
         Console.WriteLine($"   Schema Registry powinien nasłuchiwać na {schemaRegistryOptions.BaseAddress}");
         Console.WriteLine("\n   Aby uruchomić Schema Registry:");
         Console.WriteLine("   cd SchemaRegistry/src");
@@ -168,7 +168,7 @@ try
     var subscriber = subscriberFactory.CreateSubscriber(subscriberOptions, async (message) =>
     {
         var timestamp = DateTimeOffset.FromUnixTimeMilliseconds(message.Timestamp).ToString("yyyy-MM-dd HH:mm:ss");
-        Console.WriteLine($"📨 Subscriber otrzymał: Id={message.Id}, Timestamp={timestamp}, Content={message.Content}, Type={message.MessageType}");
+        Console.WriteLine($"Subscriber otrzymał: Id={message.Id}, Timestamp={timestamp}, Content={message.Content}, Type={message.MessageType}");
         await Task.CompletedTask;
     });
     
@@ -180,7 +180,7 @@ try
     // Also fix lines 158 and 160 for baseOffset and lastOffset
     
     // Start everything
-    Console.WriteLine("🚀 Uruchamianie Publisher i Subscriber...\n");
+    Console.WriteLine("Uruchamianie Publisher i Subscriber...\n");
     
     try
     {
@@ -189,7 +189,7 @@ try
         await subscriber.StartConnectionAsync();
         await subscriber.StartMessageProcessingAsync();
         
-        Console.WriteLine("✅ Wszystko działa! Sprawdź frontend na http://localhost:3000");
+        Console.WriteLine("Wszystko działa! Sprawdź frontend na http://localhost:3000");
         Console.WriteLine("   Naciśnij Ctrl+C aby zatrzymać.\n");
         
         // Wait for cancellation
@@ -197,8 +197,8 @@ try
     }
     catch (PublisherException ex)
     {
-        Console.WriteLine($"\n❌ Błąd Publisher: {ex.Message}");
-        Console.WriteLine("\n💡 Wskazówka: Upewnij się, że:");
+        Console.WriteLine($"\nBłąd Publisher: {ex.Message}");
+        Console.WriteLine("\nWskazówka: Upewnij się, że:");
         Console.WriteLine("   1. MessageBroker jest uruchomiony");
         Console.WriteLine($"   2. MessageBroker nasłuchuje na {brokerOptions.Host}:{brokerOptions.Port}");
         Console.WriteLine("   3. Port nie jest zablokowany przez firewall");
@@ -209,14 +209,14 @@ try
     }
     catch (Subscriber.Outbound.Exceptions.SubscriberConnectionException ex)
     {
-        Console.WriteLine($"\n❌ Błąd Subscriber: {ex.Message}");
-        Console.WriteLine("\n💡 Wskazówka: Upewnij się, że MessageBroker jest uruchomiony.");
+        Console.WriteLine($"\nBłąd Subscriber: {ex.Message}");
+        Console.WriteLine("\nWskazówka: Upewnij się, że MessageBroker jest uruchomiony.");
         return 1;
     }
 }
 catch (OperationCanceledException)
 {
-    Console.WriteLine("✅ Graceful shutdown complete.");
+    Console.WriteLine("Graceful shutdown complete.");
 }
 finally
 {
@@ -232,7 +232,7 @@ finally
     httpClientFactory?.Dispose();
 }
 
-Console.WriteLine("\n👋 PubSub Demo finished.");
+Console.WriteLine("\nPubSub Demo finished.");
 return 0;
 
 static async Task RegisterSchemaForDemoMessage(
@@ -283,13 +283,13 @@ static async Task RegisterSchemaForDemoMessage(
         else
         {
             var errorContent = await response.Content.ReadAsStringAsync();
-            Console.WriteLine($"   ⚠️  Ostrzeżenie: Nie udało się zarejestrować schematu: {response.StatusCode}");
+            Console.WriteLine($"   Ostrzeżenie: Nie udało się zarejestrować schematu: {response.StatusCode}");
             Console.WriteLine($"   {errorContent}");
         }
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"   ⚠️  Ostrzeżenie: Błąd podczas rejestracji schematu: {ex.Message}");
+        Console.WriteLine($"   Ostrzeżenie: Błąd podczas rejestracji schematu: {ex.Message}");
         Console.WriteLine("   Próba kontynuacji - schemat może już istnieć");
     }
 }

@@ -246,7 +246,7 @@ public static class KafkaEndToEndPerformanceScenario
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"⚠️  Fatal error in Kafka consumer loop: {ex.GetType().Name} - {ex.Message}");
+                        Console.WriteLine($"Fatal error in Kafka consumer loop: {ex.GetType().Name} - {ex.Message}");
                         if (ex.InnerException != null)
                         {
                             Console.WriteLine($"   Inner: {ex.InnerException.GetType().Name} - {ex.InnerException.Message}");
