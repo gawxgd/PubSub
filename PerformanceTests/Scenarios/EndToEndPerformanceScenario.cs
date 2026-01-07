@@ -115,7 +115,7 @@ public static class EndToEndPerformanceScenario
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"⚠️  Warning: Message processing error: {ex.Message}");
+                        Console.WriteLine($"Warning: Message processing error: {ex.Message}");
                     }
                 });
                 
