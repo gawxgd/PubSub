@@ -268,6 +268,37 @@ public sealed class BinaryLogSegmentReader : ILogSegmentReader
         return _timeIndexReader.ReadFrom(_timeIndex);
     }
 
+    public ulong RecoverHighWaterMark()
+    {
+        if (_log.Length == 0)
+        {
+            return _segment.BaseOffset;
+        }
+
+        _log.Seek(0, SeekOrigin.Begin);
+        ulong highWaterMark = _segment.BaseOffset;
+
+        while (_log.Position < _log.Length)
+        {
+            try
+            {
+                var (_, _, lastOffset) = _batchReader.ReadBatchBytesAndAdvance(_log);
+                highWaterMark = lastOffset + 1;
+            }
+            catch (EndOfStreamException)
+            {
+                break;
+            }
+            catch (InvalidDataException)
+            {
+                // Corrupted batch, stop here
+                break;
+            }
+        }
+
+        return highWaterMark;
+    }
+
     public async ValueTask DisposeAsync()
     {
         if (_disposed)
