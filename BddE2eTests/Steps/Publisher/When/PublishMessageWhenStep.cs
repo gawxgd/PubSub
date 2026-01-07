@@ -51,6 +51,7 @@ public class PublishMessageWhenStep(ScenarioContext scenarioContext)
         
         await TestContext.Progress.WriteLineAsync($"[When Step] All {messageCount} messages sent!");
     }
+    
 
     [When(@"the publisher sends messages in order:")]
     public async Task WhenThePublisherSendsMessagesInOrder(Table table)

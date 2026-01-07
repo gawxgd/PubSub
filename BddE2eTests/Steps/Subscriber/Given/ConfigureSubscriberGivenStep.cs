@@ -25,6 +25,7 @@ public class ConfigureSubscriberGivenStep(ScenarioContext scenarioContext)
     private static readonly TestOptions TestOptions = TestOptionsLoader.Load();
 
     [Given(@"a subscriber is configured with the following options:")]
+    [When(@"a subscriber is configured with the following options:")]
     public async Task GivenASubscriberIsConfiguredWithTheFollowingOptions(Table table)
     {
         await TestContext.Progress.WriteLineAsync("[Subscriber Step] Starting subscriber configuration...");
