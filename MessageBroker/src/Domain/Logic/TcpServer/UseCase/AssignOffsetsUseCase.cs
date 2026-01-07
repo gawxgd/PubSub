@@ -101,10 +101,25 @@ public class AssignOffsetsUseCase
 
     private void VerifyCrc(Span<byte> batchBytes)
     {
-        var storedCrc = BinaryPrimitives.ReadUInt32LittleEndian(batchBytes.Slice(CrcPosition, LengthSize));
+        // Validate batch size before accessing positions
+        if (batchBytes.Length < RecordBytesStartPosition)
+        {
+            throw new InvalidDataException(
+                $"Batch too small: expected at least {RecordBytesStartPosition} bytes, got {batchBytes.Length}");
+        }
+
+        var storedCrc = BinaryPrimitives.ReadUInt32LittleEndian(batchBytes.Slice(CrcPosition, CrcSize));
 
         var recordBytesLength =
             BinaryPrimitives.ReadUInt32LittleEndian(batchBytes.Slice(RecordBytesLengthPosition, LengthSize));
+
+        // Validate that we have enough bytes for recordBytes
+        var requiredLength = RecordBytesStartPosition + (int)recordBytesLength;
+        if (batchBytes.Length < requiredLength)
+        {
+            throw new InvalidDataException(
+                $"Batch too small for record bytes: expected at least {requiredLength} bytes, got {batchBytes.Length} (recordBytesLength={recordBytesLength})");
+        }
 
         var recordBytes = batchBytes.Slice(RecordBytesStartPosition, (int)recordBytesLength);
 
@@ -119,15 +134,30 @@ public class AssignOffsetsUseCase
 
     private void RecalculateAndUpdateCrc(Span<byte> batchBytes)
     {
+        // Validate batch size before accessing positions
+        if (batchBytes.Length < RecordBytesLengthPosition + LengthSize)
+        {
+            throw new InvalidDataException(
+                $"Batch too small: expected at least {RecordBytesLengthPosition + LengthSize} bytes, got {batchBytes.Length}");
+        }
+
         var recordBytesLength =
             BinaryPrimitives.ReadUInt32LittleEndian(batchBytes.Slice(RecordBytesLengthPosition, LengthSize));
+
+        // Validate that we have enough bytes for recordBytes
+        var requiredLength = RecordBytesStartPosition + (int)recordBytesLength;
+        if (batchBytes.Length < requiredLength)
+        {
+            throw new InvalidDataException(
+                $"Batch too small for record bytes: expected at least {requiredLength} bytes, got {batchBytes.Length} (recordBytesLength={recordBytesLength})");
+        }
 
         var recordBytes = batchBytes.Slice(RecordBytesStartPosition, (int)recordBytesLength);
 
         var newCrc = Crc32.HashToUInt32(recordBytes);
 
         BinaryPrimitives.WriteUInt32LittleEndian(
-            batchBytes.Slice(CrcPosition, LengthSize),
+            batchBytes.Slice(CrcPosition, CrcSize),
             newCrc
         );
     }

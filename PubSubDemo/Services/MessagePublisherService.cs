@@ -29,12 +29,25 @@ public sealed class MessagePublisherService<T> : IAsyncDisposable
     {
         Console.WriteLine("Starting Message Publisher Service...");
 
-        // Connect to the broker
-        await _publisher.CreateConnection();
-        Console.WriteLine("Connected to message broker successfully!");
+        try
+        {
+            // Connect to the broker
+            await _publisher.CreateConnection();
+            Console.WriteLine("Connected to message broker successfully!");
 
-        // Start publishing messages
-        _publishTask = Task.Run(() => PublishMessagesAsync(_cts.Token), cancellationToken);
+            // Start publishing messages
+            _publishTask = Task.Run(() => PublishMessagesAsync(_cts.Token), cancellationToken);
+        }
+        catch (Publisher.Outbound.Exceptions.PublisherException ex)
+        {
+            Console.WriteLine($"\n❌ Failed to connect to message broker: {ex.Message}");
+            if (ex.InnerException is System.Net.Sockets.SocketException socketEx)
+            {
+                Console.WriteLine($"   Socket error: {socketEx.Message}");
+                Console.WriteLine($"   Make sure MessageBroker is running on the configured host and port.");
+            }
+            throw;
+        }
     }
 
     /// <summary>
@@ -69,24 +82,50 @@ public sealed class MessagePublisherService<T> : IAsyncDisposable
         {
             try
             {
-                // Create a demo message
+                // Create a demo message with reasonable content length
+                var content = $"{_options.MessagePrefix} message #{messageNumber}";
+                // Ensure content is not too long (max 500 chars to avoid serialization issues)
+                if (content.Length > 500)
+                {
+                    content = content.Substring(0, 500);
+                }
+                
                 var message = new DemoMessage
                 {
                     Id = ++messageNumber,
-                    Timestamp = DateTimeOffset.UtcNow,
-                    Content = $"{_options.MessagePrefix} message #{messageNumber}",
+                    Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                    Content = content,
                     Source = "PubSubDemo",
                     MessageType = GetRandomMessageType()
                 };
 
                 // Publish to broker (publisher handles serialization)
-                await _publisher.PublishAsync((T)(object)message);
-
-                Interlocked.Increment(ref _messagesSent);
+                try
+                {
+                    await _publisher.PublishAsync((T)(object)message);
+                    Interlocked.Increment(ref _messagesSent);
+                }
+                catch (Exception publishEx)
+                {
+                    Interlocked.Increment(ref _messagesFailed);
+                    Console.WriteLine($"\n❌ Failed to publish message #{messageNumber}: {publishEx.GetType().Name} - {publishEx.Message}");
+                    if (publishEx.InnerException != null)
+                    {
+                        Console.WriteLine($"   Inner: {publishEx.InnerException.Message}");
+                    }
+                    throw; // Re-throw to be caught by outer catch
+                }
 
                 // Console output with status
-                Console.Write(
-                    $"\r[{DateTime.Now:HH:mm:ss}] Sent: {_messagesSent} | Failed: {_messagesFailed} | Last: {message.MessageType,-15}");
+                if (messageNumber % 10 == 0 || messageNumber <= 5)
+                {
+                    Console.WriteLine($"\n✅ Published message #{messageNumber}: {message.Content} (Type: {message.MessageType})");
+                }
+                else
+                {
+                    Console.Write(
+                        $"\r[{DateTime.Now:HH:mm:ss}] Sent: {_messagesSent} | Failed: {_messagesFailed} | Last: {message.MessageType,-15}");
+                }
 
                 // Wait before sending next message
                 await Task.Delay(_options.MessageInterval, cancellationToken);
@@ -105,10 +144,15 @@ public sealed class MessagePublisherService<T> : IAsyncDisposable
             catch (Exception ex)
             {
                 Interlocked.Increment(ref _messagesFailed);
-                Console.WriteLine($"\nError publishing message: {ex.Message}");
+                Console.WriteLine($"\n❌ Error publishing message #{messageNumber}: {ex.GetType().Name} - {ex.Message}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"   Inner: {ex.InnerException.Message}");
+                }
 
-                // Wait a bit before retrying
-                await Task.Delay(1000, cancellationToken);
+                // Wait a bit before retrying, but don't wait too long
+                var delayMs = (int)Math.Min(5000, 1000 * Math.Min(_messagesFailed, 5));
+                await Task.Delay(delayMs, cancellationToken);
             }
         }
     }
@@ -121,11 +165,18 @@ public sealed class MessagePublisherService<T> : IAsyncDisposable
         {
             try
             {
+                var batchContent = $"BATCH message #{i + 1}/{_options.BatchSize}";
+                // Ensure content is not too long
+                if (batchContent.Length > 500)
+                {
+                    batchContent = batchContent.Substring(0, 500);
+                }
+                
                 var message = new DemoMessage
                 {
                     Id = startNumber + i + 1,
-                    Timestamp = DateTimeOffset.UtcNow,
-                    Content = $"BATCH message #{i + 1}/{_options.BatchSize}",
+                    Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                    Content = batchContent,
                     Source = "PubSubDemo-Batch",
                     MessageType = "Batch"
                 };
@@ -172,7 +223,7 @@ public sealed class DemoMessage
     }
 
     public int Id { get; set; }
-    public DateTimeOffset Timestamp { get; set; }
+    public long Timestamp { get; set; }
     public string Content { get; set; } = string.Empty;
     public string Source { get; set; } = string.Empty;
     public string MessageType { get; set; } = string.Empty;
