@@ -101,7 +101,7 @@ public class AssignOffsetsUseCase
 
     private void VerifyCrc(Span<byte> batchBytes)
     {
-        var storedCrc = BinaryPrimitives.ReadUInt32LittleEndian(batchBytes.Slice(CrcPosition, CrcSize));
+        var storedCrc = BinaryPrimitives.ReadUInt32LittleEndian(batchBytes.Slice(CrcPosition, LengthSize));
 
         var recordBytesLength =
             BinaryPrimitives.ReadUInt32LittleEndian(batchBytes.Slice(RecordBytesLengthPosition, LengthSize));
