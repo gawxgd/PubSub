@@ -256,7 +256,15 @@ scenarios.Add(endToEndScenario20);
 scenarios.Add(endToEndScenario40);
 scenarios.Add(endToEndScenario100);
 scenarios.Add(endToEndScenario200);
-//scenarios.Add(endToEndScenario10000);
+
+ScenarioProps rampUpRampDownScenario =
+    RampUpRampDownScenario.Create(
+        publisherFactory,
+        publisherOptions,
+        subscriberFactory,
+        subscriberOptions);
+
+scenarios.Add(rampUpRampDownScenario);
 
 ScenarioProps publisherLatencyScenario =
     PublisherLatencyScenario.Create(publisherFactory, publisherOptions);
@@ -283,6 +291,10 @@ ScenarioProps fanOutScenario20 = FanOutPerformanceScenario.Create(
         subscriberFactory,
         subscriberOptions);
 
+scenarios.Add(fanOutScenario5);
+scenarios.Add(fanOutScenario10);
+scenarios.Add(fanOutScenario20);
+
 // Create Kafka scenarios if enabled
 if (enableKafkaTests)
 {
@@ -307,22 +319,22 @@ if (enableKafkaTests)
         kafkaTopic,
         "fanout");
 
-ScenarioProps kafkaFanOutScenario10 = KafkaFanOutPerformanceScenario.Create(
-        10,
-        kafkaBootstrapServers,
-        kafkaTopic,
-        "fanout");
+    ScenarioProps kafkaFanOutScenario10 = KafkaFanOutPerformanceScenario.Create(
+            10,
+            kafkaBootstrapServers,
+            kafkaTopic,
+            "fanout");
 
-ScenarioProps kafkaFanOutScenario20 = KafkaFanOutPerformanceScenario.Create(
-        20,
-        kafkaBootstrapServers,
-        kafkaTopic,
-        "fanout");
+    ScenarioProps kafkaFanOutScenario20 = KafkaFanOutPerformanceScenario.Create(
+            20,
+            kafkaBootstrapServers,
+            kafkaTopic,
+            "fanout");
 
 
     scenarios.Add(kafkaFanOutScenario5);
-scenarios.Add(kafkaFanOutScenario10);
-scenarios.Add(kafkaFanOutScenario20);
+    scenarios.Add(kafkaFanOutScenario10);
+    scenarios.Add(kafkaFanOutScenario20);
 
     Console.WriteLine("Kafka scenarios added.\n");
 }
