@@ -20,20 +20,19 @@ namespace BddE2eTests.Features
     [System.CodeDom.Compiler.GeneratedCodeAttribute("Reqnroll", "2.0.0.0")]
     [System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     [NUnit.Framework.TestFixtureAttribute()]
-    [NUnit.Framework.DescriptionAttribute("Publisher and Subscriber Communication")]
+    [NUnit.Framework.DescriptionAttribute("Restart Scenarios")]
     [NUnit.Framework.FixtureLifeCycleAttribute(NUnit.Framework.LifeCycle.InstancePerTestCase)]
-    public partial class PublisherAndSubscriberCommunicationFeature
+    public partial class RestartScenariosFeature
     {
         
         private global::Reqnroll.ITestRunner testRunner;
         
         private static string[] featureTags = ((string[])(null));
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new System.Globalization.CultureInfo("en-US"), "Features", "Publisher and Subscriber Communication", "    As a system integrator\n    I want to verify that publishers can send messages" +
-                " and subscribers can receive them\n    So that the message broker correctly route" +
-                "s messages between components", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags);
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new System.Globalization.CultureInfo("en-US"), "Features", "Restart Scenarios", "As a system integrator\nI want to verify that the system handles restarts correctl" +
+                "y\nSo that messages are not lost or duplicated when components restart", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags);
         
-#line 1 "PublisherSubscriber.feature"
+#line 1 "SubscriberOffsetCommit.feature"
 #line hidden
         
         [NUnit.Framework.OneTimeSetUpAttribute()]
@@ -85,12 +84,12 @@ namespace BddE2eTests.Features
         }
         
         [NUnit.Framework.TestAttribute()]
-        [NUnit.Framework.DescriptionAttribute("Publisher sends message and subscriber receives it with default configuration")]
-        public async System.Threading.Tasks.Task PublisherSendsMessageAndSubscriberReceivesItWithDefaultConfiguration()
+        [NUnit.Framework.DescriptionAttribute("Delivery after subscriber restart using committed offset")]
+        public async System.Threading.Tasks.Task DeliveryAfterSubscriberRestartUsingCommittedOffset()
         {
             string[] tagsOfScenario = ((string[])(null));
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Publisher sends message and subscriber receives it with default configuration", null, tagsOfScenario, argumentsOfScenario, featureTags);
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Delivery after subscriber restart using committed offset", null, tagsOfScenario, argumentsOfScenario, featureTags);
 #line 6
     this.ScenarioInitialize(scenarioInfo);
 #line hidden
@@ -101,63 +100,75 @@ namespace BddE2eTests.Features
             else
             {
                 await this.ScenarioStartAsync();
-                global::Reqnroll.Table table17 = new global::Reqnroll.Table(new string[] {
+                global::Reqnroll.Table table8 = new global::Reqnroll.Table(new string[] {
                             "Setting",
                             "Value"});
-                table17.AddRow(new string[] {
+                table8.AddRow(new string[] {
                             "Topic",
                             "default"});
-                table17.AddRow(new string[] {
+                table8.AddRow(new string[] {
                             "Broker",
                             "127.0.0.1:9096"});
-                table17.AddRow(new string[] {
+                table8.AddRow(new string[] {
                             "Queue Size",
                             "1000"});
-                table17.AddRow(new string[] {
+                table8.AddRow(new string[] {
                             "Max Retry Attempts",
                             "3"});
-                table17.AddRow(new string[] {
+                table8.AddRow(new string[] {
                             "Max Send Attempts",
                             "3"});
 #line 7
-        await testRunner.GivenAsync("a publisher is configured with the following options:", ((string)(null)), table17, "Given ");
+        await testRunner.GivenAsync("a publisher is configured with the following options:", ((string)(null)), table8, "Given ");
 #line hidden
-                global::Reqnroll.Table table18 = new global::Reqnroll.Table(new string[] {
+                global::Reqnroll.Table table9 = new global::Reqnroll.Table(new string[] {
                             "Setting",
                             "Value"});
-                table18.AddRow(new string[] {
+                table9.AddRow(new string[] {
                             "Topic",
                             "default"});
-                table18.AddRow(new string[] {
+                table9.AddRow(new string[] {
                             "Broker",
                             "127.0.0.1:9098"});
-                table18.AddRow(new string[] {
+                table9.AddRow(new string[] {
                             "Poll Interval",
                             "100"});
-                table18.AddRow(new string[] {
+                table9.AddRow(new string[] {
                             "Max Retry Attempts",
                             "3"});
 #line 14
-        await testRunner.AndAsync("a subscriber is configured with the following options:", ((string)(null)), table18, "And ");
+        await testRunner.AndAsync("a subscriber is configured with the following options:", ((string)(null)), table9, "And ");
 #line hidden
 #line 20
-        await testRunner.WhenAsync("the publisher sends message \"Hello World\" to topic \"default\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+        await testRunner.WhenAsync("the publisher sends 6 messages to topic \"default\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 21
-        await testRunner.ThenAsync("a subscriber receives message \"Hello World\" from topic \"default\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+        await testRunner.ThenAsync("subscriber C consumed messages up to offset 4", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 22
+        await testRunner.WhenAsync("subscriber C restarts at offset 5", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 23
+        await testRunner.ThenAsync("a subscriber receives message \"msg5\" from topic \"default\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 24
+        await testRunner.WhenAsync("the publisher sends message \"resume-test\" to topic \"default\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 25
+        await testRunner.ThenAsync("a subscriber receives message \"resume-test\" from topic \"default\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
         [NUnit.Framework.TestAttribute()]
-        [NUnit.Framework.DescriptionAttribute("Ordered delivery per partition")]
-        public async System.Threading.Tasks.Task OrderedDeliveryPerPartition()
+        [NUnit.Framework.DescriptionAttribute("Delivery after broker restart")]
+        public async System.Threading.Tasks.Task DeliveryAfterBrokerRestart()
         {
             string[] tagsOfScenario = ((string[])(null));
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Ordered delivery per partition", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 23
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Delivery after broker restart", null, tagsOfScenario, argumentsOfScenario, featureTags);
+#line 27
     this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -167,66 +178,62 @@ namespace BddE2eTests.Features
             else
             {
                 await this.ScenarioStartAsync();
-                global::Reqnroll.Table table19 = new global::Reqnroll.Table(new string[] {
+                global::Reqnroll.Table table10 = new global::Reqnroll.Table(new string[] {
                             "Setting",
                             "Value"});
-                table19.AddRow(new string[] {
+                table10.AddRow(new string[] {
                             "Topic",
                             "default"});
-                table19.AddRow(new string[] {
+                table10.AddRow(new string[] {
                             "Broker",
                             "127.0.0.1:9096"});
-                table19.AddRow(new string[] {
+                table10.AddRow(new string[] {
                             "Queue Size",
                             "1000"});
-                table19.AddRow(new string[] {
+                table10.AddRow(new string[] {
                             "Max Retry Attempts",
                             "3"});
-                table19.AddRow(new string[] {
+                table10.AddRow(new string[] {
                             "Max Send Attempts",
                             "3"});
-#line 24
-        await testRunner.GivenAsync("a publisher is configured with the following options:", ((string)(null)), table19, "Given ");
+#line 28
+        await testRunner.GivenAsync("a publisher is configured with the following options:", ((string)(null)), table10, "Given ");
 #line hidden
-                global::Reqnroll.Table table20 = new global::Reqnroll.Table(new string[] {
+                global::Reqnroll.Table table11 = new global::Reqnroll.Table(new string[] {
                             "Setting",
                             "Value"});
-                table20.AddRow(new string[] {
+                table11.AddRow(new string[] {
                             "Topic",
                             "default"});
-                table20.AddRow(new string[] {
+                table11.AddRow(new string[] {
                             "Broker",
                             "127.0.0.1:9098"});
-                table20.AddRow(new string[] {
+                table11.AddRow(new string[] {
                             "Poll Interval",
                             "100"});
-                table20.AddRow(new string[] {
+                table11.AddRow(new string[] {
                             "Max Retry Attempts",
                             "3"});
-#line 31
-        await testRunner.AndAsync("a subscriber is configured with the following options:", ((string)(null)), table20, "And ");
+#line 35
+        await testRunner.AndAsync("a subscriber is configured with the following options:", ((string)(null)), table11, "And ");
 #line hidden
-                global::Reqnroll.Table table21 = new global::Reqnroll.Table(new string[] {
-                            "Message"});
-                table21.AddRow(new string[] {
-                            "p1"});
-                table21.AddRow(new string[] {
-                            "p2"});
-                table21.AddRow(new string[] {
-                            "p3"});
-#line 37
-        await testRunner.WhenAsync("the publisher sends messages in order:", ((string)(null)), table21, "When ");
+#line 41
+        await testRunner.WhenAsync("the publisher sends 6 messages to topic \"default\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-                global::Reqnroll.Table table22 = new global::Reqnroll.Table(new string[] {
-                            "Message"});
-                table22.AddRow(new string[] {
-                            "p1"});
-                table22.AddRow(new string[] {
-                            "p2"});
-                table22.AddRow(new string[] {
-                            "p3"});
 #line 42
-        await testRunner.ThenAsync("the subscriber receives messages in order:", ((string)(null)), table22, "Then ");
+        await testRunner.ThenAsync("subscriber C consumed messages up to offset 4", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 43
+        await testRunner.WhenAsync("the broker restarts", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 44
+        await testRunner.ThenAsync("a subscriber receives message \"msg5\" from topic \"default\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 45
+        await testRunner.WhenAsync("the publisher sends message \"resume-test\" to topic \"default\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 46
+        await testRunner.ThenAsync("a subscriber receives message \"resume-test\" from topic \"default\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();

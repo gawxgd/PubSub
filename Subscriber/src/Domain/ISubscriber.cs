@@ -3,7 +3,7 @@
 public interface ISubscriber<T> where T : new()
 {
     internal Task CreateConnection();
-    Task ReceiveAsync(byte[] message);
     Task StartMessageProcessingAsync();
-    Task StartConnectionAsync();
+    Task StartConnectionAsync(ulong? initialOffset = null);
+    ulong? GetCommittedOffset();
 }
