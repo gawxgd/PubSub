@@ -13,12 +13,14 @@ public sealed class TopicSegmentRegistryFactory(ILogSegmentFactory segmentFactor
     private static readonly IAutoLogger Logger =
         AutoLoggerFactory.CreateLogger<TopicSegmentRegistryFactory>(LogSource.MessageBroker);
     
-    private readonly ConcurrentDictionary<string, ITopicSegmentRegistry> _managers = new();
+    private readonly ConcurrentDictionary<string, Lazy<ITopicSegmentRegistry>> _managers = new();
 
     public ITopicSegmentRegistry GetOrCreate(string topic, string directory, ulong baseOffset)
     {
-        // Use factory delegate to ensure CreateManager is only called if topic doesn't exist
-        return _managers.GetOrAdd(topic, _ => CreateManager(directory, baseOffset));
+        var lazy = _managers.GetOrAdd(topic, _ => new Lazy<ITopicSegmentRegistry>(
+            () => CreateManager(directory, baseOffset), 
+            LazyThreadSafetyMode.ExecutionAndPublication));
+        return lazy.Value;
     }
 
     private ITopicSegmentRegistry CreateManager(string directory, ulong baseOffset)
@@ -86,7 +88,10 @@ public sealed class TopicSegmentRegistryFactory(ILogSegmentFactory segmentFactor
     {
         foreach (var entry in _managers)
         {
-            entry.Value.Dispose();
+            if (entry.Value.IsValueCreated)
+            {
+                entry.Value.Value.Dispose();
+            }
         }
 
         _managers.Clear();

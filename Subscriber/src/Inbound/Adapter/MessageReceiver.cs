@@ -41,6 +41,21 @@ public class MessageReceiver<T>(
                 {
                     while (responseChannel.Reader.TryRead(out var message))
                     {
+                        try
+                        {
+                            var (baseOffset, lastOffset) = processMessageUseCase.GetBatchOffsets(message);
+                            if (lastOffset < highestOffsetProcessed)
+                            {
+                                Logger.LogWarning(
+                                    $"Skipping already-processed batch: baseOffset={baseOffset}, lastOffset={lastOffset}, currentOffset={highestOffsetProcessed}");
+                                continue;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.LogError($"Error checking batch offsets for deduplication: {ex.Message}");
+                        }
+                        
                         var offset = await processMessageUseCase.ExecuteAsync(message);
                         var nextOffset = offset + 1;
 
@@ -58,7 +73,7 @@ public class MessageReceiver<T>(
                 else
                 {
                     Logger.LogDebug(
-                        $"No messages received in {maxWaitTime}. Sending fetch request again for offset {getCurrentOffset}");
+                        $"No messages received in {maxWaitTime}. Sending fetch request again for offset {getCurrentOffset()}");
                     await requestSender.SendRequestAsync(getCurrentOffset());
                 }
             }

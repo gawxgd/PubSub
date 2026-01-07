@@ -1,4 +1,7 @@
 using System.Buffers.Binary;
+using LoggerLib.Domain.Enums;
+using LoggerLib.Domain.Port;
+using LoggerLib.Outbound.Adapter;
 using MessageBroker.Domain.Entities.CommitLog;
 using MessageBroker.Domain.Entities.CommitLog.Index;
 using MessageBroker.Domain.Exceptions;
@@ -10,6 +13,9 @@ namespace MessageBroker.Inbound.CommitLog.Segment;
 
 public sealed class BinaryLogSegmentReader : ILogSegmentReader
 {
+    private static readonly IAutoLogger Logger =
+        AutoLoggerFactory.CreateLogger<BinaryLogSegmentReader>(LogSource.MessageBroker);
+
     private readonly LogSegment _segment;
     private readonly ILogRecordBatchReader _batchReader;
     private readonly FileStream _log;
@@ -17,6 +23,7 @@ public sealed class BinaryLogSegmentReader : ILogSegmentReader
     private readonly FileStream? _timeIndex;
     private readonly IOffsetIndexReader _offsetIndexReader;
     private readonly ITimeIndexReader _timeIndexReader;
+    private readonly SemaphoreSlim _readLock = new(1, 1);
     private bool _disposed;
 
     public BinaryLogSegmentReader(
@@ -70,6 +77,8 @@ public sealed class BinaryLogSegmentReader : ILogSegmentReader
 
     public (byte[] batchBytes, ulong baseOffset, ulong lastOffset)? ReadBatchBytes(ulong offset)
     {
+        Logger.LogDebug($"ReadBatchBytes called with offset={offset}, segment baseOffset={_segment.BaseOffset}");
+        
         return ReadBatchCore(
             offset,
             log =>
@@ -77,12 +86,21 @@ public sealed class BinaryLogSegmentReader : ILogSegmentReader
                 var (batchBytes, batchOffset, lastOffset) =
                     _batchReader.ReadBatchBytesAndAdvance(log);
 
+                Logger.LogDebug($"ReadBatchBytes: read batch at position, batchOffset={batchOffset}, lastOffset={lastOffset}, requestedOffset={offset}");
+
                 if (offset >= batchOffset && offset <= lastOffset)
+                {
+                    Logger.LogDebug($"ReadBatchBytes: FOUND - offset {offset} is within [{batchOffset}, {lastOffset}]");
                     return (true, false, (batchBytes, batchOffset, lastOffset));
+                }
 
                 if (batchOffset > offset)
+                {
+                    Logger.LogDebug($"ReadBatchBytes: PASSED - batchOffset {batchOffset} > requestedOffset {offset}");
                     return (false, true, default);
+                }
 
+                Logger.LogDebug($"ReadBatchBytes: CONTINUE - batchOffset {batchOffset} <= requestedOffset {offset} but lastOffset {lastOffset} < requestedOffset");
                 return (false, false, default);
             });
     }
@@ -114,33 +132,53 @@ public sealed class BinaryLogSegmentReader : ILogSegmentReader
             throw new SegmentReaderException(
                 "Start read offset is smaller than segment base offset, trying to read from wrong file");
         }
-
-        var position = FindPositionForOffset(offset);
-        _log.Seek((long)position, SeekOrigin.Begin);
-
-        while (_log.Position < _log.Length)
+        
+        _readLock.Wait();
+        try
         {
-            try
+            var fileInfo = new FileInfo(_segment.LogPath);
+            fileInfo.Refresh();
+            var currentLength = fileInfo.Length;
+            
+            var position = FindPositionForOffset(offset);
+            Logger.LogDebug($"ReadBatchCore: seeking to position {position} for offset {offset}, file length={currentLength}");
+            _log.Seek((long)position, SeekOrigin.Begin);
+
+            var iterations = 0;
+            while (_log.Position < currentLength)
             {
-                var (found, passed, value) = readNext(_log);
-
-                if (found)
+                iterations++;
+                Logger.LogDebug($"ReadBatchCore: iteration {iterations}, position={_log.Position}, length={_log.Length}");
+                try
                 {
-                    return value;
+                    var (found, passed, value) = readNext(_log);
+
+                    if (found)
+                    {
+                        Logger.LogDebug($"ReadBatchCore: returning FOUND value after {iterations} iterations");
+                        return value;
+                    }
+
+                    if (passed)
+                    {
+                        Logger.LogDebug($"ReadBatchCore: PASSED after {iterations} iterations");
+                        break;
+                    }
                 }
-
-                if (passed)
+                catch (EndOfStreamException ex)
                 {
+                    Logger.LogDebug($"ReadBatchCore: EndOfStreamException after {iterations} iterations: {ex.Message}");
                     break;
                 }
             }
-            catch (EndOfStreamException)
-            {
-                break;
-            }
-        }
 
-        return default;
+            Logger.LogDebug($"ReadBatchCore: returning NULL after {iterations} iterations, final position={_log.Position}, length={_log.Length}");
+            return default;
+        }
+        finally
+        {
+            _readLock.Release();
+        }
     }
 
     public IEnumerable<LogRecordBatch> ReadRange(ulong startOffset, ulong endOffset)
@@ -151,62 +189,74 @@ public sealed class BinaryLogSegmentReader : ILogSegmentReader
             yield break;
         }
 
-        var position = FindPositionForOffset(startOffset);
-        _log.Seek((long)position, SeekOrigin.Begin);
-
-        while (_log.Position < _log.Length)
+        _readLock.Wait();
+        try
         {
-            LogRecordBatch batch;
-            try
+            var position = FindPositionForOffset(startOffset);
+            _log.Seek((long)position, SeekOrigin.Begin);
+
+            while (_log.Position < _log.Length)
             {
-                batch = _batchReader.ReadBatch(_log);
-            }
-            catch (EndOfStreamException)
-            {
-                yield break;
-            }
+                LogRecordBatch batch;
+                try
+                {
+                    batch = _batchReader.ReadBatch(_log);
+                }
+                catch (EndOfStreamException)
+                {
+                    yield break;
+                }
 
 
-            // If batch is completely before our range, skip
-            if (batch.LastOffset <= startOffset)
-            {
-                continue;
-            }
+                if (batch.LastOffset <= startOffset)
+                {
+                    continue;
+                }
 
-            // If batch starts at or after end of range, stop
-            if (batch.BaseOffset >= endOffset)
-            {
-                yield break;
-            }
+                if (batch.BaseOffset >= endOffset)
+                {
+                    yield break;
+                }
 
-            // Batch overlaps with our range
-            yield return batch;
+                yield return batch;
+            }
+        }
+        finally
+        {
+            _readLock.Release();
         }
     }
 
     public IEnumerable<LogRecordBatch> ReadFromTimestamp(ulong timestamp)
     {
         //ToDo fix timestamp handling right now it saves offset not position in file
-        var position = FindPositionForTimestamp(timestamp);
-        _log.Seek((long)position, SeekOrigin.Begin);
-
-        while (_log.Position < _log.Length)
+        _readLock.Wait();
+        try
         {
-            LogRecordBatch batch;
-            try
-            {
-                batch = _batchReader.ReadBatch(_log);
-            }
-            catch (EndOfStreamException)
-            {
-                yield break;
-            }
+            var position = FindPositionForTimestamp(timestamp);
+            _log.Seek((long)position, SeekOrigin.Begin);
 
-            // Only return batches at or after the timestamp
-            if (batch.BaseTimestamp >= timestamp)
+            while (_log.Position < _log.Length)
             {
-                yield return batch;
+                LogRecordBatch batch;
+                try
+                {
+                    batch = _batchReader.ReadBatch(_log);
+                }
+                catch (EndOfStreamException)
+                {
+                    yield break;
+                }
+
+                if (batch.BaseTimestamp >= timestamp)
+                {
+                    yield return batch;
+                }
             }
+        }
+        finally
+        {
+            _readLock.Release();
         }
     }
 
@@ -270,33 +320,41 @@ public sealed class BinaryLogSegmentReader : ILogSegmentReader
 
     public ulong RecoverHighWaterMark()
     {
-        if (_log.Length == 0)
+        _readLock.Wait();
+        try
         {
-            return _segment.BaseOffset;
+            if (_log.Length == 0)
+            {
+                return _segment.BaseOffset;
+            }
+
+            _log.Seek(0, SeekOrigin.Begin);
+            ulong highWaterMark = _segment.BaseOffset;
+
+            while (_log.Position < _log.Length)
+            {
+                try
+                {
+                    var (_, _, lastOffset) = _batchReader.ReadBatchBytesAndAdvance(_log);
+                    highWaterMark = lastOffset + 1;
+                }
+                catch (EndOfStreamException)
+                {
+                    break;
+                }
+                catch (InvalidDataException)
+                {
+                    // Corrupted batch, stop here
+                    break;
+                }
+            }
+
+            return highWaterMark;
         }
-
-        _log.Seek(0, SeekOrigin.Begin);
-        ulong highWaterMark = _segment.BaseOffset;
-
-        while (_log.Position < _log.Length)
+        finally
         {
-            try
-            {
-                var (_, _, lastOffset) = _batchReader.ReadBatchBytesAndAdvance(_log);
-                highWaterMark = lastOffset + 1;
-            }
-            catch (EndOfStreamException)
-            {
-                break;
-            }
-            catch (InvalidDataException)
-            {
-                // Corrupted batch, stop here
-                break;
-            }
+            _readLock.Release();
         }
-
-        return highWaterMark;
     }
 
     public async ValueTask DisposeAsync()
@@ -318,6 +376,7 @@ public sealed class BinaryLogSegmentReader : ILogSegmentReader
             await _timeIndex.DisposeAsync();
         }
 
+        _readLock.Dispose();
         _disposed = true;
     }
 }
