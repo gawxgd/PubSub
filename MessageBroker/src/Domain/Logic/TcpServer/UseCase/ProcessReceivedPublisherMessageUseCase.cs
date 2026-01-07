@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Net.Sockets;
 using LoggerLib.Domain.Enums;
@@ -22,13 +23,14 @@ public class ProcessReceivedPublisherMessageUseCase(
 
     public async Task ProcessAsync(ReadOnlyMemory<byte> message, Socket socket, CancellationToken cancellationToken)
     {
-        Logger.LogDebug($"Processing publisher message: {message.Length} bytes");
+        Logger.LogInfo($"Processing publisher message: {message.Length} bytes");
+        Logger.LogDebug($"Message hex (first 100 bytes): {Convert.ToHexString(message.Span.Slice(0, Math.Min(100, message.Length)))}");
 
         try
         {
             var (topic, batchBytes) = ParseMessage(message);
 
-            Logger.LogDebug($"Parsed message for topic '{topic}', batch size: {batchBytes.Length} bytes");
+            Logger.LogInfo($"Parsed message for topic '{topic}', batch size: {batchBytes.Length} bytes");
 
             var commitLogAppender = commitLogFactory.GetAppender(topic);
             var baseOffset = await commitLogAppender.AppendAsync(batchBytes);
@@ -61,10 +63,21 @@ public class ProcessReceivedPublisherMessageUseCase(
 
     private (string topic, byte[] batchBytes) ParseMessage(ReadOnlyMemory<byte> message)
     {
+        Logger.LogDebug($"ParseMessage: received {message.Length} bytes, first 50 bytes: {Convert.ToHexString(message.Span.Slice(0, Math.Min(50, message.Length)))}");
+        
         var messageWithTopic = _deformatter.Deformat(message);
         if (messageWithTopic == null)
         {
-            throw new InvalidDataException("Invalid publisher message format: failed to parse message");
+            Logger.LogError($"Failed to parse message: {message.Length} bytes, hex: {Convert.ToHexString(message.Span)}");
+            throw new InvalidDataException($"Invalid publisher message format: failed to parse message ({message.Length} bytes)");
+        }
+
+        Logger.LogDebug($"Parsed message: topic='{messageWithTopic.Topic}', payload size={messageWithTopic.Payload.Length} bytes");
+        
+        if (messageWithTopic.Payload.Length < 38)
+        {
+            Logger.LogError($"Payload too small: {messageWithTopic.Payload.Length} bytes (expected at least 38). Topic: '{messageWithTopic.Topic}'");
+            throw new InvalidDataException($"Payload too small: {messageWithTopic.Payload.Length} bytes (expected at least 38)");
         }
 
         return (messageWithTopic.Topic, messageWithTopic.Payload);
