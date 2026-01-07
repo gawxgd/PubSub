@@ -1,4 +1,4 @@
-﻿﻿using System.Net.Sockets;
+﻿using System.Net.Sockets;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
@@ -31,16 +31,6 @@ public class ProcessSubscriberRequestUseCase(
         {
             commitLogReader = commitLogFactory.GetReader(topic);
             
-            var highWaterMark = commitLogReader.GetHighWaterMark();
-            Logger.LogDebug($"Requested offset: {offset}, High water mark: {highWaterMark}");
-            
-            // If requested offset is beyond high water mark, return null
-            if (offset > highWaterMark)
-            {
-                Logger.LogDebug($"Requested offset {offset} is beyond high water mark {highWaterMark}, no batch available");
-                return;
-            }
-            
             // Send only one batch per request to prevent duplicate processing
             var batch = commitLogReader.ReadBatchBytes(offset);
 
@@ -53,14 +43,7 @@ public class ProcessSubscriberRequestUseCase(
                 var (batchBytes, batchOffset, lastOffset) = batch.Value;
 
                 Logger.LogDebug(
-                    $"Read batch with offset {batchOffset} and last offset {lastOffset} (requested: {offset})");
-
-                // Verify that the returned batch actually contains the requested offset
-                if (offset < batchOffset || offset > lastOffset)
-                {
-                    Logger.LogWarning(
-                        $"Batch mismatch: requested offset {offset}, but got batch with offset range [{batchOffset}, {lastOffset}]");
-                }
+                    $"Read batch with offset {batchOffset} and last offset {lastOffset}");
 
                 await socket.SendAsync(batchBytes, SocketFlags.None, cancellationToken);
 
@@ -71,18 +54,6 @@ public class ProcessSubscriberRequestUseCase(
         catch (FileNotFoundException)
         {
             Logger.LogDebug($"No commit log found for topic '{topic}' - topic may be empty");
-            // Send empty response to acknowledge the request, so subscriber knows the request was processed
-            // This prevents subscriber from hanging waiting for a response
-            try
-            {
-                // Send a minimal response: 0 bytes (just to acknowledge)
-                // Or we could send a special "no data" marker, but for now empty is OK
-                // Subscriber will handle empty response gracefully
-            }
-            catch (Exception ex)
-            {
-                Logger.LogDebug($"Error sending empty response: {ex.Message}");
-            }
         }
         catch (SocketException ex)
         {

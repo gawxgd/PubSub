@@ -20,8 +20,6 @@ public class RequestSender(
     private readonly IMessageFramer _messageFramer = new MessageFramer();
     private readonly TopicOffsetFormatter _formatter = new();
 
-    private ulong _lastOffset = 0;
-
     public async Task SendRequestAsync(ulong offset)
     {
         var topicOffset = new TopicOffset(topic, offset);
@@ -29,14 +27,7 @@ public class RequestSender(
         var framedMessage = _messageFramer.FrameMessage(requestBytes);
 
         await requestChannel.Writer.WriteAsync(framedMessage, cancellationToken);
-        Logger.LogInfo(
+        Logger.LogDebug(
             $"Sent request for topic: {topic}, offset: {offset} (framed: {framedMessage.Length} bytes)");
-    }
-
-    public void UpdateOffset(ulong offset)
-    {
-        var oldOffset = _lastOffset;
-        _lastOffset = offset;
-        Logger.LogInfo($"Updated last offset from {oldOffset} to: {offset}");
     }
 }

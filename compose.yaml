@@ -55,26 +55,7 @@
     environment:
       - PUBSUB_Broker__Host=messagebroker
       - PUBSUB_Broker__Port=9096
-      - PUBSUB_SchemaRegistry__BaseAddress=http://schemaregistry:8080
       - PUBSUB_Demo__MessageInterval=1000
-      - PUBSUB_Demo__Topic=default
-    networks:
-      - pubsub-network
-    depends_on:
-      - messagebroker
-      - schemaregistry
-    restart: unless-stopped
-
-  frontend:
-    image: frontend
-    platform: linux/amd64
-    build:
-      context: .
-      dockerfile: frontend/Dockerfile
-      platforms:
-        - linux/amd64
-    ports:
-      - "3000:80"
     networks:
       - pubsub-network
     depends_on:
