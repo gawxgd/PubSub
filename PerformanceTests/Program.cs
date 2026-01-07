@@ -243,18 +243,9 @@ ScenarioProps endToEndScenario100 =
         subscriberFactory,
         subscriberOptions);
 
-ScenarioProps endToEndScenario1000 =
+ScenarioProps endToEndScenario200 =
     EndToEndPerformanceScenario.Create(
-        1000,
-        60,
-        publisherFactory,
-        publisherOptions,
-        subscriberFactory,
-        subscriberOptions);
-
-ScenarioProps endToEndScenario10000 =
-    EndToEndPerformanceScenario.Create(
-        10000,
+        200,
         60,
         publisherFactory,
         publisherOptions,
@@ -264,7 +255,7 @@ ScenarioProps endToEndScenario10000 =
 scenarios.Add(endToEndScenario20);
 scenarios.Add(endToEndScenario40);
 scenarios.Add(endToEndScenario100);
-//scenarios.Add(endToEndScenario1000);
+scenarios.Add(endToEndScenario200);
 //scenarios.Add(endToEndScenario10000);
 
 ScenarioProps publisherLatencyScenario =
