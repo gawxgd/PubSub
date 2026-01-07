@@ -51,7 +51,8 @@ public class TcpSubscriberTests
 
         var deserializeBatchUseCase = new DeserializeBatchUseCase<TestEvent>(
             batchReaderMock.Object,
-            deserializerMock.Object);
+            deserializerMock.Object,
+            schemaRegistryMock.Object);
 
         return new ProcessMessageUseCase<TestEvent>(
             deserializeBatchUseCase,
