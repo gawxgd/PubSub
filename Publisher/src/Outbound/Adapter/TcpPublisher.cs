@@ -118,6 +118,30 @@ public sealed class TcpPublisher<T>(
         await _channel.Writer.WriteAsync(serializedMessage, _cancellationTokenSource.Token);
     }
 
+    public async Task<bool> WaitForAcknowledgmentsAsync(int count, TimeSpan timeout)
+    {
+        if (_currentPublisherConnection is TcpPublisherConnection tcpConnection)
+        {
+            return await tcpConnection.ResponseHandler.WaitForAcknowledgmentsAsync(count, timeout, _cancellationTokenSource.Token);
+        }
+        
+        _logger.LogWarning("WaitForAcknowledgmentsAsync called but connection is not a TcpPublisherConnection");
+        return false;
+    }
+
+   
+    public long AcknowledgedCount
+    {
+        get
+        {
+            if (_currentPublisherConnection is TcpPublisherConnection tcpConnection)
+            {
+                return tcpConnection.ResponseHandler.AcknowledgedCount;
+            }
+            return 0;
+        }
+    }
+
     private async Task SafeDisconnectPublisher()
     {
         if (_currentPublisherConnection != null)

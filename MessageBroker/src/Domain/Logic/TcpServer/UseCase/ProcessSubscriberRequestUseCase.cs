@@ -25,13 +25,10 @@ public class ProcessSubscriberRequestUseCase(
 
         Logger.LogDebug($"Processing subscriber request: topic={topic}, offset={offset}");
 
-        ICommitLogReader? commitLogReader = null;
-
         try
         {
-            commitLogReader = commitLogFactory.GetReader(topic);
+            var commitLogReader = commitLogFactory.GetReader(topic);
             
-            // Send only one batch per request to prevent duplicate processing
             var batch = commitLogReader.ReadBatchBytes(offset);
 
             if (batch == null)
@@ -43,7 +40,7 @@ public class ProcessSubscriberRequestUseCase(
                 var (batchBytes, batchOffset, lastOffset) = batch.Value;
 
                 Logger.LogDebug(
-                    $"Read batch with offset {batchOffset} and last offset {lastOffset}");
+                    $"Read batch with offset {batchOffset} and last offset {lastOffset} (requested: {offset})");
 
                 await socket.SendAsync(batchBytes, SocketFlags.None, cancellationToken);
 
@@ -66,11 +63,6 @@ public class ProcessSubscriberRequestUseCase(
         catch (Exception ex)
         {
             Logger.LogError($"Error in subscriber processing: {ex.Message}", ex);
-        }
-        finally
-        {
-            if (commitLogReader != null)
-                await commitLogReader.DisposeAsync();
         }
 
         Logger.LogInfo("Messages from commit log sent to subscriber");

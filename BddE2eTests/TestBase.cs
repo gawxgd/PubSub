@@ -28,6 +28,9 @@ public class TestBase
 
     public static async Task RestartBrokerAsync()
     {
+        TestContext.Progress.WriteLine("[TestBase] === COMMIT LOG BEFORE RESTART ===");
+        PrintCommitLogContents();
+        
         if (_brokerHost != null)
         {
             TestContext.Progress.WriteLine("[TestBase] Stopping broker...");
@@ -36,6 +39,9 @@ public class TestBase
             _brokerHost = null;
             TestContext.Progress.WriteLine("[TestBase] Broker stopped");
         }
+
+        TestContext.Progress.WriteLine("[TestBase] === COMMIT LOG AFTER BROKER STOP (before restart) ===");
+        PrintCommitLogContents();
 
         TestContext.Progress.WriteLine("[TestBase] Creating new broker host...");
         _brokerHost = CreateBrokerHostWithExistingCommitLog();
@@ -46,6 +52,145 @@ public class TestBase
         TestContext.Progress.WriteLine("[TestBase] Waiting for broker startup...");
         await WaitForBrokerStartupAsync();
         TestContext.Progress.WriteLine("[TestBase] Broker restarted");
+        
+        TestContext.Progress.WriteLine("[TestBase] === COMMIT LOG AFTER RESTART ===");
+        PrintCommitLogContents();
+    }
+    
+    private static void PrintCommitLogContents()
+    {
+        if (string.IsNullOrEmpty(_commitLogDirectory))
+        {
+            TestContext.Progress.WriteLine("[CommitLog] No commit log directory configured");
+            return;
+        }
+
+        if (!Directory.Exists(_commitLogDirectory))
+        {
+            TestContext.Progress.WriteLine($"[CommitLog] Directory does not exist: {_commitLogDirectory}");
+            return;
+        }
+
+        TestContext.Progress.WriteLine($"[CommitLog] Directory: {_commitLogDirectory}");
+        
+        var topicDirs = Directory.GetDirectories(_commitLogDirectory);
+        if (topicDirs.Length == 0)
+        {
+            TestContext.Progress.WriteLine("[CommitLog] No topic directories found");
+            return;
+        }
+
+        foreach (var topicDir in topicDirs)
+        {
+            var topicName = Path.GetFileName(topicDir);
+            TestContext.Progress.WriteLine($"[CommitLog] ═══════════════════════════════════════");
+            TestContext.Progress.WriteLine($"[CommitLog] Topic: {topicName}");
+            
+            var logFiles = Directory.GetFiles(topicDir, "*.log").OrderBy(f => f).ToArray();
+            var indexFiles = Directory.GetFiles(topicDir, "*.index").OrderBy(f => f).ToArray();
+            
+            TestContext.Progress.WriteLine($"[CommitLog]   Log files: {logFiles.Length}, Index files: {indexFiles.Length}");
+            
+            foreach (var logFile in logFiles)
+            {
+                var fileInfo = new FileInfo(logFile);
+                var fileName = Path.GetFileName(logFile);
+                TestContext.Progress.WriteLine($"[CommitLog]   ───────────────────────────────────");
+                TestContext.Progress.WriteLine($"[CommitLog]   File: {fileName} ({fileInfo.Length} bytes)");
+                
+                if (fileInfo.Length > 0)
+                {
+                    try
+                    {
+                        var bytes = File.ReadAllBytes(logFile);
+                        var batches = ParseBatchesFromLog(bytes);
+                        
+                        TestContext.Progress.WriteLine($"[CommitLog]   Total batches: {batches.Count}");
+                        
+                        if (batches.Count > 0)
+                        {
+                            var minOffset = batches.Min(b => b.BaseOffset);
+                            var maxOffset = batches.Max(b => b.LastOffset);
+                            var nextOffset = maxOffset + 1;
+                            
+                            TestContext.Progress.WriteLine($"[CommitLog]   Offset range: {minOffset} to {maxOffset}");
+                            TestContext.Progress.WriteLine($"[CommitLog]   Next offset (high water mark): {nextOffset}");
+                            TestContext.Progress.WriteLine($"[CommitLog]   ───────────────────────────────────");
+                            TestContext.Progress.WriteLine($"[CommitLog]   Batch details:");
+                            
+                            foreach (var batch in batches)
+                            {
+                                var totalSize = 24 + batch.BatchLength;
+                                TestContext.Progress.WriteLine($"[CommitLog]     Batch #{batch.Index}: baseOffset={batch.BaseOffset}, lastOffset={batch.LastOffset}, batchLen={batch.BatchLength}, recordBytes={batch.RecordBytesLength}, totalSize={totalSize}, records={batch.RecordCount}");
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        TestContext.Progress.WriteLine($"[CommitLog]   Error parsing file: {ex.Message}");
+                    }
+                }
+                else
+                {
+                    TestContext.Progress.WriteLine($"[CommitLog]   (empty file)");
+                }
+            }
+            TestContext.Progress.WriteLine($"[CommitLog] ═══════════════════════════════════════");
+        }
+    }
+    
+    private record BatchInfo(int Index, ulong BaseOffset, ulong LastOffset, uint BatchLength, uint RecordBytesLength, int RecordCount);
+    
+    private static List<BatchInfo> ParseBatchesFromLog(byte[] logData)
+    {
+        var batches = new List<BatchInfo>();
+        int position = 0;
+        int batchIndex = 0;
+        
+        // Batch format on disk (little-endian):
+        // - BaseOffset: 8 bytes (ulong)         - position 0
+        // - BatchLength: 4 bytes (uint)         - position 8  (size of everything AFTER first 12 bytes, excluding LastOffset & RecordBytesLength)
+        // - LastOffset: 8 bytes (ulong)         - position 12
+        // - RecordBytesLength: 4 bytes (uint)   - position 20
+        // - Magic: 1 byte                       - position 24
+        // - CRC: 4 bytes                        - position 25
+        // - Compressed: 1 byte                  - position 29
+        // - Timestamp: 8 bytes                  - position 30
+        // - Records: recordBytesLength bytes    - position 38
+        //
+        // BatchLength = 1 + 4 + 1 + 8 + recordBytesLength = 14 + recordBytesLength
+        // Total batch size = 8 + 4 + 8 + 4 + batchLength = 24 + batchLength
+        
+        while (position + 24 <= logData.Length)
+        {
+            try
+            {
+                var baseOffset = BitConverter.ToUInt64(logData, position);
+                var batchLength = BitConverter.ToUInt32(logData, position + 8);
+                var lastOffset = BitConverter.ToUInt64(logData, position + 12);
+                var recordBytesLength = BitConverter.ToUInt32(logData, position + 20);
+                
+                // Sanity checks
+                if (batchLength == 0 || batchLength > 10_000_000) // Max 10MB per batch
+                    break;
+                
+                // Calculate record count (rough estimate based on lastOffset - baseOffset + 1)
+                var recordCount = (int)(lastOffset - baseOffset + 1);
+                
+                batches.Add(new BatchInfo(batchIndex, baseOffset, lastOffset, batchLength, recordBytesLength, recordCount));
+                
+                // Move to next batch: 8 (baseOffset) + 4 (batchLength) + 8 (lastOffset) + 4 (recordBytesLength) + batchLength
+                // = 24 + batchLength
+                position += 24 + (int)batchLength;
+                batchIndex++;
+            }
+            catch
+            {
+                break;
+            }
+        }
+        
+        return batches;
     }
 
     private static IHost CreateBrokerHostWithExistingCommitLog()
