@@ -1,4 +1,4 @@
-﻿﻿using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text;
@@ -216,36 +216,123 @@ ScenarioProps publisherPerformanceScenario =
     PublisherPerformanceScenario.Create(publisherFactory, publisherOptions);
 scenarios.Add(publisherPerformanceScenario);
 
-ScenarioProps endToEndScenario =
+ScenarioProps endToEndScenario20 =
     EndToEndPerformanceScenario.Create(
+        20,
+        60,
         publisherFactory,
         publisherOptions,
         subscriberFactory,
         subscriberOptions);
-scenarios.Add(endToEndScenario);
+
+ScenarioProps endToEndScenario40 =
+    EndToEndPerformanceScenario.Create(
+        40,
+        60,
+        publisherFactory,
+        publisherOptions,
+        subscriberFactory,
+        subscriberOptions);
+
+ScenarioProps endToEndScenario100 =
+    EndToEndPerformanceScenario.Create(
+        100,
+        60,
+        publisherFactory,
+        publisherOptions,
+        subscriberFactory,
+        subscriberOptions);
+
+ScenarioProps endToEndScenario1000 =
+    EndToEndPerformanceScenario.Create(
+        1000,
+        60,
+        publisherFactory,
+        publisherOptions,
+        subscriberFactory,
+        subscriberOptions);
+
+ScenarioProps endToEndScenario10000 =
+    EndToEndPerformanceScenario.Create(
+        10000,
+        60,
+        publisherFactory,
+        publisherOptions,
+        subscriberFactory,
+        subscriberOptions);
+
+scenarios.Add(endToEndScenario20);
+scenarios.Add(endToEndScenario40);
+scenarios.Add(endToEndScenario100);
+//scenarios.Add(endToEndScenario1000);
+//scenarios.Add(endToEndScenario10000);
 
 ScenarioProps publisherLatencyScenario =
     PublisherLatencyScenario.Create(publisherFactory, publisherOptions);
 scenarios.Add(publisherLatencyScenario);
+
+ScenarioProps fanOutScenario5 = FanOutPerformanceScenario.Create(
+        5,
+        publisherFactory,
+        publisherOptions,
+        subscriberFactory,
+        subscriberOptions);
+
+ScenarioProps fanOutScenario10 = FanOutPerformanceScenario.Create(
+        10,
+        publisherFactory,
+        publisherOptions,
+        subscriberFactory,
+        subscriberOptions);
+
+ScenarioProps fanOutScenario20 = FanOutPerformanceScenario.Create(
+        20,
+        publisherFactory,
+        publisherOptions,
+        subscriberFactory,
+        subscriberOptions);
 
 // Create Kafka scenarios if enabled
 if (enableKafkaTests)
 {
     Console.WriteLine("\nPreparing Kafka tests...");
     Console.WriteLine("   Note: Using JSON serialization (no Schema Registry required)\n");
-    
+
     ScenarioProps kafkaPublisherPerformanceScenario =
         KafkaPublisherPerformanceScenario.Create(kafkaBootstrapServers, kafkaSchemaRegistryUrl, kafkaTopic);
     scenarios.Add(kafkaPublisherPerformanceScenario);
-    
+
     ScenarioProps kafkaEndToEndScenario =
         KafkaEndToEndPerformanceScenario.Create(kafkaBootstrapServers, kafkaSchemaRegistryUrl, kafkaTopic, kafkaConsumerGroupId);
     scenarios.Add(kafkaEndToEndScenario);
-    
+
     ScenarioProps kafkaPublisherLatencyScenario =
         KafkaPublisherLatencyScenario.Create(kafkaBootstrapServers, kafkaSchemaRegistryUrl, kafkaTopic);
     scenarios.Add(kafkaPublisherLatencyScenario);
-    
+
+    ScenarioProps kafkaFanOutScenario5 = KafkaFanOutPerformanceScenario.Create(
+        5,
+        kafkaBootstrapServers,
+        kafkaTopic,
+        "fanout");
+
+ScenarioProps kafkaFanOutScenario10 = KafkaFanOutPerformanceScenario.Create(
+        10,
+        kafkaBootstrapServers,
+        kafkaTopic,
+        "fanout");
+
+ScenarioProps kafkaFanOutScenario20 = KafkaFanOutPerformanceScenario.Create(
+        20,
+        kafkaBootstrapServers,
+        kafkaTopic,
+        "fanout");
+
+
+    scenarios.Add(kafkaFanOutScenario5);
+scenarios.Add(kafkaFanOutScenario10);
+scenarios.Add(kafkaFanOutScenario20);
+
     Console.WriteLine("Kafka scenarios added.\n");
 }
 
@@ -395,7 +482,7 @@ static async Task RegisterSchemaInKafkaSchemaRegistry(string schemaRegistryUrl, 
         if (ex.Message.Contains("already exists", StringComparison.OrdinalIgnoreCase) ||
             ex.Message.Contains("409", StringComparison.OrdinalIgnoreCase))
         {
-            Console.WriteLine("   Kafka schema already exists - using existing");
+            Console.WriteLine(" Kafka schema already exists - using existing");
         }
         else
         {

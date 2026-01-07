@@ -22,6 +22,8 @@ public static class EndToEndPerformanceScenario
     private static readonly ConcurrentDictionary<string, ISubscriber<TestMessage>> Subscribers = new();
 
     public static ScenarioProps Create(
+        int rate,
+        int seconds,
         IPublisherFactory<TestMessage> publisherFactory,
         PublisherOptions publisherOptions,
         ISubscriberFactory<TestMessage> subscriberFactory,
@@ -31,7 +33,7 @@ public static class EndToEndPerformanceScenario
         const string publisherKey = "e2e_publisher";
         const string subscriberKey = "e2e_subscriber";
 
-        return Scenario.Create("end_to_end_throughput", async context =>
+        return Scenario.Create($"end_to_end_throughput_{rate}", async context =>
         {
             try
             {
@@ -136,9 +138,9 @@ public static class EndToEndPerformanceScenario
         .WithLoadSimulations(
             // Steady load: 20 messages per second for 20 seconds (reduced for faster tests)
             Simulation.Inject(
-                rate: 20,
+                rate: rate,
                 interval: TimeSpan.FromSeconds(1),
-                during: TimeSpan.FromSeconds(20))
+                during: TimeSpan.FromSeconds(seconds))
         )
         .WithClean(async context =>
         {

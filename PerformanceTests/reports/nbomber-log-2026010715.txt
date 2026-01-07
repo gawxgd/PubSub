@@ -1,0 +1,29 @@
+2026-01-07 15:14:36.261 +01:00 [INF] [ThreadId:6] NBomber 6.1.2 started a new session: 2026-01-07_14.14.19_session_adbf56ee
+2026-01-07 15:14:36.312 +01:00 [INF] [ThreadId:6] NBomber started as single node
+2026-01-07 15:14:36.316 +01:00 [INF] [ThreadId:6] License validation....
+2026-01-07 15:14:36.316 +01:00 [WRN] [ThreadId:6] THIS VERSION IS FREE ONLY FOR PERSONAL USE. You can't use it for an organization.
+2026-01-07 15:14:36.329 +01:00 [INF] [ThreadId:6] Reports folder: C:\src\github\sandrawar\PubSub\PerformanceTests\bin\Debug\net9.0\reports
+2026-01-07 15:14:36.330 +01:00 [INF] [ThreadId:6] Plugins: no plugins were loaded
+2026-01-07 15:14:36.330 +01:00 [INF] [ThreadId:6] Reporting sinks: no reporting sinks were loaded
+2026-01-07 15:14:36.331 +01:00 [INF] [ThreadId:6] Starting init...
+2026-01-07 15:14:36.341 +01:00 [INF] [ThreadId:6] Target scenarios: publisher_throughput, end_to_end_throughput_20, end_to_end_throughput_40, end_to_end_throughput_100, publisher_latency
+2026-01-07 15:14:36.343 +01:00 [INF] [ThreadId:6] Start init scenario: publisher_throughput
+2026-01-07 15:14:36.881 +01:00 [INF] [ThreadId:11] Start init scenario: end_to_end_throughput_20
+2026-01-07 15:14:37.410 +01:00 [INF] [ThreadId:14] Start init scenario: end_to_end_throughput_40
+2026-01-07 15:14:37.923 +01:00 [INF] [ThreadId:14] Start init scenario: end_to_end_throughput_100
+2026-01-07 15:14:38.436 +01:00 [INF] [ThreadId:15] Start init scenario: publisher_latency
+2026-01-07 15:14:38.956 +01:00 [INF] [ThreadId:11] Init finished
+2026-01-07 15:14:39.001 +01:00 [INF] [ThreadId:11] Starting warm up...
+2026-01-07 15:14:39.003 +01:00 [INF] [ThreadId:11] Warm up for scenarios: publisher_throughput, end_to_end_throughput_20, end_to_end_throughput_40, end_to_end_throughput_100, publisher_latency
+2026-01-07 15:14:39.012 +01:00 [INF] [ThreadId:11] Warm up duration: 00:00:03
+2026-01-07 15:14:43.078 +01:00 [INF] [ThreadId:20] Starting bombing...
+2026-01-07 15:15:43.161 +01:00 [INF] [ThreadId:35] Waiting on scenarios completion...
+2026-01-07 15:15:46.163 +01:00 [INF] [ThreadId:35] Stopping scenarios...
+2026-01-07 15:15:46.167 +01:00 [INF] [ThreadId:35] Start cleaning scenario: publisher_throughput
+2026-01-07 15:15:46.186 +01:00 [INF] [ThreadId:29] Start cleaning scenario: end_to_end_throughput_20
+2026-01-07 15:15:51.211 +01:00 [INF] [ThreadId:11] Start cleaning scenario: end_to_end_throughput_40
+2026-01-07 15:15:51.213 +01:00 [INF] [ThreadId:11] Start cleaning scenario: end_to_end_throughput_100
+2026-01-07 15:15:51.216 +01:00 [INF] [ThreadId:11] Start cleaning scenario: publisher_latency
+2026-01-07 15:15:56.231 +01:00 [INF] [ThreadId:31] Calculating final statistics...
+2026-01-07 15:15:56.732 +01:00 [INF] [ThreadId:11] Reports saved in folder: C:\src\github\sandrawar\PubSub\PerformanceTests\reports
+2026-01-07 15:15:56.732 +01:00 [WRN] [ThreadId:11] THIS VERSION IS FREE ONLY FOR PERSONAL USE. You can't use it for an organization.
