@@ -24,9 +24,9 @@ public class ProcessMessageUseCase<T>(
 
         Logger.LogDebug(
             $"Processing batch at baseOffset {batch.BaseOffset}, lastOffset {batch.LastOffset}, {batch.Records.Count} records");
-
-        var schema = await schemaRegistryClient.GetLatestSchemaByTopicAsync(topic);
-        var deserializedMessages = await deserializeBatchUseCase.ExecuteAsync(batchBytes, schema, schema);
+        
+        var readerSchema = await schemaRegistryClient.GetLatestSchemaByTopicAsync(topic);
+        var deserializedMessages = await deserializeBatchUseCase.ExecuteAsync(batchBytes, readerSchema);
 
         foreach (var message in deserializedMessages)
         {
