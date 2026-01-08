@@ -29,9 +29,9 @@ namespace BddE2eTests.Features
         
         private static string[] featureTags = ((string[])(null));
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new System.Globalization.CultureInfo("en-US"), "Features", "Publisher and Subscriber Communication", "    As a system integrator\n    I want to verify that publishers can send messages" +
-                " and subscribers can receive them\n    So that the message broker correctly route" +
-                "s messages between components", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags);
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new System.Globalization.CultureInfo("en-US"), "Features", "Publisher and Subscriber Communication", "    As a system integrator\r\n    I want to verify that publishers can send message" +
+                "s and subscribers can receive them\r\n    So that the message broker correctly rou" +
+                "tes messages between components", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags);
         
 #line 1 "PublisherSubscriber.feature"
 #line hidden

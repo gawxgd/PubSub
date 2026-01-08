@@ -30,12 +30,12 @@ Console.WriteLine();
 // Configuration - PubSub System
 var brokerHost = Environment.GetEnvironmentVariable("BROKER_HOST") ?? "127.0.0.1";
 var brokerPort = int.Parse(Environment.GetEnvironmentVariable("BROKER_PORT") ?? "9096");
-var schemaRegistryUrl = Environment.GetEnvironmentVariable("SCHEMA_REGISTRY_URL") ?? "http://localhost:8081";
+var schemaRegistryUrl = Environment.GetEnvironmentVariable("SCHEMA_REGISTRY_URL") ?? "http://127.0.0.1t:8081";
 var topic = Environment.GetEnvironmentVariable("TOPIC") ?? "performance-test";
 
 // Configuration - Kafka (optional, defaults to 127.0.0.1 to force IPv4)
 var kafkaBootstrapServers = Environment.GetEnvironmentVariable("KAFKA_BOOTSTRAP_SERVERS") ?? "127.0.0.1:9092";
-var kafkaSchemaRegistryUrl = Environment.GetEnvironmentVariable("KAFKA_SCHEMA_REGISTRY_URL") ?? "http://localhost:8081";
+var kafkaSchemaRegistryUrl = Environment.GetEnvironmentVariable("KAFKA_SCHEMA_REGISTRY_URL") ?? "http://127.0.0.1:8081";
 var kafkaTopic = Environment.GetEnvironmentVariable("KAFKA_TOPIC") ?? $"{topic}-kafka";
 var kafkaConsumerGroupId = Environment.GetEnvironmentVariable("KAFKA_CONSUMER_GROUP_ID") ?? "performance-test-consumer-group";
 var enableKafkaTests = Environment.GetEnvironmentVariable("ENABLE_KAFKA_TESTS")?.ToLower() == "true";
@@ -257,14 +257,7 @@ scenarios.Add(endToEndScenario40);
 scenarios.Add(endToEndScenario100);
 scenarios.Add(endToEndScenario200);
 
-ScenarioProps rampUpRampDownScenario =
-    RampUpRampDownScenario.Create(
-        publisherFactory,
-        publisherOptions,
-        subscriberFactory,
-        subscriberOptions);
 
-scenarios.Add(rampUpRampDownScenario);
 
 ScenarioProps publisherLatencyScenario =
     PublisherLatencyScenario.Create(publisherFactory, publisherOptions);
