@@ -30,6 +30,8 @@ public class TestBase
     private static string? _schemaStorePath;
     private static string? _commitLogDirectory;
     private static bool _loggerInitialized;
+    
+    public static string? CommitLogDirectory => _commitLogDirectory;
 
     public static async Task RestartBrokerAsync()
     {
