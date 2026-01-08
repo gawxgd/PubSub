@@ -1,3 +1,4 @@
+using System;
 using System.Text;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
@@ -18,13 +19,13 @@ public class MessageWithTopicDeformatter
         var separatorIndex = span.IndexOf(MessageWithTopic.Separator);
         if (separatorIndex == -1)
         {
-            Logger.LogWarning("Invalid message format: missing topic separator");
+            Logger.LogWarning($"Invalid message format: missing topic separator. Message length: {message.Length}, first 50 bytes: {Convert.ToHexString(span.Slice(0, Math.Min(50, message.Length)))}");
             return null;
         }
 
         var topic = Encoding.UTF8.GetString(span.Slice(0, separatorIndex));
+        
         var payload = span.Slice(separatorIndex + 1).ToArray();
-
         return new MessageWithTopic(topic, payload);
     }
 }

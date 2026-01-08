@@ -8,4 +8,10 @@ public interface ILogSegmentReader : IAsyncDisposable
     LogRecordBatch? ReadBatch(ulong offset);
     IEnumerable<LogRecordBatch> ReadRange(ulong startOffset, ulong endOffset);
     IEnumerable<LogRecordBatch> ReadFromTimestamp(ulong timestamp);
+    
+    /// <summary>
+    /// Scans the log file to recover the high water mark (next offset to write).
+    /// Used during broker restart to restore offset state.
+    /// </summary>
+    ulong RecoverHighWaterMark();
 }

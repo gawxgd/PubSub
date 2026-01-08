@@ -5,7 +5,6 @@ using System.Threading.Channels;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
-using MessageBroker.Domain.Entities;
 using MessageBroker.Domain.Enums;
 using MessageBroker.Domain.Port;
 using MessageBroker.Inbound.Adapter;
@@ -28,7 +27,8 @@ public sealed class TcpPublisherConnection(
         AutoLoggerFactory.CreateLogger<TcpPublisherConnection>(LogSource.Publisher);
 
     private readonly CancellationTokenSource _cancellationSource = new();
-    private readonly TcpClient _client = new();
+    private TcpClient? _client;
+    private NetworkStream? _stream;
     private readonly FrameMessageUseCase _frameMessageUseCase = new(new MessageFramer());
     private readonly ReceivePublishResponseUseCase _receivePublishResponseUseCase = new(new MessageDeframer());
     private readonly PublishResponseHandler _responseHandler = new();
@@ -36,15 +36,14 @@ public sealed class TcpPublisherConnection(
     private PipeReader? _pipeReader;
     private Task? _processChannelTask;
     private Task? _receiveResponseTask;
-    private readonly Channel<PublishResponse> _responseChannel = Channel.CreateBounded<PublishResponse>(
-        new BoundedChannelOptions(100)
-        {
-            FullMode = BoundedChannelFullMode.DropOldest,
-            SingleReader = false,
-            SingleWriter = true
-        });
-    public ChannelReader<PublishResponse> Responses => _responseChannel. Reader;
     
+    private readonly SemaphoreSlim _reconnectLock = new(1, 1);
+    private const int ReconnectDelayMs = 500;
+    private const int MaxReconnectAttempts = 10;
+    
+    private volatile bool _connectionBroken;
+    
+    public PublishResponseHandler ResponseHandler => _responseHandler;
 
     private PipeWriter PipeWriter =>
         _pipeWriter ?? throw new InvalidOperationException("PipeWriter has not been initialized.");
@@ -70,23 +69,45 @@ public sealed class TcpPublisherConnection(
 
         try
         {
-            await Task.WhenAll(ProcessChannelTask, _receiveResponseTask ?? Task.CompletedTask);
+            var tasks = new List<Task>();
+            if (_processChannelTask != null) tasks.Add(_processChannelTask);
+            if (_receiveResponseTask != null) tasks.Add(_receiveResponseTask);
+            
+            if (tasks.Count > 0)
+            {
+                try
+                {
+                    await Task.WhenAll(tasks);
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogDebug($"Error waiting for tasks: {ex.Message}");
+                }
+            }
 
-            await PipeWriter.FlushAsync();
-            await PipeWriter.CompleteAsync();
+            if (_pipeWriter != null)
+            {
+                try
+                {
+                    await _pipeWriter.FlushAsync();
+                    await _pipeWriter.CompleteAsync();
+                }
+                catch { /* ignore */ }
+            }
 
             if (_pipeReader != null)
             {
-                await _pipeReader.CompleteAsync();
+                try
+                {
+                    await _pipeReader.CompleteAsync();
+                }
+                catch { /* ignore */ }
             }
 
-            _client.Client.Shutdown(SocketShutdown.Both);
-            _client.Close();
-
+            CloseSocketResources();
+            
             deadLetterChannel.Writer.TryComplete();
-            _responseChannel.Writer. TryComplete();
-
-            _client.Dispose();
+            _reconnectLock.Dispose();
             _cancellationSource.Dispose();
         }
         catch (Exception ex)
@@ -99,13 +120,16 @@ public sealed class TcpPublisherConnection(
     {
         try
         {
+            CloseSocketResources();
+            
+            _client = new TcpClient();
             await _client.ConnectAsync(
                 options.MessageBrokerConnectionUri.Host,
                 options.MessageBrokerConnectionUri.Port,
                 _cancellationSource.Token);
-            var stream = _client.GetStream();
-            _pipeWriter = PipeWriter.Create(stream);
-            _pipeReader = PipeReader.Create(stream);
+            _stream = _client.GetStream();
+            _pipeWriter = PipeWriter.Create(_stream);
+            _pipeReader = PipeReader.Create(_stream);
 
             Logger.LogInfo($"Connected to broker on {_client.Client.RemoteEndPoint}");
         }
@@ -123,22 +147,144 @@ public sealed class TcpPublisherConnection(
             throw new PublisherException($"Unrecoverable connection error {ex.Message}", ex);
         }
     }
+    
+    private void CloseSocketResources()
+    {
+        if (_pipeWriter != null)
+        {
+            try { _pipeWriter.Complete(); }
+            catch { /* ignore */ }
+            _pipeWriter = null;
+        }
+        
+        if (_pipeReader != null)
+        {
+            try { _pipeReader.Complete(); }
+            catch { /* ignore */ }
+            _pipeReader = null;
+        }
+        
+        if (_stream != null)
+        {
+            try { _stream.Dispose(); }
+            catch { /* ignore */ }
+            _stream = null;
+        }
+        
+        if (_client != null)
+        {
+            try
+            {
+                if (_client.Connected)
+                    _client.Client.Shutdown(SocketShutdown.Both);
+            }
+            catch { /* ignore */ }
+            finally
+            {
+                try { _client.Close(); }
+                catch { /* ignore */ }
+                _client = null;
+            }
+        }
+    }
+    
+    private async Task<bool> ReconnectAsync()
+    {
+        if (_cancellationSource.Token.IsCancellationRequested)
+            return false;
+        
+        await _reconnectLock.WaitAsync(_cancellationSource.Token);
+        
+        try
+        {
+            if (!_connectionBroken)
+            {
+                Logger.LogDebug("Connection already restored by another task");
+                return true;
+            }
+            
+            Logger.LogInfo("Attempting to reconnect to broker...");
+            
+            for (var attempt = 1; attempt <= MaxReconnectAttempts; attempt++)
+            {
+                if (_cancellationSource.Token.IsCancellationRequested)
+                    return false;
+                    
+                try
+                {
+                    await Task.Delay(ReconnectDelayMs, _cancellationSource.Token);
+                    await HandleConnectionToBroker();
+                    
+                    _connectionBroken = false;
+                    
+                    _receiveResponseTask = Task.Run(ReceiveResponsesAsync, _cancellationSource.Token);
+                    
+                    Logger.LogInfo("Successfully reconnected to broker");
+                    return true;
+                }
+                catch (OperationCanceledException)
+                {
+                    return false;
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning($"Reconnect attempt {attempt}/{MaxReconnectAttempts} failed: {ex.Message}");
+                    if (attempt == MaxReconnectAttempts)
+                    {
+                        Logger.LogError("Max reconnect attempts reached");
+                        return false;
+                    }
+                }
+            }
+            
+            return false;
+        }
+        finally
+        {
+            _reconnectLock.Release();
+        }
+    }
 
     private async Task ProcessChannelAsync()
     {
-        await foreach (var msg in channelReader.ReadAllAsync(_cancellationSource.Token))
+        try
         {
-            batchMessagesUseCase.Add(msg);
-
-            if (batchMessagesUseCase.ShouldFlush(options.BatchMaxBytes, options.BatchMaxDelay))
+            await foreach (var msg in channelReader.ReadAllAsync(_cancellationSource.Token))
             {
-                await SendBatchAsync();
+                batchMessagesUseCase.Add(msg);
+
+                if (batchMessagesUseCase.ShouldFlush(options.BatchMaxBytes, options.BatchMaxDelay))
+                {
+                    try
+                    {
+                        await SendBatchAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.LogError($"Error sending batch in process loop: {ex.Message}", ex);
+                    }
+                }
+            }
+
+            if (batchMessagesUseCase.Count > 0)
+            {
+                try
+                {
+                    await SendBatchAsync();
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError($"Error sending final batch: {ex.Message}", ex);
+                }
             }
         }
-
-        if (batchMessagesUseCase.Count > 0)
+        catch (OperationCanceledException)
         {
-            await SendBatchAsync();
+            Logger.LogInfo("Channel processing cancelled");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError($"Unexpected error in process channel: {ex.Message}", ex);
         }
 
         Logger.LogInfo("Finished processing channel");
@@ -159,17 +305,49 @@ public sealed class TcpPublisherConnection(
 
             try
             {
+                if (_connectionBroken)
+                {
+                    Logger.LogWarning("Connection is marked as broken, attempting to reconnect...");
+                    if (!await ReconnectAsync())
+                    {
+                        Logger.LogError("Failed to reconnect from broken state, cannot send batch");
+                        break;
+                    }
+                }
+                
+                var writer = _pipeWriter;
+                if (writer == null)
+                {
+                    Logger.LogWarning("No active connection, attempting to reconnect...");
+                    if (!await ReconnectAsync())
+                    {
+                        Logger.LogError("Failed to reconnect, cannot send batch");
+                        break;
+                    }
+                    writer = _pipeWriter;
+                    if (writer == null)
+                    {
+                        Logger.LogError("PipeWriter still null after reconnect");
+                        break;
+                    }
+                }
+                
                 await _frameMessageUseCase.WriteFramedMessageAsync(
-                    PipeWriter,
+                    writer,
                     options.Topic,
                     batchBytes,
                     _cancellationSource.Token);
 
-                var result = await PipeWriter.FlushAsync(_cancellationSource.Token);
+                var result = await writer.FlushAsync(_cancellationSource.Token);
 
                 if (result.IsCompleted)
                 {
-                    throw new PublisherConnectionException("Connection to broker failed");
+                    Logger.LogWarning("Connection completed (likely broker restart), attempting to reconnect...");
+                    if (await ReconnectAsync())
+                    {
+                        continue; // Retry sending with new connection
+                    }
+                    break;
                 }
 
                 if (result.IsCanceled)
@@ -185,13 +363,30 @@ public sealed class TcpPublisherConnection(
             }
             catch (IOException ex)
             {
-                Logger.LogWarning($"IO exception: {ex.Message} retrying connection", ex);
-                throw new PublisherConnectionException("Connection to broker failed");
+                Logger.LogWarning($"IO exception: {ex.Message}, attempting to reconnect...", ex);
+                if (!await ReconnectAsync())
+                {
+                    break;
+                }
+                // Continue to retry with new connection
             }
             catch (SocketException ex) when (CanRetrySocketException(ex))
             {
-                Logger.LogWarning($"Retriable socket exception: {ex.Message} retrying connection", ex);
-                throw new PublisherConnectionException("Connection to broker failed");
+                Logger.LogWarning($"Retriable socket exception: {ex.Message}, attempting to reconnect...", ex);
+                if (!await ReconnectAsync())
+                {
+                    break;
+                }
+                // Continue to retry with new connection
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("PipeWriter"))
+            {
+                Logger.LogWarning("PipeWriter not initialized, attempting to reconnect...");
+                if (!await ReconnectAsync())
+                {
+                    break;
+                }
+                // Continue to retry with new connection
             }
             catch (OperationCanceledException)
             {
@@ -259,6 +454,8 @@ public sealed class TcpPublisherConnection(
 
                 if (result.IsCompleted)
                 {
+                    Logger.LogWarning("Connection closed by broker, marking connection as broken");
+                    _connectionBroken = true;
                     break;
                 }
             }
@@ -270,6 +467,7 @@ public sealed class TcpPublisherConnection(
         catch (Exception ex)
         {
             Logger.LogError($"Error receiving responses: {ex.Message}", ex);
+            _connectionBroken = true;
         }
     }
 
@@ -279,7 +477,6 @@ public sealed class TcpPublisherConnection(
         {
             if (response != null)
             {
-                _responseChannel.Writer.TryWrite(response);
                 _responseHandler.Handle(response);
             }
         }
