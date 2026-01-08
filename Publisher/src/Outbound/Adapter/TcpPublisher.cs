@@ -20,7 +20,6 @@ public sealed class TcpPublisher<T>(
     private readonly IAutoLogger _logger = AutoLoggerFactory.CreateLogger<TcpPublisher<T>>(LogSource.Publisher);
     private readonly TimeSpan _baseRetryDelay = TimeSpan.FromSeconds(1);
     private readonly CancellationTokenSource _cancellationTokenSource = new();
-    public ChannelReader<PublishResponse>?  Responses => _currentPublisherConnection?. Responses;
 
     private readonly Channel<byte[]> _channel = Channel.CreateBounded<byte[]>(
         new BoundedChannelOptions((int)options.MaxPublisherQueueSize)
@@ -37,6 +36,10 @@ public sealed class TcpPublisher<T>(
         });
 
     private IPublisherConnection? _currentPublisherConnection;
+    
+    public ChannelReader<PublishResponse>? ErrorResponses =>
+        (_currentPublisherConnection as TcpPublisherConnection)
+        ?.ResponseHandler.ErrorResponses;
 
     public async ValueTask DisposeAsync()
     {

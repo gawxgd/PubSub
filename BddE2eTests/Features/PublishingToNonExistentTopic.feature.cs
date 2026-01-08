@@ -151,26 +151,26 @@ namespace BddE2eTests.Features
             else
             {
                 await this.ScenarioStartAsync();
-                global::Reqnroll.Table table8 = new global::Reqnroll.Table(new string[] {
+                global::Reqnroll.Table table24 = new global::Reqnroll.Table(new string[] {
                             "Setting",
                             "Value"});
-                table8.AddRow(new string[] {
+                table24.AddRow(new string[] {
                             "Topic",
                             "non-existent"});
-                table8.AddRow(new string[] {
+                table24.AddRow(new string[] {
                             "Broker",
                             "127.0.0.1:9096"});
-                table8.AddRow(new string[] {
+                table24.AddRow(new string[] {
                             "Queue Size",
                             "1000"});
-                table8.AddRow(new string[] {
+                table24.AddRow(new string[] {
                             "Max Retry Attempts",
                             "3"});
-                table8.AddRow(new string[] {
+                table24.AddRow(new string[] {
                             "Max Send Attempts",
                             "3"});
 #line 15
-        await testRunner.GivenAsync("a publisher is configured with the following options:", ((string)(null)), table8, "Given ");
+        await testRunner.GivenAsync("a publisher is configured with the following options:", ((string)(null)), table24, "Given ");
 #line hidden
 #line 22
         await testRunner.AndAsync("the schema registry contains a schema for topic \"non-existent\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");

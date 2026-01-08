@@ -16,6 +16,9 @@ public class BrokerFailureThenStep(ScenarioContext scenarioContext)
     {
         _context.TryGetPublisher(out var publisher);
         
+        var reader = publisher.ErrorResponses 
+                     ?? throw new InvalidOperationException("ErrorResponses reader is not available");
+        
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(TimeoutSeconds));
         
         try
@@ -23,7 +26,7 @@ public class BrokerFailureThenStep(ScenarioContext scenarioContext)
             await TestContext.Progress.WriteLineAsync(
                 "[Then Step] Waiting for PublishResponse from broker...");
             
-            var response = await publisher! .Responses!.ReadAsync(cts.Token);
+            var response = await reader.ReadAsync(cts.Token);
             
             await TestContext.Progress.WriteLineAsync(
                 $"[Then Step] Received response: ErrorCode={response.ErrorCode}, BaseOffset={response.BaseOffset}");

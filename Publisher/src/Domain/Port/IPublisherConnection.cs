@@ -7,5 +7,4 @@ public interface IPublisherConnection
 {
     Task ConnectAsync();
     Task DisconnectAsync();
-    ChannelReader<PublishResponse> Responses { get; }
 }
