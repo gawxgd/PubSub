@@ -241,11 +241,16 @@ Console.WriteLine();
 
 static async Task RegisterSchemaForTestMessage(Uri schemaRegistryBaseAddress, string topic)
 {
-    const string testMessageSchema = """
+    var cleanTopic = topic.Replace("schema/topic/", "").Trim('/');
+    
+    // UNIKALNY NAMESPACE dla każdego topicu!
+    var schemaNamespace = $"PerformanceTests.Models.{cleanTopic.Replace("-", "_")}";
+    
+    var testMessageSchema = $$"""
     {
       "type": "record",
       "name": "TestMessage",
-      "namespace": "PerformanceTests.Models",
+      "namespace": "{{schemaNamespace}}",
       "fields": [
         { "name": "Id", "type": "int" },
         { "name": "Timestamp", "type": "long" },
@@ -256,15 +261,13 @@ static async Task RegisterSchemaForTestMessage(Uri schemaRegistryBaseAddress, st
     }
     """;
 
-    var cleanTopic = topic.Replace("schema/topic/", "").Trim('/');
-    
     Console.WriteLine($"      [REGISTER] Topic: '{cleanTopic}'");
+    Console.WriteLine($"      [REGISTER] Namespace: '{schemaNamespace}'");
 
     try
     {
         using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
         
-        // Pełny URL bez BaseAddress
         var url = $"{schemaRegistryBaseAddress.ToString().TrimEnd('/')}/schema/topic/{cleanTopic}";
         Console.WriteLine($"      [REGISTER] URL: {url}");
         
@@ -300,6 +303,7 @@ static async Task RegisterSchemaForTestMessage(Uri schemaRegistryBaseAddress, st
         throw;
     }
 }
+
 
 
 

@@ -173,54 +173,82 @@ public static class MultiTopicLongRunScenario
                     during: TimeSpan.FromSeconds(durationSeconds))
             )
             .WithClean(async context =>
+{
+    try
+    {
+        Console.WriteLine($"\n=== Cleanup for {cleanTopicName} ===");
+
+        if (SubscribersByTopic.TryRemove(topicName, out var subscribers))
+        {
+            Console.WriteLine($"  Stopping {subscribers.Count} subscribers...");
+            
+            var disposeTasks = subscribers.Select(async subscriber =>
             {
-                try
+                if (subscriber is IAsyncDisposable subDisposable)
                 {
-                    Console.WriteLine($"\n=== Cleanup for {cleanTopicName} ===");
-
-                    if (PublishersByTopic.TryRemove(topicName, out var publishers))
+                    try
                     {
-                        foreach (var publisher in publishers)
+                        var disposeTask = subDisposable.DisposeAsync().AsTask();
+                        var timeoutTask = Task.Delay(TimeSpan.FromSeconds(5));
+                        var completedTask = await Task.WhenAny(disposeTask, timeoutTask);
+                        
+                        if (completedTask == timeoutTask)
                         {
-                            if (publisher is IAsyncDisposable pubDisposable)
-                            {
-                                await pubDisposable.DisposeAsync();
-                            }
+                            Console.WriteLine($"     Subscriber disposal timed out - forcing stop");
                         }
-                        Console.WriteLine($"  ✓ Disposed {publishers.Count} publishers");
                     }
-
-                    if (SubscribersByTopic.TryRemove(topicName, out var subscribers))
+                    catch (Exception ex)
                     {
-                        foreach (var subscriber in subscribers)
-                        {
-                            if (subscriber is IAsyncDisposable subDisposable)
-                            {
-                                await subDisposable.DisposeAsync();
-                            }
-                        }
-                        Console.WriteLine($"  ✓ Disposed {subscribers.Count} subscribers");
+                        Console.WriteLine($"     Error disposing subscriber: {ex.Message}");
                     }
-
-                    var publishedMessages = PublishedMessagesByTopic.GetOrAdd(topicName, _ => new ConcurrentDictionary<long, DateTime>());
-                    var receivedMessages = ReceivedMessagesByTopic.GetOrAdd(topicName, _ => new ConcurrentDictionary<long, DateTime>());
-
-                    Console.WriteLine($"\n=== Statistics for {cleanTopicName} ===");
-                    Console.WriteLine($"  Published: {publishedMessages.Count:N0}");
-                    Console.WriteLine($"  Received: {receivedMessages.Count:N0}");
-                    Console.WriteLine($"  Loss: {publishedMessages.Count - receivedMessages.Count:N0}");
-                    
-                    if (publishedMessages.Count > 0)
-                    {
-                        var deliveryRate = (double)receivedMessages.Count / publishedMessages.Count * 100;
-                        Console.WriteLine($"  Delivery rate: {deliveryRate:F2}%");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Warning: Cleanup error for {cleanTopicName}: {ex.Message}");
                 }
             });
+            
+            await Task.WhenAll(disposeTasks);
+            Console.WriteLine($"  Disposed {subscribers.Count} subscribers");
+        }
+
+        // POTEM PUBLISHERS
+        if (PublishersByTopic.TryRemove(topicName, out var publishers))
+        {
+            Console.WriteLine($"  Stopping {publishers.Count} publishers...");
+            
+            foreach (var publisher in publishers)
+            {
+                if (publisher is IAsyncDisposable pubDisposable)
+                {
+                    try
+                    {
+                        await pubDisposable.DisposeAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"    ⚠ Error disposing publisher: {ex.Message}");
+                    }
+                }
+            }
+            Console.WriteLine($"  ✓ Disposed {publishers.Count} publishers");
+        }
+
+        var publishedMessages = PublishedMessagesByTopic.GetOrAdd(topicName, _ => new ConcurrentDictionary<long, DateTime>());
+        var receivedMessages = ReceivedMessagesByTopic.GetOrAdd(topicName, _ => new ConcurrentDictionary<long, DateTime>());
+
+        Console.WriteLine($"\n=== Statistics for {cleanTopicName} ===");
+        Console.WriteLine($"  Published: {publishedMessages.Count:N0}");
+        Console.WriteLine($"  Received: {receivedMessages.Count:N0}");
+        Console.WriteLine($"  Loss: {publishedMessages.Count - receivedMessages.Count:N0}");
+        
+        if (publishedMessages.Count > 0)
+        {
+            var deliveryRate = (double)receivedMessages.Count / publishedMessages.Count * 100;
+            Console.WriteLine($"  Delivery rate: {deliveryRate:F2}%");
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Warning: Cleanup error for {cleanTopicName}: {ex.Message}");
+    }
+});
 
             scenarios.Add(scenario);
         }
