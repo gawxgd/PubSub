@@ -98,6 +98,9 @@ IPublisher<DemoMessage>? publisher = null;
 MessagePublisherService<DemoMessage>? publisherService = null;
 SimpleHttpClientFactory? httpClientFactory = null;
 
+var topic = demoOptions.Topic ?? "default";
+Console.WriteLine($"Using topic: {topic}\n");
+
 try
 {
     // Register schema for DemoMessage first (using a separate HttpClient)
