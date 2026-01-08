@@ -60,6 +60,23 @@ public sealed class HttpSchemaRegistryClient : ISchemaRegistryClient
 
     private record SchemaRegistrationResponse(int Id);
 
+    public async Task<SchemaInfo> GetLatestSchemaByTopicAsync(string topic, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(topic);
+
+        if (_cache.TryGet(topic, out var cached))
+        {
+            Logger.LogDebug($"Cache hit for topic: {topic}");
+            return cached;
+        }
+
+        Logger.LogDebug($"Cache miss for topic: {topic}, fetching from registry");
+        var schema = await FetchSchemaAsync($"{TopicEndpoint}{topic}", cancellationToken);
+
+        _cache.AddToCache(topic, schema);
+        return schema;
+    }
+
     public async Task<SchemaInfo> GetSchemaByIdAsync(int schemaId, CancellationToken cancellationToken = default)
     {
         if (_cache.TryGet(schemaId, out var cached))

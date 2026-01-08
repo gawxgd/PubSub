@@ -1,6 +1,10 @@
+using LoggerLib.Domain.Enums;
+using LoggerLib.Domain.Port;
+using LoggerLib.Outbound.Adapter;
 using Publisher.Domain.Port;
 using Shared.Domain.Avro;
 using Shared.Domain.Entities.SchemaRegistryClient;
+using Shared.Domain.Exceptions.SchemaRegistryClient;
 using Shared.Domain.Port.SchemaRegistryClient;
 
 namespace Publisher.Domain.Logic;
@@ -10,6 +14,9 @@ public class SerializeMessageUseCase<T>(
     ISchemaRegistryClient schemaRegistryClient,
     string topic)
 {
+    private static readonly IAutoLogger Logger =
+        AutoLoggerFactory.CreateLogger<SerializeMessageUseCase<T>>(LogSource.Publisher);
+
     private SchemaInfo? _cachedSchema;
     private readonly SemaphoreSlim _schemaLock = new(1, 1);
 
@@ -20,8 +27,22 @@ public class SerializeMessageUseCase<T>(
         {
             if (_cachedSchema != null) return;
 
+            Logger.LogDebug($"Initializing schema for topic '{topic}'...");
+
+            try
+            {
+                _cachedSchema = await schemaRegistryClient.GetLatestSchemaByTopicAsync(topic, cancellationToken);
+                Logger.LogInfo($"Found existing schema for topic '{topic}' with ID: {_cachedSchema.SchemaId}");
+                return;
+            }
+            catch (SchemaNotFoundException e)
+            {
+                Logger.LogDebug($"No existing schema found for topic '{topic}', generating new schema...", e);
+            }
+
             var schemaJson = AvroSchemaGenerator.GenerateSchemaJson<T>();
             _cachedSchema = await schemaRegistryClient.RegisterSchemaAsync(topic, schemaJson, cancellationToken);
+            Logger.LogInfo($"Registered new schema for topic '{topic}' with ID: {_cachedSchema.SchemaId}");
         }
         finally
         {

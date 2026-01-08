@@ -5,6 +5,7 @@ using LoggerLib.Outbound.Adapter;
 using MessageBroker.Domain.Port.CommitLog.RecordBatch;
 using Shared.Domain.Avro;
 using Shared.Domain.Entities.SchemaRegistryClient;
+using Shared.Domain.Exceptions.SchemaRegistryClient;
 using Shared.Domain.Port.SchemaRegistryClient;
 
 namespace Subscriber.Domain.UseCase;
@@ -29,10 +30,20 @@ public class ProcessMessageUseCase<T>(
         {
             if (_cachedReaderSchema != null) return;
 
+            try
+            {
+                _cachedReaderSchema = await schemaRegistryClient.GetLatestSchemaByTopicAsync(topic, cancellationToken);
+                Logger.LogInfo($"Found existing schema for topic '{topic}' with ID: {_cachedReaderSchema.SchemaId}");
+                return;
+            }
+            catch (SchemaNotFoundException e)
+            {
+                Logger.LogDebug($"No existing schema found for topic '{topic}', generating new schema...", e);
+            }
+
             var schemaJson = AvroSchemaGenerator.GenerateSchemaJson<T>();
             _cachedReaderSchema = await schemaRegistryClient.RegisterSchemaAsync(topic, schemaJson, cancellationToken);
-
-            Logger.LogInfo($"Initialized reader schema for topic '{topic}' with ID: {_cachedReaderSchema.SchemaId}");
+            Logger.LogInfo($"Registered new schema for topic '{topic}' with ID: {_cachedReaderSchema.SchemaId}");
         }
         finally
         {
