@@ -36,6 +36,7 @@ public class ConfigurePublisherGivenStep(ScenarioContext scenarioContext)
         _context.Topic = ExtractTopicFromTable(table);
     }
 
+    [When(@"publishers (.+) are configured with the following options:")]
     [Given(@"publishers (.+) are configured with the following options:")]
     public async Task GivenPublishersAreConfiguredWithTheFollowingOptions(string publisherNames, Table table)
     {
