@@ -104,7 +104,6 @@ Console.WriteLine($"Using topic: {topic}\n");
 try
 {
     // Register schema for DemoMessage first (using a separate HttpClient)
-    var topic = demoOptions.Topic ?? "default";
     Console.WriteLine($"Rejestrowanie schematu dla topiku: {topic}...");
     try
     {

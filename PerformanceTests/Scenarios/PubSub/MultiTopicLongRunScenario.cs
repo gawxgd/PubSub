@@ -134,6 +134,7 @@ public static class MultiTopicLongRunScenario
 
                         await subscriber.StartConnectionAsync();
                         
+                        // StartMessageProcessingAsync has its own internal loop - just call it once
                         _ = Task.Run(async () =>
                         {
                             try
@@ -186,26 +187,13 @@ public static class MultiTopicLongRunScenario
             {
                 if (subscriber is IAsyncDisposable subDisposable)
                 {
-                    try
-                    {
-                        var disposeTask = subDisposable.DisposeAsync().AsTask();
-                        var timeoutTask = Task.Delay(TimeSpan.FromSeconds(5));
-                        var completedTask = await Task.WhenAny(disposeTask, timeoutTask);
-                        
-                        if (completedTask == timeoutTask)
-                        {
-                            Console.WriteLine($"     Subscriber disposal timed out - forcing stop");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"     Error disposing subscriber: {ex.Message}");
-                    }
+                    try { await subDisposable.DisposeAsync(); }
+                    catch (Exception ex) { Console.WriteLine($"     Error disposing subscriber: {ex.Message}"); }
                 }
             });
             
             await Task.WhenAll(disposeTasks);
-            Console.WriteLine($"  Disposed {subscribers.Count} subscribers");
+            Console.WriteLine($"  ✓ Disposed {subscribers.Count} subscribers");
         }
 
         // POTEM PUBLISHERS
@@ -213,20 +201,16 @@ public static class MultiTopicLongRunScenario
         {
             Console.WriteLine($"  Stopping {publishers.Count} publishers...");
             
-            foreach (var publisher in publishers)
+            var pubDisposeTasks = publishers.Select(async publisher =>
             {
                 if (publisher is IAsyncDisposable pubDisposable)
                 {
-                    try
-                    {
-                        await pubDisposable.DisposeAsync();
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"    ⚠ Error disposing publisher: {ex.Message}");
-                    }
+                    try { await pubDisposable.DisposeAsync(); }
+                    catch (Exception ex) { Console.WriteLine($"     Error disposing publisher: {ex.Message}"); }
                 }
-            }
+            });
+            
+            await Task.WhenAll(pubDisposeTasks);
             Console.WriteLine($"  ✓ Disposed {publishers.Count} publishers");
         }
 
