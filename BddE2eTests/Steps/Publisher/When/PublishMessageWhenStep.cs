@@ -30,6 +30,28 @@ public class PublishMessageWhenStep(ScenarioContext scenarioContext)
         }
     }
 
+    [When(@"the publisher sends message ""(.*)"" priority (\d+) to topic ""(.*)""")]
+    public async Task WhenThePublisherSendsMessageWithPriorityToTopic(string message, int priority, string topic)
+    {
+        try
+        {
+            await TestContext.Progress.WriteLineAsync(
+                $"[When Step] Sending message '{message}' with priority {priority} to topic '{topic}'...");
+
+            _context.TryGetPublisher(out var publisher);
+            await PublishSingleMessage(publisher!, message, topic, priority);
+
+            await TestContext.Progress.WriteLineAsync("[When Step] Message sent!");
+
+            _context.SentMessage = message;
+            _context.Topic = topic;
+        }
+        catch (Exception ex)
+        {
+            _context.PublishException = ex;
+        }
+    }
+
     [When(@"the publisher sends (\d+) messages to topic ""(.*)""")]
     public async Task WhenThePublisherSendsMessagesToTopic(int messageCount, string topic)
     {
@@ -85,6 +107,17 @@ public class PublishMessageWhenStep(ScenarioContext scenarioContext)
         {
             Message = message,
             Topic = topic
+        };
+        await publisher.PublishAsync(evt);
+    }
+
+    private async Task PublishSingleMessage(IPublisher<TestEvent> publisher, string message, string topic, int priority)
+    {
+        var evt = new TestEvent
+        {
+            Message = message,
+            Topic = topic,
+            Priority = priority
         };
         await publisher.PublishAsync(evt);
     }

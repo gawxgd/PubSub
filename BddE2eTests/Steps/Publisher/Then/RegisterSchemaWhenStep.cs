@@ -9,24 +9,30 @@ public class RegisterSchemaWhenStep(ScenarioContext scenarioContext)
 {
     private readonly ScenarioTestContext _context = new(scenarioContext);
     
+    [When(@"schema ""(.*)"" is registered for topic ""(.*)""")]
+    [Given(@"schema ""(.*)"" is registered for topic ""(.*)""")]
+    public async Task WhenSchemaKeyIsRegisteredForTopic(string schemaKey, string topic)
+    {
+        await TestContext.Progress.WriteLineAsync(
+            $"[Schema Step] Registering schema '{schemaKey}' for topic '{topic}'.. .");
+
+        var schemaJson = TestSchemas.Resolve(schemaKey);
+        await RegisterSchemaAsync(topic, schemaJson);
+
+        await TestContext.Progress.WriteLineAsync(
+            $"[Schema Step] Schema '{schemaKey}' registered for topic '{topic}'!");
+    }
+
     [When(@"schema v1 is registered for topic ""(.*)""")]
     public async Task WhenSchemaV1IsRegisteredForTopic(string topic)
     {
-        await TestContext.Progress.WriteLineAsync($"[Schema Step] Registering schema v1 for topic '{topic}'.. .");
-        
-        await RegisterSchemaAsync(topic, TestSchemas.ValidSchemaJson);
-        
-        await TestContext.Progress.WriteLineAsync($"[Schema Step] Schema v1 registered for topic '{topic}'!");
+        await WhenSchemaKeyIsRegisteredForTopic(TestSchemas.Keys.V1, topic);
     }
     
     [When(@"schema v2 is registered for topic ""(.*)""")]
     public async Task WhenSchemaV2IsRegisteredForTopic(string topic)
     {
-        await TestContext.Progress.WriteLineAsync($"[Schema Step] Registering schema v2 for topic '{topic}'.. .");
-        
-        await RegisterSchemaAsync(topic, TestSchemas.ValidSchemaJsonV2);
-        
-        await TestContext.Progress. WriteLineAsync($"[Schema Step] Schema v2 registered for topic '{topic}'!");
+        await WhenSchemaKeyIsRegisteredForTopic(TestSchemas.Keys.V2_PriorityNullable_DefaultNull, topic);
     }
     
     private async Task RegisterSchemaAsync(string topic, string schemaJson)

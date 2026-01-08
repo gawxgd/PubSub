@@ -83,14 +83,14 @@ namespace BddE2eTests.Features
         }
         
         [NUnit.Framework.TestAttribute()]
-        [NUnit.Framework.DescriptionAttribute("Backward compatibility - Subscriber with v2 schema reads messages from both v1 an" +
-            "d v2 publishers")]
-        public async System.Threading.Tasks.Task BackwardCompatibility_SubscriberWithV2SchemaReadsMessagesFromBothV1AndV2Publishers()
+        [NUnit.Framework.DescriptionAttribute("Backward compatibility - Subscriber with v2 schema reads messages from a publishe" +
+            "r that restarts and starts using new schema")]
+        public async System.Threading.Tasks.Task BackwardCompatibility_SubscriberWithV2SchemaReadsMessagesFromAPublisherThatRestartsAndStartsUsingNewSchema()
         {
             string[] tagsOfScenario = ((string[])(null));
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Backward compatibility - Subscriber with v2 schema reads messages from both v1 an" +
-                    "d v2 publishers", null, tagsOfScenario, argumentsOfScenario, featureTags);
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Backward compatibility - Subscriber with v2 schema reads messages from a publishe" +
+                    "r that restarts and starts using new schema", null, tagsOfScenario, argumentsOfScenario, featureTags);
 #line 4
     this.ScenarioInitialize(scenarioInfo);
 #line hidden
@@ -163,14 +163,14 @@ namespace BddE2eTests.Features
         }
         
         [NUnit.Framework.TestAttribute()]
-        [NUnit.Framework.DescriptionAttribute("Backward compatibility 2 - Subscriber with v2 schema reads messages from both v1 " +
-            "and v2 publishers")]
-        public async System.Threading.Tasks.Task BackwardCompatibility2_SubscriberWithV2SchemaReadsMessagesFromBothV1AndV2Publishers()
+        [NUnit.Framework.DescriptionAttribute("Backward compatibility - Subscriber with v2 schema reads messages from both v1 an" +
+            "d v2 publishers")]
+        public async System.Threading.Tasks.Task BackwardCompatibility_SubscriberWithV2SchemaReadsMessagesFromBothV1AndV2Publishers()
         {
             string[] tagsOfScenario = ((string[])(null));
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Backward compatibility 2 - Subscriber with v2 schema reads messages from both v1 " +
-                    "and v2 publishers", null, tagsOfScenario, argumentsOfScenario, featureTags);
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Backward compatibility - Subscriber with v2 schema reads messages from both v1 an" +
+                    "d v2 publishers", null, tagsOfScenario, argumentsOfScenario, featureTags);
 #line 25
     this.ScenarioInitialize(scenarioInfo);
 #line hidden
@@ -285,116 +285,6 @@ namespace BddE2eTests.Features
                             "p6"});
 #line 58
         await testRunner.ThenAsync("the subscriber receives messages:", ((string)(null)), table32, "Then ");
-#line hidden
-            }
-            await this.ScenarioCleanupAsync();
-        }
-        
-        [NUnit.Framework.TestAttribute()]
-        [NUnit.Framework.DescriptionAttribute("Backward compatibility R - Subscriber with v2 schema reads messages from both v1 " +
-            "and v2 publishers")]
-        public async System.Threading.Tasks.Task BackwardCompatibilityR_SubscriberWithV2SchemaReadsMessagesFromBothV1AndV2Publishers()
-        {
-            string[] tagsOfScenario = ((string[])(null));
-            System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Backward compatibility R - Subscriber with v2 schema reads messages from both v1 " +
-                    "and v2 publishers", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 67
-    this.ScenarioInitialize(scenarioInfo);
-#line hidden
-            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
-            {
-                testRunner.SkipScenario();
-            }
-            else
-            {
-                await this.ScenarioStartAsync();
-                global::Reqnroll.Table table33 = new global::Reqnroll.Table(new string[] {
-                            "Setting",
-                            "Value"});
-                table33.AddRow(new string[] {
-                            "topic",
-                            "test-topic"});
-                table33.AddRow(new string[] {
-                            "Broker",
-                            "127.0.0.1:9096"});
-                table33.AddRow(new string[] {
-                            "Queue Size",
-                            "1000"});
-                table33.AddRow(new string[] {
-                            "Max Retry Attempts",
-                            "3"});
-                table33.AddRow(new string[] {
-                            "Max Send Attempts",
-                            "3"});
-#line 68
-        await testRunner.GivenAsync("a publisher is configured with the following options:", ((string)(null)), table33, "Given ");
-#line hidden
-#line 75
-        await testRunner.WhenAsync("schema v1 is registered for topic \"test-topic\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
-#line hidden
-                global::Reqnroll.Table table34 = new global::Reqnroll.Table(new string[] {
-                            "Message"});
-                table34.AddRow(new string[] {
-                            "p1"});
-                table34.AddRow(new string[] {
-                            "p2"});
-                table34.AddRow(new string[] {
-                            "p3"});
-#line 76
-        await testRunner.WhenAsync("the publisher sends messages in order:", ((string)(null)), table34, "When ");
-#line hidden
-#line 81
-        await testRunner.AndAsync("schema v2 is registered for topic \"test-topic\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
-#line hidden
-#line 82
-        await testRunner.AndAsync("the publisher restarts", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
-#line hidden
-                global::Reqnroll.Table table35 = new global::Reqnroll.Table(new string[] {
-                            "Message"});
-                table35.AddRow(new string[] {
-                            "p4"});
-                table35.AddRow(new string[] {
-                            "p5"});
-                table35.AddRow(new string[] {
-                            "p6"});
-#line 83
-        await testRunner.WhenAsync("the publisher sends messages in order:", ((string)(null)), table35, "When ");
-#line hidden
-                global::Reqnroll.Table table36 = new global::Reqnroll.Table(new string[] {
-                            "Setting",
-                            "Value"});
-                table36.AddRow(new string[] {
-                            "Topic",
-                            "test-topic"});
-                table36.AddRow(new string[] {
-                            "Broker",
-                            "127.0.0.1:9098"});
-                table36.AddRow(new string[] {
-                            "Poll Interval",
-                            "100"});
-                table36.AddRow(new string[] {
-                            "Max Retry Attempts",
-                            "3"});
-#line 88
-        await testRunner.AndAsync("a subscriber is configured with the following options:", ((string)(null)), table36, "And ");
-#line hidden
-                global::Reqnroll.Table table37 = new global::Reqnroll.Table(new string[] {
-                            "Message"});
-                table37.AddRow(new string[] {
-                            "p1"});
-                table37.AddRow(new string[] {
-                            "p2"});
-                table37.AddRow(new string[] {
-                            "p3"});
-                table37.AddRow(new string[] {
-                            "p4"});
-                table37.AddRow(new string[] {
-                            "p5"});
-                table37.AddRow(new string[] {
-                            "p6"});
-#line 94
-        await testRunner.ThenAsync("the subscriber receives messages:", ((string)(null)), table37, "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
