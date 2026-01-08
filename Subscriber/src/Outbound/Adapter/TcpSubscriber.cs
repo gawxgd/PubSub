@@ -102,12 +102,7 @@ public sealed class TcpSubscriber<T>(
                     processMessageUseCase,
                     _requestSender!,             
                     GetCurrentOffset,
-                    offset =>
-                    {
-                        UpdateOffset(offset);
-                        _requestSender!.UpdateOffset(offset);
-                        Logger.LogInfo($"Updated subscriber offset to: {offset}");
-                    },
+                    UpdateOffset,
                     pollInterval,
                     CancellationToken);
 

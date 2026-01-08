@@ -7,10 +7,12 @@ namespace Publisher.Domain.Port;
 public interface IPublisher<in T>
 {
     Task CreateConnection();
-
-    /// <exception cref="SerializationException">
-    /// Thrown when message serialization fails.
-    /// </exception>
+    
     Task PublishAsync(T message);
-    ChannelReader<PublishResponse>? Responses { get; }
+    
+    Task<bool> WaitForAcknowledgmentsAsync(int count, TimeSpan timeout);
+    
+    long AcknowledgedCount { get; }
+    
+    ChannelReader<PublishResponse> ErrorResponses { get; }
 }

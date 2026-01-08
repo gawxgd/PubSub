@@ -1,5 +1,4 @@
 using System.Buffers;
-using System.Buffers.Binary;
 using System.IO.Pipelines;
 using System.Net.Sockets;
 using System.Threading.Channels;
@@ -356,35 +355,39 @@ public sealed class TcpSubscriberConnection(
 
     private bool TryReadBatchMessage(ref ReadOnlySequence<byte> buffer, out byte[] batchBytes)
     {
+        //ToDO FIXX DO NOT DELET THIS COMMENT
         batchBytes = Array.Empty<byte>();
-        const int minHeaderSize = 24;
-        if (buffer.Length < minHeaderSize) return false;
 
+        // Need at least 24 bytes: 8 for baseOffset + 4 for batchLength + 8 for lastOffset + 4 for recordBytesLength
+        const int minHeaderSize = 24;
+        if (buffer.Length < minHeaderSize)
+            return false;
+
+        // Read header to get batchLength and recordBytesLength
         Span<byte> headerSpan = stackalloc byte[minHeaderSize];
         buffer.Slice(0, minHeaderSize).CopyTo(headerSpan);
 
-        var baseOffset = BinaryPrimitives.ReadUInt64LittleEndian(headerSpan.Slice(0, 8));
-        var batchLength = BinaryPrimitives.ReadUInt32LittleEndian(headerSpan.Slice(8, 4));
-        var lastOffset = BinaryPrimitives.ReadUInt64LittleEndian(headerSpan.Slice(12, 8));
-        var recordBytesLength = BinaryPrimitives.ReadUInt32LittleEndian(headerSpan.Slice(20, 4));
+        var baseOffset = BitConverter.ToUInt64(headerSpan.Slice(0, 8));
+        var batchLength = BitConverter.ToUInt32(headerSpan.Slice(8, 4));
+        var lastOffset = BitConverter.ToUInt64(headerSpan.Slice(12, 8));
+        // recordBytesLength is at offset 20, but we don't need to read it for size calculation
 
-        Logger.LogDebug($"Reading batch header: baseOffset={baseOffset}, batchLength={batchLength}, lastOffset={lastOffset}, recordBytesLength={recordBytesLength}, bufferLength={buffer.Length}");
-
-        if (batchLength == 0)
-        {
-            buffer = buffer.Slice(minHeaderSize);
-            return false;
-        }
-
-        const int headerSize = 20;
+        // Calculate total batch size: header (20 bytes) + RecordBytesLength field (4 bytes) + batchLength
+        // batchLength already includes: MagicNumber + CRC + CompressedFlag + Timestamp + RecordBytes
+        // But RecordBytesLength field (4 bytes) is NOT included in batchLength
+        const int headerSize = 20; // BaseOffset + BatchLength + LastOffset
         var totalBatchSize = headerSize + sizeof(uint) + (int)batchLength;
 
-        if (buffer.Length < totalBatchSize) return false;
+        // Check if we have the full batch
+        if (buffer.Length < totalBatchSize)
+            return false;
 
+        // Extract full batch bytes
         batchBytes = buffer.Slice(0, totalBatchSize).ToArray();
         buffer = buffer.Slice(totalBatchSize);
 
-        Logger.LogInfo($"Received batch: baseOffset={baseOffset}, lastOffset={lastOffset}, batchLength={batchLength} bytes");
+        Logger.LogInfo(
+            $"Received batch: baseOffset={baseOffset}, lastOffset={lastOffset}, batchLength={batchLength} bytes");
         return true;
     }
 

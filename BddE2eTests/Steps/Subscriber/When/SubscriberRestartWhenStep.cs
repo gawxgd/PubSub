@@ -45,7 +45,10 @@ public class SubscriberRestartWhenStep(ScenarioContext scenarioContext)
         var builder = _context.GetOrCreateSubscriberOptionsBuilder();
         var schemaRegistryBuilder = _context.GetOrCreateSchemaRegistryClientBuilder();
 
-        var subscriberOptions = builder.Build();
+        var topic = _context.Topic;
+        await TestContext.Progress.WriteLineAsync($"[When Step] Using topic from context: {topic}");
+        
+        var subscriberOptions = builder.WithTopic(topic).Build();
         var schemaRegistryClient = schemaRegistryBuilder.Build();
 
         var receivedMessages = System.Threading.Channels.Channel.CreateUnbounded<TestEvent>();

@@ -20,7 +20,6 @@ public sealed class TcpPublisher<T>(
     private readonly IAutoLogger _logger = AutoLoggerFactory.CreateLogger<TcpPublisher<T>>(LogSource.Publisher);
     private readonly TimeSpan _baseRetryDelay = TimeSpan.FromSeconds(1);
     private readonly CancellationTokenSource _cancellationTokenSource = new();
-    public ChannelReader<PublishResponse>?  Responses => _currentPublisherConnection?. Responses;
 
     private readonly Channel<byte[]> _channel = Channel.CreateBounded<byte[]>(
         new BoundedChannelOptions((int)options.MaxPublisherQueueSize)
@@ -37,6 +36,10 @@ public sealed class TcpPublisher<T>(
         });
 
     private IPublisherConnection? _currentPublisherConnection;
+    
+    public ChannelReader<PublishResponse>? ErrorResponses =>
+        (_currentPublisherConnection as TcpPublisherConnection)
+        ?.ResponseHandler.ErrorResponses;
 
     public async ValueTask DisposeAsync()
     {
@@ -118,6 +121,30 @@ public sealed class TcpPublisher<T>(
         var serializedMessage = await serializeMessageUseCase.Serialize(message);
 
         await _channel.Writer.WriteAsync(serializedMessage, _cancellationTokenSource.Token);
+    }
+
+    public async Task<bool> WaitForAcknowledgmentsAsync(int count, TimeSpan timeout)
+    {
+        if (_currentPublisherConnection is TcpPublisherConnection tcpConnection)
+        {
+            return await tcpConnection.ResponseHandler.WaitForAcknowledgmentsAsync(count, timeout, _cancellationTokenSource.Token);
+        }
+        
+        _logger.LogWarning("WaitForAcknowledgmentsAsync called but connection is not a TcpPublisherConnection");
+        return false;
+    }
+
+   
+    public long AcknowledgedCount
+    {
+        get
+        {
+            if (_currentPublisherConnection is TcpPublisherConnection tcpConnection)
+            {
+                return tcpConnection.ResponseHandler.AcknowledgedCount;
+            }
+            return 0;
+        }
     }
 
     private async Task SafeDisconnectPublisher()

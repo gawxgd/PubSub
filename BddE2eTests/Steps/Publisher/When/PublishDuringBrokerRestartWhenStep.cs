@@ -8,6 +8,7 @@ namespace BddE2eTests.Steps.Publisher.When;
 public class PublishDuringBrokerRestartWhenStep(ScenarioContext scenarioContext)
 {
     private readonly ScenarioTestContext _context = new(scenarioContext);
+    private static readonly TimeSpan AcknowledgmentTimeout = TimeSpan.FromSeconds(10);
 
     [When(@"the publisher sends (\d+) messages to topic ""(.*)"" and the broker restarts after (\d+) messages")]
     public async Task WhenThePublisherSendsMessagesAndBrokerRestarts(int totalMessageCount, string topic,
@@ -32,7 +33,19 @@ public class PublishDuringBrokerRestartWhenStep(ScenarioContext scenarioContext)
         }
 
         await TestContext.Progress.WriteLineAsync(
-            $"[When Step] Sent {messagesBeforeRestart} messages, restarting broker...");
+            $"[When Step] Sent {messagesBeforeRestart} messages, waiting for broker acknowledgments...");
+
+        var acknowledged = await _context.Publisher.WaitForAcknowledgmentsAsync(messagesBeforeRestart, AcknowledgmentTimeout);
+        
+        if (!acknowledged)
+        {
+            var currentAcks = _context.Publisher.AcknowledgedCount;
+            throw new TimeoutException(
+                $"Timed out waiting for broker acknowledgments. Expected {messagesBeforeRestart}, got {currentAcks} after {AcknowledgmentTimeout.TotalSeconds}s");
+        }
+
+        await TestContext.Progress.WriteLineAsync(
+            $"[When Step] All {messagesBeforeRestart} messages acknowledged by broker, restarting broker...");
 
         await TestBase.RestartBrokerAsync();
 
@@ -54,6 +67,23 @@ public class PublishDuringBrokerRestartWhenStep(ScenarioContext scenarioContext)
             await _context.Publisher.PublishAsync(evt);
         }
 
-        await TestContext.Progress.WriteLineAsync($"[When Step] All {totalMessageCount} messages sent!");
+        var remainingMessages = totalMessageCount - messagesBeforeRestart;
+        if (remainingMessages > 0)
+        {
+            await TestContext.Progress.WriteLineAsync(
+                $"[When Step] Waiting for remaining {remainingMessages} messages to be acknowledged...");
+            
+            var remainingAcknowledged = await _context.Publisher.WaitForAcknowledgmentsAsync(totalMessageCount, AcknowledgmentTimeout);
+            
+            if (!remainingAcknowledged)
+            {
+                var currentAcks = _context.Publisher.AcknowledgedCount;
+                throw new TimeoutException(
+                    $"Timed out waiting for broker acknowledgments after restart. Expected {totalMessageCount}, got {currentAcks} after {AcknowledgmentTimeout.TotalSeconds}s");
+            }
+        }
+
+        await TestContext.Progress.WriteLineAsync(
+            $"[When Step] All {totalMessageCount} messages sent and acknowledged!");
     }
 }
