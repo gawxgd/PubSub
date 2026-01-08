@@ -1,3 +1,6 @@
+using System.Diagnostics;
+using System.Net;
+using System.Net.Sockets;
 using LoggerLib.Outbound.Adapter;
 using MessageBroker.Infrastructure.Configuration;
 using Microsoft.AspNetCore.Builder;
@@ -13,10 +16,14 @@ using ILogger = LoggerLib.Domain.Port.ILogger;
 namespace BddE2eTests;
 
 [Binding]
+[CancelAfter(60000)] // 60 second timeout for all tests to prevent hanging
 public class TestBase
 {
     private const string TestConfigFileName = "config.test.json";
     private const int SchemaRegistryPort = 8081;
+    private const int PublisherPort = 9096;
+    private const int SubscriberPort = 9098;
+    private static readonly TimeSpan PortAvailabilityTimeout = TimeSpan.FromSeconds(10);
 
     private static IHost? _brokerHost;
     private static WebApplication? _schemaRegistryApp;
@@ -212,6 +219,8 @@ public class TestBase
     {
         TestContext.Progress.WriteLine("[TestBase] === Starting new scenario setup ===");
 
+        await EnsureAllPortsAvailableAsync();
+
         TestContext.Progress.WriteLine("[TestBase] Creating broker host...");
         _brokerHost = CreateBrokerHostWithNewCommitLog();
 
@@ -368,5 +377,42 @@ public class TestBase
         {
             throw new TimeoutException("Broker startup timed out after 30 seconds");
         }
+    }
+
+    private static async Task WaitForPortAvailabilityAsync(int port, TimeSpan timeout)
+    {
+        var sw = Stopwatch.StartNew();
+        while (sw.Elapsed < timeout)
+        {
+            try
+            {
+                using var listener = new TcpListener(IPAddress.Loopback, port);
+                listener.Start();
+                listener.Stop();
+                TestContext.Progress.WriteLine($"[TestBase] Port {port} is available");
+                return;
+            }
+            catch (SocketException)
+            {
+                TestContext.Progress.WriteLine($"[TestBase] Port {port} is not available yet, waiting...");
+                await Task.Delay(100);
+            }
+        }
+
+        throw new TimeoutException($"Port {port} is not available after {timeout.TotalSeconds}s. " +
+                                   "Try running: pkill -f 'dotnet.*BddE2eTests' to kill lingering test processes.");
+    }
+
+    private static async Task EnsureAllPortsAvailableAsync()
+    {
+        TestContext.Progress.WriteLine("[TestBase] Checking port availability...");
+        
+        var ports = new[] { PublisherPort, SubscriberPort, SchemaRegistryPort };
+        foreach (var port in ports)
+        {
+            await WaitForPortAvailabilityAsync(port, PortAvailabilityTimeout);
+        }
+        
+        TestContext.Progress.WriteLine("[TestBase] All ports are available!");
     }
 }
