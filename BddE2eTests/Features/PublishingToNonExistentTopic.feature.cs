@@ -101,33 +101,6 @@ namespace BddE2eTests.Features
             else
             {
                 await this.ScenarioStartAsync();
-                global::Reqnroll.Table table23 = new global::Reqnroll.Table(new string[] {
-                            "Setting",
-                            "Value"});
-                table23.AddRow(new string[] {
-                            "Topic",
-                            "non-existent"});
-                table23.AddRow(new string[] {
-                            "Broker",
-                            "127.0.0.1:9096"});
-                table23.AddRow(new string[] {
-                            "Queue Size",
-                            "1000"});
-                table23.AddRow(new string[] {
-                            "Max Retry Attempts",
-                            "3"});
-                table23.AddRow(new string[] {
-                            "Max Send Attempts",
-                            "3"});
-#line 4
-        await testRunner.GivenAsync("a publisher is configured with the following options:", ((string)(null)), table23, "Given ");
-#line hidden
-#line 11
-        await testRunner.WhenAsync("the publisher sends message \"message-content\" to topic \"non-existent\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
-#line hidden
-#line 12
-        await testRunner.ThenAsync("publish operation fails at the serialization step", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
-#line hidden
             }
             await this.ScenarioCleanupAsync();
         }
