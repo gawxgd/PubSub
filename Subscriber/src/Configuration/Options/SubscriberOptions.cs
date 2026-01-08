@@ -1,6 +1,6 @@
 ﻿namespace Subscriber.Configuration.Options;
 
-public class SubscriberOptions
+public record SubscriberOptions
 {
     public string Host { get; set; } = "127.0.0.1";
     public int Port { get; set; } = 5000;
