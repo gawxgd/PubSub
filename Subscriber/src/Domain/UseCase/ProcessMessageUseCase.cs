@@ -37,4 +37,11 @@ public class ProcessMessageUseCase<T>(
             $"Processed batch with {deserializedMessages.Count} messages, baseOffset={batch.BaseOffset}, lastOffset={batch.LastOffset}");
         return batch.LastOffset;
     }
+    
+    public (ulong baseOffset, ulong lastOffset) GetBatchOffsets(byte[] batchBytes)
+    {
+        using var stream = new MemoryStream(batchBytes);
+        var batch = batchReader.ReadBatch(stream);
+        return (batch.BaseOffset, batch.LastOffset);
+    }
 }

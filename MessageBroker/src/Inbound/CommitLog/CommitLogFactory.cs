@@ -1,6 +1,4 @@
 using System.Collections.Concurrent;
-using MessageBroker.Domain.Entities.CommitLog;
-using MessageBroker.Domain.Entities.CommitLog.Index;
 using Microsoft.Extensions.Options;
 using MessageBroker.Domain.Port.CommitLog;
 using MessageBroker.Domain.Port.CommitLog.Segment;
@@ -46,7 +44,8 @@ public sealed class CommitLogFactory(
         var flushInterval = TimeSpan.FromMilliseconds(topicOpt.FlushIntervalMs);
         var manager = topicSegmentRegistryFactory.GetOrCreate(topic, directory, baseOffset);
 
-        return new BinaryCommitLogAppender(segmentFactory, directory, baseOffset, flushInterval, manager);
+        // Use the recovered high water mark from the manager, not the config baseOffset
+        return new BinaryCommitLogAppender(segmentFactory, directory, manager.GetHighWaterMark(), flushInterval, manager);
     }
 
     private ICommitLogReader CreateReader(string topic)
@@ -81,30 +80,5 @@ public sealed class CommitLogFactory(
         }
 
         _readers.Clear();
-    }
-    
-    //TODO use this after broker restart
-    private ulong RecoverOffsetFromDisk(IEnumerable<LogSegment> segments)
-    {
-        ulong maxOffset = 0; 
-        bool any = false;
-        foreach (var segment in segments)
-        {
-            var indexPath = segment.IndexFilePath; 
-            if (!File.Exists(indexPath)) continue; 
-            using var fs = new FileStream( indexPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite );
-            while (fs.Position < fs.Length)
-            {
-                try
-                {
-                    var entry = OffsetIndexEntry.Read(fs); 
-                    ulong absoluteOffset = segment.BaseOffset + entry.RelativeOffset;
-                    if (!any || absoluteOffset > maxOffset)
-                    {
-                        maxOffset = absoluteOffset; any = true;
-                    }
-                } catch { break; }
-            }
-        } return any ? maxOffset + 1 : 0;
     }
 }

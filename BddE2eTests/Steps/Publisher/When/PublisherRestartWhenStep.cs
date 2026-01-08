@@ -44,7 +44,9 @@ public class PublisherRestartWhenStep(ScenarioContext scenarioContext)
         var builder = _context.GetOrCreatePublisherOptionsBuilder();
         var schemaRegistryBuilder = _context.GetOrCreateSchemaRegistryClientBuilder();
 
-        var publisherOptions = builder.Build();
+        var publisherOptions = builder.WithTopic(_context.Topic!).Build();
+        await TestContext.Progress.WriteLineAsync($"[When Step] Using topic from context: {_context.Topic}");
+        
         var schemaRegistryClientFactory = schemaRegistryBuilder.BuildFactory();
 
         var publisherFactory = new PublisherFactory<TestEvent>(schemaRegistryClientFactory);

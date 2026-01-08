@@ -6,4 +6,5 @@ public interface ISubscriberConnection
 {
     Task ConnectAsync();
     Task DisconnectAsync();
+    //Task SendRequestAsync(string topic, ulong offset, CancellationToken cancellationToken = default);
 }

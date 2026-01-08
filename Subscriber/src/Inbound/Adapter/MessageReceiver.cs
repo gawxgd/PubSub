@@ -8,82 +8,73 @@ using Subscriber.Outbound.Exceptions;
 
 namespace Subscriber.Inbound.Adapter;
 
-public class MessageReceiver<T>
-    where T : new()
+public class MessageReceiver<T>(
+    Channel<byte[]> responseChannel,
+    ProcessMessageUseCase<T> processMessageUseCase,
+    RequestSender requestSender,
+    Func<ulong> getCurrentOffset,
+    Action<ulong> updateOffset,
+    TimeSpan maxWaitTime,
+    CancellationToken cancellationToken) where T : new()
 {
-    private readonly Channel<byte[]> _responseChannel;
-    private readonly ProcessMessageUseCase<T> _processMessageUseCase;
-    private readonly RequestSender _requestSender; 
-    private readonly Func<ulong> _getCurrentOffset;
-    private readonly Action<ulong> _updateOffset;
-    private readonly TimeSpan _maxWaitTime;
-    private readonly CancellationToken _cancellationToken;
-
     private static readonly IAutoLogger Logger =
         AutoLoggerFactory.CreateLogger<MessageReceiver<T>>(LogSource.Subscriber);
-
-    public MessageReceiver(
-        Channel<byte[]> responseChannel,
-        ProcessMessageUseCase<T> processMessageUseCase,
-        RequestSender requestSender,
-        Func<ulong> getCurrentOffset,
-        Action<ulong> updateOffset,
-        TimeSpan maxWaitTime,
-        CancellationToken cancellationToken)
-    {
-        _responseChannel = responseChannel;
-        _processMessageUseCase = processMessageUseCase;
-        _requestSender = requestSender;
-        _getCurrentOffset = getCurrentOffset;
-        _updateOffset = updateOffset;
-        _maxWaitTime = maxWaitTime;
-        _cancellationToken = cancellationToken;
-    }
 
     public async Task StartReceivingAsync()
     {
         Logger.LogInfo("Starting message receiver");
 
-        await _requestSender.SendRequestAsync(_getCurrentOffset());
+        await requestSender.SendRequestAsync(getCurrentOffset());
 
-        while (!_cancellationToken.IsCancellationRequested)
+        while (!cancellationToken.IsCancellationRequested)
         {
             try
             {
-                var waitTask = _responseChannel.Reader.WaitToReadAsync(_cancellationToken).AsTask();
-                var delayTask = Task.Delay(_maxWaitTime, _cancellationToken);
+                var waitTask = responseChannel.Reader.WaitToReadAsync(cancellationToken).AsTask();
+                var delayTask = Task.Delay(maxWaitTime, cancellationToken);
 
                 var completedTask = await Task.WhenAny(waitTask, delayTask);
 
-                var highestOffsetProcessed = _getCurrentOffset();
+                var highestOffsetProcessed = getCurrentOffset();
 
                 if (completedTask == waitTask && waitTask.Result)
                 {
-                    while (_responseChannel.Reader.TryRead(out var message))
+                    while (responseChannel.Reader.TryRead(out var message))
                     {
-                        ulong offset;
                         try
                         {
-                            offset = await _processMessageUseCase.ExecuteAsync(message);
+                            var (baseOffset, lastOffset) = processMessageUseCase.GetBatchOffsets(message);
+                            if (lastOffset < highestOffsetProcessed)
+                            {
+                                Logger.LogWarning(
+                                    $"Skipping already-processed batch: baseOffset={baseOffset}, lastOffset={lastOffset}, currentOffset={highestOffsetProcessed}");
+                                continue;
+                            }
                         }
                         catch (Exception ex)
                         {
-                            Logger.LogError($"Error processing message: {ex.Message}", ex);
-                            throw;
+                            Logger.LogError($"Error checking batch offsets for deduplication: {ex.Message}");
                         }
-
+                        
+                        var offset = await processMessageUseCase.ExecuteAsync(message);
                         var nextOffset = offset + 1;
+
                         if (nextOffset > highestOffsetProcessed)
+                        {
                             highestOffsetProcessed = nextOffset;
+                        }
                     }
 
-                    _updateOffset(highestOffsetProcessed);
-
-                    await _requestSender.SendRequestAsync(highestOffsetProcessed);
+                    Logger.LogDebug(
+                        $"Processed all available messages, sending request for offset {highestOffsetProcessed}");
+                    updateOffset(highestOffsetProcessed);
+                    await requestSender.SendRequestAsync(highestOffsetProcessed);
                 }
                 else
                 {
-                    await _requestSender.SendRequestAsync(_getCurrentOffset());
+                    Logger.LogDebug(
+                        $"No messages received in {maxWaitTime}. Sending fetch request again for offset {getCurrentOffset()}");
+                    await requestSender.SendRequestAsync(getCurrentOffset());
                 }
             }
             catch (OperationCanceledException)
@@ -97,8 +88,7 @@ public class MessageReceiver<T>
             }
             catch (Exception ex)
             {
-                Logger.LogError($"Unexpected error: {ex.Message}", ex);
-                throw;
+                Logger.LogError($"Error while processing message: {ex.Message}", ex);
             }
         }
 

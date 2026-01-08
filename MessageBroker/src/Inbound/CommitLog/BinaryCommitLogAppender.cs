@@ -37,35 +37,41 @@ public sealed class BinaryCommitLogAppender : ICommitLogAppender
     private static readonly IAutoLogger
         Logger = AutoLoggerFactory.CreateLogger<BinaryCommitLogAppender>(LogSource.MessageBroker);
 
-    public BinaryCommitLogAppender(ILogSegmentFactory segmentFactory, string directory, ulong baseOffset,
+    public BinaryCommitLogAppender(ILogSegmentFactory segmentFactory, string directory, ulong currentOffset,
         TimeSpan flushInterval, ITopicSegmentRegistry segmentRegistry)
     {
         _directory = directory;
         _segmentFactory = segmentFactory;
-        _activeSegment = segmentFactory.CreateLogSegment(directory, baseOffset);
+        _activeSegment = segmentRegistry.GetActiveSegment();
         _activeSegmentWriter = segmentFactory.CreateWriter(_activeSegment);
-        _currentOffset = baseOffset;
+        _currentOffset = currentOffset;
         _flushInterval = flushInterval;
         _cancellationTokenSource = new CancellationTokenSource();
         _segmentRegistry = segmentRegistry;
-        _segmentRegistry.UpdateActiveSegment(_activeSegment);
         _segmentRegistry.UpdateCurrentOffset(_currentOffset);
         _backgroundFlushTask = StartBackgroundFlushAsync();
     }
 
     public async ValueTask<ulong> AppendAsync(ReadOnlyMemory<byte> payload)
     {
-        var baseOffset = _currentOffset;
-
-        // ToDo do a hybrid batching by channel count and batch size
-        if (!_batchChannel.Writer.TryWrite(payload))
+        await _flushLock.WaitAsync(_cancellationTokenSource.Token);
+        try
         {
-            await FlushChannelToLogSegmentAsync();
-            baseOffset = _currentOffset;
-            await _batchChannel.Writer.WriteAsync(payload, _cancellationTokenSource.Token);
-        }
+            while (_batchChannel.Reader.TryRead(out var pendingMessage))
+            {
+                await WriteToSegment(pendingMessage, _cancellationTokenSource.Token);
+            }
 
-        return baseOffset;
+            var batchBaseOffset = _currentOffset;
+            await WriteToSegment(payload, _cancellationTokenSource.Token);
+            _segmentRegistry.UpdateCurrentOffset(_currentOffset);
+
+            return batchBaseOffset;
+        }
+        finally
+        {
+            _flushLock.Release();
+        }
     }
 
     public async ValueTask DisposeAsync()
