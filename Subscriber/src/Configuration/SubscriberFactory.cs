@@ -52,7 +52,7 @@ public sealed class SubscriberFactory<T>(ISchemaRegistryClient schemaRegistryCli
 
         var batchReader = CreateBatchReader();
         var deserializer = new AvroDeserializer<T>();
-        var deserializeBatchUseCase = new DeserializeBatchUseCase<T>(batchReader, deserializer);
+        var deserializeBatchUseCase = new DeserializeBatchUseCase<T>(batchReader, deserializer, schemaRegistryClient);
         var processMessageUseCase = new ProcessMessageUseCase<T>(deserializeBatchUseCase, schemaRegistryClient,
             messageHandler, topic, batchReader);
 

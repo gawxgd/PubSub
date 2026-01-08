@@ -1,5 +1,6 @@
-using System.Net.Http.Json;
-using System.Text.Json;
+using System.Diagnostics;
+using System.Net;
+using System.Net.Sockets;
 using LoggerLib.Outbound.Adapter;
 using MessageBroker.Infrastructure.Configuration;
 using Microsoft.AspNetCore.Builder;
@@ -15,10 +16,14 @@ using ILogger = LoggerLib.Domain.Port.ILogger;
 namespace BddE2eTests;
 
 [Binding]
+[CancelAfter(60000)] // 60 second timeout for all tests to prevent hanging
 public class TestBase
 {
     private const string TestConfigFileName = "config.test.json";
     private const int SchemaRegistryPort = 8081;
+    private const int PublisherPort = 9096;
+    private const int SubscriberPort = 9098;
+    private static readonly TimeSpan PortAvailabilityTimeout = TimeSpan.FromSeconds(10);
 
     private static IHost? _brokerHost;
     private static WebApplication? _schemaRegistryApp;
@@ -30,7 +35,7 @@ public class TestBase
     {
         TestContext.Progress.WriteLine("[TestBase] === COMMIT LOG BEFORE RESTART ===");
         PrintCommitLogContents();
-        
+
         if (_brokerHost != null)
         {
             TestContext.Progress.WriteLine("[TestBase] Stopping broker...");
@@ -52,11 +57,11 @@ public class TestBase
         TestContext.Progress.WriteLine("[TestBase] Waiting for broker startup...");
         await WaitForBrokerStartupAsync();
         TestContext.Progress.WriteLine("[TestBase] Broker restarted");
-        
+
         TestContext.Progress.WriteLine("[TestBase] === COMMIT LOG AFTER RESTART ===");
         PrintCommitLogContents();
     }
-    
+
     private static void PrintCommitLogContents()
     {
         if (string.IsNullOrEmpty(_commitLogDirectory))
@@ -72,7 +77,7 @@ public class TestBase
         }
 
         TestContext.Progress.WriteLine($"[CommitLog] Directory: {_commitLogDirectory}");
-        
+
         var topicDirs = Directory.GetDirectories(_commitLogDirectory);
         if (topicDirs.Length == 0)
         {
@@ -85,43 +90,46 @@ public class TestBase
             var topicName = Path.GetFileName(topicDir);
             TestContext.Progress.WriteLine($"[CommitLog] ═══════════════════════════════════════");
             TestContext.Progress.WriteLine($"[CommitLog] Topic: {topicName}");
-            
+
             var logFiles = Directory.GetFiles(topicDir, "*.log").OrderBy(f => f).ToArray();
             var indexFiles = Directory.GetFiles(topicDir, "*.index").OrderBy(f => f).ToArray();
-            
-            TestContext.Progress.WriteLine($"[CommitLog]   Log files: {logFiles.Length}, Index files: {indexFiles.Length}");
-            
+
+            TestContext.Progress.WriteLine(
+                $"[CommitLog]   Log files: {logFiles.Length}, Index files: {indexFiles.Length}");
+
             foreach (var logFile in logFiles)
             {
                 var fileInfo = new FileInfo(logFile);
                 var fileName = Path.GetFileName(logFile);
                 TestContext.Progress.WriteLine($"[CommitLog]   ───────────────────────────────────");
                 TestContext.Progress.WriteLine($"[CommitLog]   File: {fileName} ({fileInfo.Length} bytes)");
-                
+
                 if (fileInfo.Length > 0)
                 {
                     try
                     {
                         var bytes = File.ReadAllBytes(logFile);
                         var batches = ParseBatchesFromLog(bytes);
-                        
+
                         TestContext.Progress.WriteLine($"[CommitLog]   Total batches: {batches.Count}");
-                        
+
                         if (batches.Count > 0)
                         {
                             var minOffset = batches.Min(b => b.BaseOffset);
                             var maxOffset = batches.Max(b => b.LastOffset);
                             var nextOffset = maxOffset + 1;
-                            
+
                             TestContext.Progress.WriteLine($"[CommitLog]   Offset range: {minOffset} to {maxOffset}");
-                            TestContext.Progress.WriteLine($"[CommitLog]   Next offset (high water mark): {nextOffset}");
+                            TestContext.Progress.WriteLine(
+                                $"[CommitLog]   Next offset (high water mark): {nextOffset}");
                             TestContext.Progress.WriteLine($"[CommitLog]   ───────────────────────────────────");
                             TestContext.Progress.WriteLine($"[CommitLog]   Batch details:");
-                            
+
                             foreach (var batch in batches)
                             {
                                 var totalSize = 24 + batch.BatchLength;
-                                TestContext.Progress.WriteLine($"[CommitLog]     Batch #{batch.Index}: baseOffset={batch.BaseOffset}, lastOffset={batch.LastOffset}, batchLen={batch.BatchLength}, recordBytes={batch.RecordBytesLength}, totalSize={totalSize}, records={batch.RecordCount}");
+                                TestContext.Progress.WriteLine(
+                                    $"[CommitLog]     Batch #{batch.Index}: baseOffset={batch.BaseOffset}, lastOffset={batch.LastOffset}, batchLen={batch.BatchLength}, recordBytes={batch.RecordBytesLength}, totalSize={totalSize}, records={batch.RecordCount}");
                             }
                         }
                     }
@@ -135,18 +143,25 @@ public class TestBase
                     TestContext.Progress.WriteLine($"[CommitLog]   (empty file)");
                 }
             }
+
             TestContext.Progress.WriteLine($"[CommitLog] ═══════════════════════════════════════");
         }
     }
-    
-    private record BatchInfo(int Index, ulong BaseOffset, ulong LastOffset, uint BatchLength, uint RecordBytesLength, int RecordCount);
-    
+
+    private record BatchInfo(
+        int Index,
+        ulong BaseOffset,
+        ulong LastOffset,
+        uint BatchLength,
+        uint RecordBytesLength,
+        int RecordCount);
+
     private static List<BatchInfo> ParseBatchesFromLog(byte[] logData)
     {
         var batches = new List<BatchInfo>();
         int position = 0;
         int batchIndex = 0;
-        
+
         // Batch format on disk (little-endian):
         // - BaseOffset: 8 bytes (ulong)         - position 0
         // - BatchLength: 4 bytes (uint)         - position 8  (size of everything AFTER first 12 bytes, excluding LastOffset & RecordBytesLength)
@@ -160,7 +175,7 @@ public class TestBase
         //
         // BatchLength = 1 + 4 + 1 + 8 + recordBytesLength = 14 + recordBytesLength
         // Total batch size = 8 + 4 + 8 + 4 + batchLength = 24 + batchLength
-        
+
         while (position + 24 <= logData.Length)
         {
             try
@@ -169,16 +184,17 @@ public class TestBase
                 var batchLength = BitConverter.ToUInt32(logData, position + 8);
                 var lastOffset = BitConverter.ToUInt64(logData, position + 12);
                 var recordBytesLength = BitConverter.ToUInt32(logData, position + 20);
-                
+
                 // Sanity checks
                 if (batchLength == 0 || batchLength > 10_000_000) // Max 10MB per batch
                     break;
-                
+
                 // Calculate record count (rough estimate based on lastOffset - baseOffset + 1)
                 var recordCount = (int)(lastOffset - baseOffset + 1);
-                
-                batches.Add(new BatchInfo(batchIndex, baseOffset, lastOffset, batchLength, recordBytesLength, recordCount));
-                
+
+                batches.Add(new BatchInfo(batchIndex, baseOffset, lastOffset, batchLength, recordBytesLength,
+                    recordCount));
+
                 // Move to next batch: 8 (baseOffset) + 4 (batchLength) + 8 (lastOffset) + 4 (recordBytesLength) + batchLength
                 // = 24 + batchLength
                 position += 24 + (int)batchLength;
@@ -189,7 +205,7 @@ public class TestBase
                 break;
             }
         }
-        
+
         return batches;
     }
 
@@ -202,33 +218,33 @@ public class TestBase
     public async Task SetUpScenario()
     {
         TestContext.Progress.WriteLine("[TestBase] === Starting new scenario setup ===");
-        
+
+        await EnsureAllPortsAvailableAsync();
+
         TestContext.Progress.WriteLine("[TestBase] Creating broker host...");
         _brokerHost = CreateBrokerHostWithNewCommitLog();
-        
+
         if (!_loggerInitialized)
         {
             TestContext.Progress.WriteLine("[TestBase] Initializing logger...");
             InitializeLogger();
             _loggerInitialized = true;
         }
-        
+
         TestContext.Progress.WriteLine("[TestBase] Starting broker...");
         await _brokerHost.StartAsync();
-        
+
         TestContext.Progress.WriteLine("[TestBase] Waiting for broker startup...");
         await WaitForBrokerStartupAsync();
         TestContext.Progress.WriteLine("[TestBase] MessageBroker started");
 
         TestContext.Progress.WriteLine("[TestBase] Creating schema registry...");
         _schemaRegistryApp = CreateSchemaRegistryHost();
-        
+
         TestContext.Progress.WriteLine("[TestBase] Starting schema registry...");
         await _schemaRegistryApp.StartAsync();
         TestContext.Progress.WriteLine($"[TestBase] SchemaRegistry started on port {SchemaRegistryPort}");
 
-        TestContext.Progress.WriteLine("[TestBase] Registering test schemas...");
-        await RegisterTestSchemasAsync();
         TestContext.Progress.WriteLine("[TestBase] Setup complete!");
     }
 
@@ -236,7 +252,7 @@ public class TestBase
     public async Task TearDownScenario()
     {
         TestContext.Progress.WriteLine("[TestBase] === Tearing down scenario ===");
-        
+
         if (_schemaRegistryApp != null)
         {
             await _schemaRegistryApp.StopAsync();
@@ -260,10 +276,14 @@ public class TestBase
             {
                 Directory.Delete(_schemaStorePath, recursive: true);
             }
-            catch { /* ignore cleanup errors */ }
+            catch
+            {
+                /* ignore cleanup errors */
+            }
+
             _schemaStorePath = null;
         }
-        
+
         // Cleanup commit log
         if (_commitLogDirectory != null && Directory.Exists(_commitLogDirectory))
         {
@@ -271,10 +291,14 @@ public class TestBase
             {
                 Directory.Delete(_commitLogDirectory, recursive: true);
             }
-            catch { /* ignore cleanup errors */ }
+            catch
+            {
+                /* ignore cleanup errors */
+            }
+
             _commitLogDirectory = null;
         }
-        
+
         TestContext.Progress.WriteLine("[TestBase] Teardown complete!");
     }
 
@@ -348,50 +372,47 @@ public class TestBase
 
         var timeoutTask = Task.Delay(TimeSpan.FromSeconds(30));
         var completedTask = await Task.WhenAny(startupSignal.Task, timeoutTask);
-        
+
         if (completedTask == timeoutTask)
         {
             throw new TimeoutException("Broker startup timed out after 30 seconds");
         }
     }
 
-    private static async Task RegisterTestSchemasAsync()
+    private static async Task WaitForPortAvailabilityAsync(int port, TimeSpan timeout)
     {
-        using var httpClient = new HttpClient 
-        { 
-            BaseAddress = new Uri($"http://127.0.0.1:{SchemaRegistryPort}"),
-            Timeout = TimeSpan.FromSeconds(10)
-        };
-
-        var testEventSchema = new
+        var sw = Stopwatch.StartNew();
+        while (sw.Elapsed < timeout)
         {
-            schema = JsonSerializer.Serialize(new
+            try
             {
-                type = "record",
-                name = "TestEvent",
-                @namespace = "BddE2eTests.Configuration",
-                fields = new[]
-                {
-                    new { name = "Message", type = "string" },
-                    new { name = "Topic", type = "string" }
-                }
-            })
-        };
-
-        var topics = new[] { "default", "test-topic", "custom-topic" };
-
-        foreach (var topic in topics)
-        {
-            var response = await httpClient.PostAsJsonAsync($"schema/topic/{topic}", testEventSchema);
-            if (response.IsSuccessStatusCode)
-            {
-                TestContext.Progress.WriteLine($"[TestBase] Registered schema for topic: {topic}");
+                using var listener = new TcpListener(IPAddress.Loopback, port);
+                listener.Start();
+                listener.Stop();
+                TestContext.Progress.WriteLine($"[TestBase] Port {port} is available");
+                return;
             }
-            else
+            catch (SocketException)
             {
-                var error = await response.Content.ReadAsStringAsync();
-                TestContext.Progress.WriteLine($"[TestBase] Failed to register schema for {topic}: {error}");
+                TestContext.Progress.WriteLine($"[TestBase] Port {port} is not available yet, waiting...");
+                await Task.Delay(100);
             }
         }
+
+        throw new TimeoutException($"Port {port} is not available after {timeout.TotalSeconds}s. " +
+                                   "Try running: pkill -f 'dotnet.*BddE2eTests' to kill lingering test processes.");
+    }
+
+    private static async Task EnsureAllPortsAvailableAsync()
+    {
+        TestContext.Progress.WriteLine("[TestBase] Checking port availability...");
+        
+        var ports = new[] { PublisherPort, SubscriberPort, SchemaRegistryPort };
+        foreach (var port in ports)
+        {
+            await WaitForPortAvailabilityAsync(port, PortAvailabilityTimeout);
+        }
+        
+        TestContext.Progress.WriteLine("[TestBase] All ports are available!");
     }
 }
