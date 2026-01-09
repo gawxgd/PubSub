@@ -36,9 +36,17 @@ public sealed class TopicSegmentRegistryFactory(ILogSegmentFactory segmentFactor
                 .OrderBy(offset => offset)
                 .ToList();
 
-            foreach (var offset in logFiles)
+            for (var i = 0; i < logFiles.Count; i++)
             {
-                var segment = segmentFactory.CreateLogSegment(directory, offset);
+                var segmentBaseOffset = logFiles[i];
+                var segment = segmentFactory.CreateLogSegment(directory, segmentBaseOffset);
+                
+                if (i < logFiles.Count - 1)
+                {
+                    var nextSegmentBaseOffset = logFiles[i + 1];
+                    segment = segment with { NextOffset = nextSegmentBaseOffset };
+                }
+                
                 segments.Add(segment);
             }
         }
@@ -51,6 +59,9 @@ public sealed class TopicSegmentRegistryFactory(ILogSegmentFactory segmentFactor
 
         var activeSegment = segments.Last();
         var currentOffset = RecoverHighWaterMark(activeSegment);
+        
+        activeSegment = activeSegment with { NextOffset = currentOffset };
+        segments[^1] = activeSegment;
         
         Logger.LogInfo($"Recovered high water mark for segment {activeSegment.LogPath}: {currentOffset}");
 

@@ -6,6 +6,7 @@ using BddE2eTests.Configuration.Builder;
 using BddE2eTests.Configuration.Options;
 using BddE2eTests.Configuration.TestEvents;
 using Subscriber.Domain;
+using Subscriber.Outbound.Adapter;
 
 namespace BddE2eTests.Steps.Subscriber.Given;
 
@@ -53,7 +54,19 @@ public class ConfigureSubscriberGivenStep(ScenarioContext scenarioContext)
         await TestContext.Progress.WriteLineAsync($"[Subscriber Step] All {names.Length} subscribers configured!");
     }
 
-    private async Task<(ISubscriber<TestEvent> subscriber, Channel<TestEvent> receivedMessages, string topic)> CreateSubscriberFromTableAsync(Table table)
+    [Given(@"subscriber (.+) is configured starting at offset (\d+) with the following options:")]
+    public async Task GivenSubscriberIsConfiguredStartingAtOffsetWithTheFollowingOptions(string subscriberName, ulong initialOffset, Table table)
+    {
+        await TestContext.Progress.WriteLineAsync($"[Subscriber Step] Starting subscriber '{subscriberName}' configuration at offset {initialOffset}...");
+        var (subscriber, receivedMessages, topic) = await CreateSubscriberFromTableAsync(table, initialOffset);
+
+        _context.SetSubscriber(subscriberName, subscriber, receivedMessages);
+        _context.Topic = topic;
+        
+        await TestContext.Progress.WriteLineAsync($"[Subscriber Step] Subscriber '{subscriberName}' configured at offset {initialOffset}!");
+    }
+
+    private async Task<(ISubscriber<TestEvent> subscriber, Channel<TestEvent> receivedMessages, string topic)> CreateSubscriberFromTableAsync(Table table, ulong? initialOffset = null)
     {
         var builder = CreateSubscriberOptionsBuilderFromTable(table);
         var topic = ExtractTopicFromTable(table);
@@ -83,8 +96,16 @@ public class ConfigureSubscriberGivenStep(ScenarioContext scenarioContext)
             async (message) => { await receivedMessages.Writer.WriteAsync(message); });
 
         await TestContext.Progress.WriteLineAsync("[Subscriber Step] Connecting to broker...");
-        await subscriber.StartConnectionAsync();
-        await TestContext.Progress.WriteLineAsync("[Subscriber Step] Subscriber connected!");
+        if (initialOffset.HasValue && subscriber is TcpSubscriber<TestEvent> tcpSubscriber)
+        {
+            await tcpSubscriber.StartConnectionAsync(initialOffset.Value);
+            await TestContext.Progress.WriteLineAsync($"[Subscriber Step] Subscriber connected at offset {initialOffset.Value}!");
+        }
+        else
+        {
+            await subscriber.StartConnectionAsync();
+            await TestContext.Progress.WriteLineAsync("[Subscriber Step] Subscriber connected!");
+        }
 
         await TestContext.Progress.WriteLineAsync("[Subscriber Step] Starting message processing task...");
         _ = Task.Run(async () => await subscriber.StartMessageProcessingAsync());

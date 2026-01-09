@@ -128,11 +128,11 @@ public sealed class BinaryCommitLogAppender : ICommitLogAppender
 
         _currentOffset =
             _assignOffsetsUseCase.AssignOffsets(batchBaseOffset,
-                batch); //WARNING MEMORY ALLOCATED HERE
+                batch);
 
         if (ShouldRollActiveSegment())
         {
-            await RollActiveSegmentAsync();
+            await RollActiveSegmentAsync(batchBaseOffset);
         }
 
         await _activeSegmentWriter.AppendAsync(batch, batchBaseOffset, _currentOffset,
@@ -144,10 +144,10 @@ public sealed class BinaryCommitLogAppender : ICommitLogAppender
         return _activeSegmentWriter.ShouldRoll();
     }
 
-    private async Task RollActiveSegmentAsync()
+    private async Task RollActiveSegmentAsync(ulong newSegmentBaseOffset)
     {
         await _activeSegmentWriter.DisposeAsync();
-        var newSegment = _segmentFactory.CreateLogSegment(_directory, _currentOffset);
+        var newSegment = _segmentFactory.CreateLogSegment(_directory, newSegmentBaseOffset);
         _activeSegmentWriter = _segmentFactory.CreateWriter(newSegment);
         _activeSegment = newSegment;
         _segmentRegistry.UpdateActiveSegment(newSegment);

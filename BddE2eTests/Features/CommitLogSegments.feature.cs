@@ -20,18 +20,20 @@ namespace BddE2eTests.Features
     [System.CodeDom.Compiler.GeneratedCodeAttribute("Reqnroll", "2.0.0.0")]
     [System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     [NUnit.Framework.TestFixtureAttribute()]
-    [NUnit.Framework.DescriptionAttribute("Publishing messages to a non-existent topic")]
+    [NUnit.Framework.DescriptionAttribute("Commit Log Segment Management")]
     [NUnit.Framework.FixtureLifeCycleAttribute(NUnit.Framework.LifeCycle.InstancePerTestCase)]
-    public partial class PublishingMessagesToANon_ExistentTopicFeature
+    public partial class CommitLogSegmentManagementFeature
     {
         
         private global::Reqnroll.ITestRunner testRunner;
         
         private static string[] featureTags = ((string[])(null));
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new System.Globalization.CultureInfo("en-US"), "Features", "Publishing messages to a non-existent topic", null, global::Reqnroll.ProgrammingLanguage.CSharp, featureTags);
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new System.Globalization.CultureInfo("en-US"), "Features", "Commit Log Segment Management", "    As a system operator\n    I want the commit log to properly manage log segment" +
+                "s\n    So that large volumes of messages are handled correctly with segment rolli" +
+                "ng", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags);
         
-#line 1 "PublishingToNonExistentTopic.feature"
+#line 1 "CommitLogSegments.feature"
 #line hidden
         
         [NUnit.Framework.OneTimeSetUpAttribute()]
@@ -82,16 +84,41 @@ namespace BddE2eTests.Features
             await testRunner.CollectScenarioErrorsAsync();
         }
         
+        public virtual async System.Threading.Tasks.Task FeatureBackgroundAsync()
+        {
+#line 6
+    #line hidden
+            global::Reqnroll.Table table1 = new global::Reqnroll.Table(new string[] {
+                        "Setting",
+                        "Value"});
+            table1.AddRow(new string[] {
+                        "Topic",
+                        "default"});
+            table1.AddRow(new string[] {
+                        "Broker",
+                        "127.0.0.1:9096"});
+            table1.AddRow(new string[] {
+                        "Queue Size",
+                        "1000"});
+            table1.AddRow(new string[] {
+                        "Max Retry Attempts",
+                        "3"});
+            table1.AddRow(new string[] {
+                        "Max Send Attempts",
+                        "3"});
+#line 7
+        await testRunner.GivenAsync("a publisher is configured with the following options:", ((string)(null)), table1, "Given ");
+#line hidden
+        }
+        
         [NUnit.Framework.TestAttribute()]
-        [NUnit.Framework.DescriptionAttribute("Publisher tries to publish a message to a topic that does not exist (neither the " +
-            "schema in the SchemaRegistry nor the files in the Commit Log)")]
-        public async System.Threading.Tasks.Task PublisherTriesToPublishAMessageToATopicThatDoesNotExistNeitherTheSchemaInTheSchemaRegistryNorTheFilesInTheCommitLog()
+        [NUnit.Framework.DescriptionAttribute("Messages span multiple log segments and are persisted correctly")]
+        public async System.Threading.Tasks.Task MessagesSpanMultipleLogSegmentsAndArePersistedCorrectly()
         {
             string[] tagsOfScenario = ((string[])(null));
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Publisher tries to publish a message to a topic that does not exist (neither the " +
-                    "schema in the SchemaRegistry nor the files in the Commit Log)", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 3
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Messages span multiple log segments and are persisted correctly", null, tagsOfScenario, argumentsOfScenario, featureTags);
+#line 15
     this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -101,20 +128,30 @@ namespace BddE2eTests.Features
             else
             {
                 await this.ScenarioStartAsync();
+#line 6
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 16
+        await testRunner.WhenAsync("the publisher sends 15 messages with 100-byte payloads to topic \"default\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 17
+        await testRunner.ThenAsync("multiple segment files exist for topic \"default\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 18
+        await testRunner.AndAsync("commit log contains messages from offset 0 to 14", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
         [NUnit.Framework.TestAttribute()]
-        [NUnit.Framework.DescriptionAttribute("Publisher tries to publish a message to a topic that does exist in the Schema Reg" +
-            "istry but there are no designated files in the Commit Log")]
-        public async System.Threading.Tasks.Task PublisherTriesToPublishAMessageToATopicThatDoesExistInTheSchemaRegistryButThereAreNoDesignatedFilesInTheCommitLog()
+        [NUnit.Framework.DescriptionAttribute("Subscriber reads across segment boundaries after restart")]
+        public async System.Threading.Tasks.Task SubscriberReadsAcrossSegmentBoundariesAfterRestart()
         {
             string[] tagsOfScenario = ((string[])(null));
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Publisher tries to publish a message to a topic that does exist in the Schema Reg" +
-                    "istry but there are no designated files in the Commit Log", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 14
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Subscriber reads across segment boundaries after restart", null, tagsOfScenario, argumentsOfScenario, featureTags);
+#line 20
     this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -124,35 +161,38 @@ namespace BddE2eTests.Features
             else
             {
                 await this.ScenarioStartAsync();
-                global::Reqnroll.Table table24 = new global::Reqnroll.Table(new string[] {
-                            "Setting",
-                            "Value"});
-                table24.AddRow(new string[] {
-                            "Topic",
-                            "non-existent"});
-                table24.AddRow(new string[] {
-                            "Broker",
-                            "127.0.0.1:9096"});
-                table24.AddRow(new string[] {
-                            "Queue Size",
-                            "1000"});
-                table24.AddRow(new string[] {
-                            "Max Retry Attempts",
-                            "3"});
-                table24.AddRow(new string[] {
-                            "Max Send Attempts",
-                            "3"});
-#line 15
-        await testRunner.GivenAsync("a publisher is configured with the following options:", ((string)(null)), table24, "Given ");
+#line 6
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 21
+        await testRunner.WhenAsync("the publisher sends 20 messages with 100-byte payloads to topic \"default\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 22
-        await testRunner.AndAsync("the schema registry contains a schema for topic \"non-existent\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+        await testRunner.AndAsync("the broker restarts", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
+                global::Reqnroll.Table table2 = new global::Reqnroll.Table(new string[] {
+                            "Setting",
+                            "Value"});
+                table2.AddRow(new string[] {
+                            "Topic",
+                            "default"});
+                table2.AddRow(new string[] {
+                            "Broker",
+                            "127.0.0.1:9098"});
+                table2.AddRow(new string[] {
+                            "Poll Interval",
+                            "100"});
+                table2.AddRow(new string[] {
+                            "Max Retry Attempts",
+                            "3"});
 #line 23
-        await testRunner.WhenAsync("the publisher sends message \"message-content\" to topic \"non-existent\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+        await testRunner.GivenAsync("subscriber S1 is configured starting at offset 5 with the following options:", ((string)(null)), table2, "Given ");
 #line hidden
-#line 24
-        await testRunner.ThenAsync("the publisher reports that the topic is not available", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line 29
+        await testRunner.ThenAsync("subscriber S1 receives messages from offset 5 to 19", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 30
+        await testRunner.AndAsync("reading crosses segment file boundaries seamlessly", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();

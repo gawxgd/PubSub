@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Json;
 using System.Text.Json;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
@@ -31,23 +32,35 @@ public sealed class HttpSchemaRegistryClient : ISchemaRegistryClient
         _cache = new InMemorySchemaCache(options.CacheExpiration);
     }
 
-    public async Task<SchemaInfo> GetSchemaByIdAsync(int schemaId, CancellationToken cancellationToken = default)
+    public async Task<SchemaInfo> RegisterSchemaAsync(string topic, string schemaJson,
+        CancellationToken cancellationToken = default)
     {
-        if (_cache.TryGet(schemaId, out var cached))
+        ArgumentException.ThrowIfNullOrWhiteSpace(topic);
+        ArgumentException.ThrowIfNullOrWhiteSpace(schemaJson);
+
+        try
         {
-            Logger.LogDebug($"Cache hit for schema ID: {schemaId}");
-            return cached;
+            var request = new { schema = schemaJson };
+            var response = await _httpClient.PostAsJsonAsync($"{TopicEndpoint}{topic}", request, cancellationToken);
+            response.EnsureSuccessStatusCode();
+
+            var content = await response.Content.ReadAsStringAsync(cancellationToken);
+            var result = JsonSerializer.Deserialize<SchemaRegistrationResponse>(content, JsonOptions)!;
+
+            Logger.LogInfo($"Registered schema for topic '{topic}' with ID: {result.Id}");
+
+            return await GetSchemaByIdAsync(result.Id, cancellationToken);
         }
-
-        Logger.LogDebug($"Cache miss for schema ID: {schemaId}, fetching from registry");
-        var schema = await FetchSchemaAsync($"{IdEndpoint}{schemaId}", cancellationToken);
-
-        _cache.AddToCache(schemaId, schema);
-        return schema;
+        catch (Exception ex)
+        {
+            Logger.LogError($"Failed to register schema for topic: {topic}", ex);
+            throw new SchemaRegistryClientException($"Failed to register schema for topic: {topic}", ex);
+        }
     }
 
-    public async Task<SchemaInfo> GetLatestSchemaByTopicAsync(string topic,
-        CancellationToken cancellationToken = default)
+    private record SchemaRegistrationResponse(int Id);
+
+    public async Task<SchemaInfo> GetLatestSchemaByTopicAsync(string topic, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(topic);
 
@@ -61,6 +74,21 @@ public sealed class HttpSchemaRegistryClient : ISchemaRegistryClient
         var schema = await FetchSchemaAsync($"{TopicEndpoint}{topic}", cancellationToken);
 
         _cache.AddToCache(topic, schema);
+        return schema;
+    }
+
+    public async Task<SchemaInfo> GetSchemaByIdAsync(int schemaId, CancellationToken cancellationToken = default)
+    {
+        if (_cache.TryGet(schemaId, out var cached))
+        {
+            Logger.LogDebug($"Cache hit for schema ID: {schemaId}");
+            return cached;
+        }
+
+        Logger.LogDebug($"Cache miss for schema ID: {schemaId}, fetching from registry");
+        var schema = await FetchSchemaAsync($"{IdEndpoint}{schemaId}", cancellationToken);
+
+        _cache.AddToCache(schemaId, schema);
         return schema;
     }
 

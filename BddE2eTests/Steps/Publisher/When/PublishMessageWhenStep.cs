@@ -53,6 +53,7 @@ public class PublishMessageWhenStep(ScenarioContext scenarioContext)
     }
 
     [When(@"the publisher sends (\d+) messages to topic ""(.*)""")]
+    [Given(@"(\d+) messages have been published to topic ""(.*)""")]
     public async Task WhenThePublisherSendsMessagesToTopic(int messageCount, string topic)
     {
         await TestContext.Progress.WriteLineAsync($"[When Step] Sending {messageCount} messages to topic '{topic}'...");
