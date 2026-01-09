@@ -183,6 +183,10 @@ public sealed class TcpSubscriber<T>(
     {
         await _cts.CancelAsync();
 
+        // Complete channels to unblock any readers/writers
+        requestChannel.Writer.TryComplete();
+        responseChannel.Writer.TryComplete();
+
         if (connection is TcpSubscriberConnection tcpConnection)
         {
             await tcpConnection.DisconnectAndCloseChannelsAsync();
@@ -190,12 +194,10 @@ public sealed class TcpSubscriber<T>(
         else
         {
             await connection.DisconnectAsync();
-            requestChannel.Writer.TryComplete();
-            responseChannel.Writer.TryComplete();
         }
 
-        await requestChannel.Reader.Completion;
-        await responseChannel.Reader.Completion;
+        // Don't await channel completion - it can block if readers are still pending
+        // The channels are completed, they will be garbage collected
 
         _cts.Dispose();
     }

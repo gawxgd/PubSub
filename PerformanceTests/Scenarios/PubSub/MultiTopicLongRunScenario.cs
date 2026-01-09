@@ -112,39 +112,28 @@ public static class MultiTopicLongRunScenario
                             await Task.CompletedTask;
                         });
 
-                    await sub.StartConnectionAsync();
-
-                    // Start message processing with cancellation support
-                    var t = Task.Run(async () =>
-                    {
-                        try
+                        await subscriber.StartConnectionAsync();
+                        
+                        // StartMessageProcessingAsync has its own internal loop - just call it once
+                        _ = Task.Run(async () =>
                         {
-                            var processingTask = sub.StartMessageProcessingAsync();
-                            var cancellationTask = Task.Delay(Timeout.Infinite, cts.Token);
-
-                            // Wait for either processing to complete or cancellation
-                            await Task.WhenAny(processingTask, cancellationTask);
-
-                            if (cts.Token.IsCancellationRequested)
+                            try
                             {
-                                // Cancellation requested - exit gracefully
-                                return;
+                                await subscriber.StartMessageProcessingAsync();
                             }
-                        }
-                        catch (OperationCanceledException)
-                        {
-                            // Expected on cancellation
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine($"  ⚠ Subscriber error in {topic}: {ex.Message}");
-                        }
-                    });
+                            catch (OperationCanceledException)
+                            {
+                                // Expected when test ends
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"Warning: Message processing error in {cleanTopicName}: {ex.Message}");
+                            }
+                        });
 
-                    tasks.Add(t);
-                    subscribers.Add(sub);
-                }
-                Console.WriteLine($"  ✓ {subscribersPerTopic} subscribers ready");
+                        subscribers.Add(subscriber);
+                    }
+                    Console.WriteLine($"  ✓ {subscribersPerTopic} subscribers initialized for {cleanTopicName}");
 
                 PublishersByTopic[topic] = publishers;
                 SubscribersByTopic[topic] = subscribers;
@@ -163,83 +152,40 @@ public static class MultiTopicLongRunScenario
 {
     Console.WriteLine($"\n[CLEANUP] {topic}");
 
-    // 1. Cancel subscribers
-    if (SubscriberCtsByTopic.TryRemove(topic, out var cts))
-    {
-        Console.WriteLine($"  Cancelling subscribers...");
-        cts.Cancel();
-    }
-
-    // 2. Dispose subscribers FIRST
-    if (SubscribersByTopic.TryRemove(topic, out var subs))
-    {
-        Console.WriteLine($"  Disposing {subs.Count} subscribers...");
-        foreach (var s in subs)
+        if (SubscribersByTopic.TryRemove(topicName, out var subscribers))
         {
-            try
+            Console.WriteLine($"  Stopping {subscribers.Count} subscribers...");
+            
+            var disposeTasks = subscribers.Select(async subscriber =>
             {
-                if (s is IAsyncDisposable d)
+                if (subscriber is IAsyncDisposable subDisposable)
                 {
-                    var disposeTask = d.DisposeAsync().AsTask();
-                    var timeout = Task.Delay(2000); // 2s max
-                    var completed = await Task.WhenAny(disposeTask, timeout);
-
-                    if (completed == timeout)
-                    {
-                        Console.WriteLine($"    ⚠ Subscriber dispose timeout");
-                    }
+                    try { await subDisposable.DisposeAsync(); }
+                    catch (Exception ex) { Console.WriteLine($"     Error disposing subscriber: {ex.Message}"); }
                 }
-            }
-            catch { }
+            });
+            
+            await Task.WhenAll(disposeTasks);
+            Console.WriteLine($"  ✓ Disposed {subscribers.Count} subscribers");
         }
-        Console.WriteLine($"  ✓ Subscribers disposed");
-    }
 
-    // 3. NIE CZEKAJ NA TASKI - daj im 2s i koniec!
-    if (SubscriberTasksByTopic.TryRemove(topic, out var tasks))
-    {
-        Console.WriteLine($"  Giving tasks 2s to finish...");
-
-        var allTasksTask = Task.WhenAll(tasks);
-        var timeoutTask = Task.Delay(TimeSpan.FromSeconds(2));
-        var completedTask = await Task.WhenAny(allTasksTask, timeoutTask);
-
-        if (completedTask == allTasksTask)
+        // POTEM PUBLISHERS
+        if (PublishersByTopic.TryRemove(topicName, out var publishers))
         {
-            Console.WriteLine($"  ✓ Tasks completed");
-        }
-        else
-        {
-            Console.WriteLine($"  ⚠ Tasks timeout - ABANDONING");
-            // NIE CZEKAJ - porzuć taski!
-        }
-    }
-
-    // 4. Cleanup CTS
-    if (cts != null)
-    {
-        cts.Dispose();
-    }
-
-    // 5. Dispose publishers
-    if (PublishersByTopic.TryRemove(topic, out var pubs))
-    {
-        Console.WriteLine($"  Disposing {pubs.Count} publishers...");
-        foreach (var p in pubs)
-        {
-            try
+            Console.WriteLine($"  Stopping {publishers.Count} publishers...");
+            
+            var pubDisposeTasks = publishers.Select(async publisher =>
             {
-                if (p is IAsyncDisposable d)
+                if (publisher is IAsyncDisposable pubDisposable)
                 {
-                    var disposeTask = d.DisposeAsync().AsTask();
-                    var timeout = Task.Delay(2000);
-                    await Task.WhenAny(disposeTask, timeout);
+                    try { await pubDisposable.DisposeAsync(); }
+                    catch (Exception ex) { Console.WriteLine($"     Error disposing publisher: {ex.Message}"); }
                 }
-            }
-            catch { }
+            });
+            
+            await Task.WhenAll(pubDisposeTasks);
+            Console.WriteLine($"  ✓ Disposed {publishers.Count} publishers");
         }
-        Console.WriteLine($"  ✓ Publishers disposed");
-    }
 
     // 6. Stats
     var sent = PublishedCount.GetValueOrDefault(topic);
