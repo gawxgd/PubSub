@@ -1,0 +1,47 @@
+test info
+test suite: nbomber_default_test_suite_name
+test name: nbomber_default_test_name
+session id: 2026-01-08_22.45.62_session_167f10d6
+
+scenario: publisher_throughput
+  - ok count: 0
+  - fail count: 0
+  - all data: 0 MB
+  - duration: 00:00:15
+
+load simulations: 
+  - inject, rate: 10, interval: 00:00:01, during: 00:00:15
+
++-------------------------+----------------------------------------+
+| step                    | ok stats                               |
++-------------------------+----------------------------------------+
+| name                    | global information                     |
++-------------------------+----------------------------------------+
+| request count           | all = 0, ok = 0, RPS = 0               |
++-------------------------+----------------------------------------+
+| latency (ms)            | min = 0, mean = 0, max = 0, StdDev = 0 |
++-------------------------+----------------------------------------+
+| latency percentile (ms) | p50 = 0, p75 = 0, p95 = 0, p99 = 0     |
++-------------------------+----------------------------------------+
+
+scenario: publisher_latency
+  - ok count: 0
+  - fail count: 0
+  - all data: 0 MB
+  - duration: 00:00:15
+
+load simulations: 
+  - inject, rate: 10, interval: 00:00:01, during: 00:00:15
+
++-------------------------+----------------------------------------+
+| step                    | ok stats                               |
++-------------------------+----------------------------------------+
+| name                    | global information                     |
++-------------------------+----------------------------------------+
+| request count           | all = 0, ok = 0, RPS = 0               |
++-------------------------+----------------------------------------+
+| latency (ms)            | min = 0, mean = 0, max = 0, StdDev = 0 |
++-------------------------+----------------------------------------+
+| latency percentile (ms) | p50 = 0, p75 = 0, p95 = 0, p99 = 0     |
++-------------------------+----------------------------------------+
+

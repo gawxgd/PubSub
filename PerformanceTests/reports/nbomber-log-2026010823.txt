@@ -1,0 +1,23 @@
+2026-01-08 23:45:46.686 +01:00 [INF] [ThreadId:6] NBomber 6.1.2 started a new session: 2026-01-08_22.45.62_session_167f10d6
+2026-01-08 23:45:46.729 +01:00 [INF] [ThreadId:6] NBomber started as single node
+2026-01-08 23:45:46.731 +01:00 [INF] [ThreadId:6] License validation....
+2026-01-08 23:45:46.732 +01:00 [WRN] [ThreadId:6] THIS VERSION IS FREE ONLY FOR PERSONAL USE. You can't use it for an organization.
+2026-01-08 23:45:46.746 +01:00 [INF] [ThreadId:6] Reports folder: C:\src\github\sandrawar\PubSub\PerformanceTests\bin\Debug\net9.0\reports
+2026-01-08 23:45:46.747 +01:00 [INF] [ThreadId:6] Plugins: no plugins were loaded
+2026-01-08 23:45:46.758 +01:00 [INF] [ThreadId:6] Reporting sinks: no reporting sinks were loaded
+2026-01-08 23:45:46.759 +01:00 [INF] [ThreadId:6] Starting init...
+2026-01-08 23:45:46.767 +01:00 [INF] [ThreadId:6] Target scenarios: publisher_throughput, publisher_latency
+2026-01-08 23:45:46.769 +01:00 [INF] [ThreadId:6] Start init scenario: publisher_throughput
+2026-01-08 23:45:47.297 +01:00 [INF] [ThreadId:9] Start init scenario: publisher_latency
+2026-01-08 23:45:47.805 +01:00 [INF] [ThreadId:9] Init finished
+2026-01-08 23:45:47.818 +01:00 [INF] [ThreadId:9] Starting warm up...
+2026-01-08 23:45:47.820 +01:00 [INF] [ThreadId:9] Warm up for scenarios: publisher_throughput, publisher_latency
+2026-01-08 23:45:47.824 +01:00 [INF] [ThreadId:9] Warm up duration: 00:00:03
+2026-01-08 23:45:51.879 +01:00 [INF] [ThreadId:12] Starting bombing...
+2026-01-08 23:46:08.105 +01:00 [INF] [ThreadId:14] Waiting on scenarios completion...
+2026-01-08 23:47:10.288 +01:00 [INF] [ThreadId:14] Stopping scenarios...
+2026-01-08 23:47:10.294 +01:00 [INF] [ThreadId:14] Start cleaning scenario: publisher_throughput
+2026-01-08 23:47:10.317 +01:00 [INF] [ThreadId:15] Start cleaning scenario: publisher_latency
+2026-01-08 23:47:10.323 +01:00 [INF] [ThreadId:15] Calculating final statistics...
+2026-01-08 23:47:10.857 +01:00 [INF] [ThreadId:12] Reports saved in folder: C:\src\github\sandrawar\PubSub\PerformanceTests\reports
+2026-01-08 23:47:10.857 +01:00 [WRN] [ThreadId:12] THIS VERSION IS FREE ONLY FOR PERSONAL USE. You can't use it for an organization.

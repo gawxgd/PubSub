@@ -72,8 +72,8 @@ public class MessageReceiver<T>(
                 }
                 else
                 {
-                    Logger.LogDebug(
-                        $"No messages received in {maxWaitTime}. Sending fetch request again for offset {getCurrentOffset()}");
+                    //Logger.LogDebug(
+                    //    $"No messages received in {maxWaitTime}. Sending fetch request again for offset {getCurrentOffset()}");
                     await requestSender.SendRequestAsync(getCurrentOffset());
                 }
             }

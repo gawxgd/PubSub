@@ -155,7 +155,7 @@ public sealed class TcpSubscriberConnection(
                         continue;
                     }
 
-                    Logger.LogDebug($"Read {buffer.Length} bytes from broker");
+                    //Logger.LogDebug($"Read {buffer.Length} bytes from broker");
 
                     while (TryReadBatchMessage(ref buffer, out var batchBytes))
                     {

@@ -358,8 +358,8 @@ public sealed class TcpPublisherConnection(
                 }
 
                 sent = true;
-                Logger.LogDebug(
-                    $"Sent batch with {count} records, topic: {options.Topic}, batch size: {batchBytes.Length} bytes");
+                //Logger.LogDebug(
+                //    $"Sent batch with {count} records, topic: {options.Topic}, batch size: {batchBytes.Length} bytes");
             }
             catch (IOException ex)
             {

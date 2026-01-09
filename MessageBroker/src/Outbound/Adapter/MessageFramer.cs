@@ -20,7 +20,7 @@ public class MessageFramer : IMessageFramer
         lengthPrefix.CopyTo(framedMessage, 0);
         message.CopyTo(framedMessage, LengthFieldSize);
 
-        Logger.LogDebug($"Framed message: length={message.Length} bytes");
+        //Logger.LogDebug($"Framed message: length={message.Length} bytes");
         return framedMessage;
     }
 }
