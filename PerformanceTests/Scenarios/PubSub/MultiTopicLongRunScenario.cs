@@ -92,7 +92,7 @@ public static class MultiTopicLongRunScenario
             {
                 try
                 {
-                    Console.WriteLine($"Initializing topic: {cleanTopicName}"); // UŻYJ CLEAN
+                    Console.WriteLine($"Initializing topic: {cleanTopicName}"); 
                     Console.WriteLine($"  Publishers: {publishersPerTopic}");
                     Console.WriteLine($"  Subscribers: {subscribersPerTopic}");
                     Console.WriteLine($"  Rate: {ratePerTopic} msg/s");
@@ -100,10 +100,9 @@ public static class MultiTopicLongRunScenario
                     var publishers = new List<IPublisher<TestMessage>>();
                     var subscribers = new List<ISubscriber<TestMessage>>();
 
-                    // Create publishers - UŻYJ CLEAN TOPIC
                     for (int i = 0; i < publishersPerTopic; i++)
                     {
-                        var pubOptions = publisherOptionsTemplate with { Topic = cleanTopicName }; // CLEAN!
+                        var pubOptions = publisherOptionsTemplate with { Topic = cleanTopicName }; 
                         var publisher = publisherFactory.CreatePublisher(pubOptions);
                         await publisher.CreateConnection();
                         publishers.Add(publisher);
