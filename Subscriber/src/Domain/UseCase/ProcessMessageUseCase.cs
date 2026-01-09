@@ -31,7 +31,7 @@ public class ProcessMessageUseCase<T>(
 
             var schemaJson = AvroSchemaGenerator.GenerateSchemaJson<T>();
             _cachedReaderSchema = await schemaRegistryClient.RegisterSchemaAsync(topic, schemaJson, cancellationToken);
-            Logger.LogInfo($"Initialized reader schema for topic '{topic}' with ID: {_cachedReaderSchema.SchemaId}");
+            Logger.LogInfo($"Registered new schema for topic '{topic}' with ID: {_cachedReaderSchema.SchemaId}");
         }
         finally
         {

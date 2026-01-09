@@ -30,7 +30,7 @@ public class SerializeMessageUseCase<T>(
 
             var schemaJson = AvroSchemaGenerator.GenerateSchemaJson<T>();
             _cachedSchema = await schemaRegistryClient.RegisterSchemaAsync(topic, schemaJson, cancellationToken);
-            Logger.LogInfo($"Initialized schema for topic '{topic}' with ID: {_cachedSchema.SchemaId}");
+            Logger.LogInfo($"Registered new schema for topic '{topic}' with ID: {_cachedSchema.SchemaId}");
         }
         finally
         {
