@@ -42,6 +42,14 @@ public sealed class HttpSchemaRegistryClient : ISchemaRegistryClient
         {
             var request = new { schema = schemaJson };
             var response = await _httpClient.PostAsJsonAsync($"{TopicEndpoint}{topic}", request, cancellationToken);
+
+            if (response.StatusCode == HttpStatusCode.Conflict)
+            {
+                var conflictContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                Logger.LogError($"Schema incompatible for topic '{topic}'. Registry response: {conflictContent}");
+                throw new SchemaIncompatibleException(topic, conflictContent);
+            }
+
             response.EnsureSuccessStatusCode();
 
             var content = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -50,6 +58,10 @@ public sealed class HttpSchemaRegistryClient : ISchemaRegistryClient
             Logger.LogInfo($"Registered schema for topic '{topic}' with ID: {result.Id}");
 
             return await GetSchemaByIdAsync(result.Id, cancellationToken);
+        }
+        catch (SchemaIncompatibleException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
