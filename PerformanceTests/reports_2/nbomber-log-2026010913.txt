@@ -1,0 +1,15 @@
+2026-01-09 13:04:54.902 +01:00 [INF] [ThreadId:48] Waiting on scenarios completion...
+2026-01-09 13:05:28.328 +01:00 [INF] [ThreadId:17] Stopping scenarios...
+2026-01-09 13:05:28.340 +01:00 [INF] [ThreadId:17] Start cleaning scenario: long_run_long-run-topic-01
+2026-01-09 13:05:30.500 +01:00 [INF] [ThreadId:38] Start cleaning scenario: long_run_long-run-topic-02
+2026-01-09 13:05:32.312 +01:00 [INF] [ThreadId:38] Start cleaning scenario: long_run_long-run-topic-03
+2026-01-09 13:05:34.403 +01:00 [INF] [ThreadId:38] Start cleaning scenario: long_run_long-run-topic-04
+2026-01-09 13:05:36.454 +01:00 [INF] [ThreadId:38] Start cleaning scenario: long_run_long-run-topic-05
+2026-01-09 13:05:38.305 +01:00 [INF] [ThreadId:38] Start cleaning scenario: long_run_long-run-topic-06
+2026-01-09 13:05:39.009 +01:00 [INF] [ThreadId:38] Start cleaning scenario: long_run_long-run-topic-07
+2026-01-09 13:05:39.994 +01:00 [INF] [ThreadId:38] Start cleaning scenario: long_run_long-run-topic-08
+2026-01-09 13:05:40.793 +01:00 [INF] [ThreadId:38] Start cleaning scenario: long_run_long-run-topic-09
+2026-01-09 13:05:41.651 +01:00 [INF] [ThreadId:38] Start cleaning scenario: long_run_long-run-topic-10
+2026-01-09 13:05:42.443 +01:00 [INF] [ThreadId:38] Calculating final statistics...
+2026-01-09 13:05:47.874 +01:00 [INF] [ThreadId:42] Reports saved in folder: C:\src\github\sandrawar\PubSub\PerformanceTests\reports
+2026-01-09 13:05:47.875 +01:00 [WRN] [ThreadId:42] THIS VERSION IS FREE ONLY FOR PERSONAL USE. You can't use it for an organization.
