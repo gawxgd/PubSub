@@ -1,65 +1,42 @@
-Feature: Schema backward compatibility
+Feature: Schema backward compatibility - subscriber with newer schema reads messages from a publisher using old schema
     # Reading messages serialized with an older schema 
     
-    Scenario:  Backward compatibility - Subscriber with v2 schema reads messages from a publisher that restarts and starts using new schema
-        Given a publisher is configured with the following options:
+    Scenario: New schema has a new field with a default value 
+        Given a publisher of type "TestEvent" is configured with the following options:
             | Setting             | Value          |
             | topic               | test-topic     |
             | Broker              | 127.0.0.1:9096 |
             | Queue Size          | 1000           |
             | Max Retry Attempts  | 3              |
             | Max Send Attempts   | 3              |
-        When schema v1 is registered for topic "test-topic"
-        When the publisher sends 5 messages to topic "test-topic"
-        And schema v2 is registered for topic "test-topic"
-        And the publisher restarts
-        And the publisher sends 5 messages to topic "test-topic"
-        And a subscriber is configured with the following options:
+        And a subscriber of type "TestEventWithAdditionalDefaultField" is configured with the following options:
             | Setting             | Value          |
             | Topic               | test-topic     |
             | Broker              | 127.0.0.1:9098 |
             | Poll Interval       | 100            |
             | Max Retry Attempts  | 3              |
-        Then the subscriber successfully receives 10 messages
+        When the publisher sends a message 
+            | Message |
+            | p1      |
+        Then the subscriber successfully receives 1 messages
 
-    Scenario:  Backward compatibility - Subscriber with v2 schema reads messages from both v1 and v2 publishers
-        Given publishers A are configured with the following options:
+    Scenario: A field has been removed from the new schema
+        Given a publisher of type "TestEventWithAdditionalField" is configured with the following options:
             | Setting             | Value          |
             | topic               | test-topic     |
             | Broker              | 127.0.0.1:9096 |
             | Queue Size          | 1000           |
             | Max Retry Attempts  | 3              |
             | Max Send Attempts   | 3              |
-        When schema v1 is registered for topic "test-topic"
-        When the publisher A sends messages in order:
-            | Message |
-            | p1      |
-            | p2      |
-            | p3      |
-        And schema v2 is registered for topic "test-topic"
-        And publishers B are configured with the following options:
-            | Setting             | Value          |
-            | topic               | test-topic     |
-            | Broker              | 127.0.0.1:9096 |
-            | Queue Size          | 1000           |
-            | Max Retry Attempts  | 3              |
-            | Max Send Attempts   | 3              |
-        When the publisher B sends messages in order:
-            | Message |
-            | p4      |
-            | p5      |
-            | p6      |
-        And a subscriber is configured with the following options:
+        And a subscriber of type "TestEvent" is configured with the following options:
             | Setting             | Value          |
             | Topic               | test-topic     |
             | Broker              | 127.0.0.1:9098 |
             | Poll Interval       | 100            |
             | Max Retry Attempts  | 3              |
-        Then the subscriber receives messages:
+         When the publisher sends a message 
             | Message |
             | p1      |
-            | p2      |
-            | p3      |
-            | p4      |
-            | p5      |
-            | p6      |
+            | 5       |
+        Then the subscriber receives message "p1" from topic "test-topic"
+       
