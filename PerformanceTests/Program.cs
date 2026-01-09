@@ -186,11 +186,12 @@ Console.WriteLine("   Expected total messages: 36,000,000");
 Console.WriteLine("═══════════════════════════════════════════════════");
 Console.WriteLine();
 
-var scenarios = MultiTopicLongRunScenario.Create(
+var scenarios = MultiTopicPeakPerformanceScenario.Create(
     publisherFactory,
     publisherOptions,
     subscriberFactory,
     subscriberOptions);
+
 
 Console.WriteLine($"✓ Created {scenarios.Length} long-run scenarios");
 Console.WriteLine();
