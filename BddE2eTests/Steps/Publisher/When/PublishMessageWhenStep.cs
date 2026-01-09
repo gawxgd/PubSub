@@ -2,7 +2,6 @@ using NUnit.Framework;
 using Reqnroll;
 using BddE2eTests.Configuration;
 using BddE2eTests.Configuration.TestEvents;
-using Publisher.Domain.Port;
 
 namespace BddE2eTests.Steps.Publisher.When;
 
@@ -51,6 +50,44 @@ public class PublishMessageWhenStep(ScenarioContext scenarioContext)
             _context.PublishException = ex;
         }
     }
+    
+    [When(@"the publisher sends a message")]
+    public async Task WhenThePublisherSendsAMessage(Table table)
+    {
+        var message = table.Rows[0]["Message"];
+        var topic = _context.Topic;
+
+        int? priority = null;
+        if (table.Rows.Count >= 2 && int.TryParse(table.Rows[1]["Message"], out var parsedPriority))
+        {
+            priority = parsedPriority;
+        }
+
+        _context.TryGetPublisher(out var publisher);
+        await PublishSingleMessage(publisher!, message, topic, priority);
+
+        _context.SentMessage = message;
+    }
+    
+    [When(@"the publisher sends a message of type ""(.*)""")]
+    public async Task WhenThePublisherSendsAMessageOfType(string eventType, Table table)
+    {
+        var message = table.Rows[0]["Message"];
+        var topic = _context.Topic;
+
+        int? priority = null;
+        if (table.Rows.Count >= 2 && int.TryParse(table.Rows[1]["Message"], out var parsedPriority))
+        {
+            priority = parsedPriority;
+        }
+        
+        _context.TryGetPublisher(out var publisher);
+        var resolvedType = TestEventTypeResolver.Resolve(eventType);
+        var evt = CreateEvent(resolvedType, message, topic, priority);
+        await publisher!.PublishAsync(evt);
+
+        _context.SentMessage = message;
+    }
 
     [When(@"the publisher sends (\d+) messages to topic ""(.*)""")]
     [Given(@"(\d+) messages have been published to topic ""(.*)""")]
@@ -58,18 +95,14 @@ public class PublishMessageWhenStep(ScenarioContext scenarioContext)
     {
         await TestContext.Progress.WriteLineAsync($"[When Step] Sending {messageCount} messages to topic '{topic}'...");
         
+        _context.TryGetPublisher(out var publisher);
+        
         for (var i = 0; i < messageCount; i++)
         {
             var message = $"msg{i}";
             await TestContext.Progress.WriteLineAsync($"[When Step] Sending message {i + 1}/{messageCount}: '{message}'...");
-            
-            var evt = new TestEvent
-            {
-                Message = message,
-                Topic = topic
-            };
-            
-            await _context.Publisher.PublishAsync(evt);
+
+            await PublishSingleMessage(publisher!, message, topic);
         }
         
         await TestContext.Progress.WriteLineAsync($"[When Step] All {messageCount} messages sent!");
@@ -90,7 +123,7 @@ public class PublishMessageWhenStep(ScenarioContext scenarioContext)
         await PublishMessagesInOrderAsync(publisher, $"publisher '{publisherName}'", table);
     }
 
-    private async Task PublishMessagesInOrderAsync(IPublisher<TestEvent> publisher, string publisherDescription, Table table)
+    private async Task PublishMessagesInOrderAsync(PublisherHandle publisher, string publisherDescription, Table table)
     {
         await TestContext.Progress.WriteLineAsync($"[When Step] Sending {table.Rows.Count} messages in order using {publisherDescription}...");
         foreach (var row in table.Rows)
@@ -102,24 +135,38 @@ public class PublishMessageWhenStep(ScenarioContext scenarioContext)
         await TestContext.Progress.WriteLineAsync("[When Step] All messages sent!");
     }
 
-    private async Task PublishSingleMessage(IPublisher<TestEvent> publisher, string message, string topic)
+    private async Task PublishSingleMessage(PublisherHandle publisher, string message, string topic)
     {
-        var evt = new TestEvent
-        {
-            Message = message,
-            Topic = topic
-        };
-        await publisher.PublishAsync(evt);
+        await PublishSingleMessage(publisher, message, topic, priority: null);
     }
 
-    private async Task PublishSingleMessage(IPublisher<TestEvent> publisher, string message, string topic, int priority)
+    private async Task PublishSingleMessage(PublisherHandle publisher, string message, string topic, int? priority)
     {
-        var evt = new TestEvent
-        {
-            Message = message,
-            Topic = topic,
-            Priority = priority
-        };
+        var evt = CreateEvent(publisher.MessageType, message, topic, priority);
         await publisher.PublishAsync(evt);
+    }
+    
+    private static ITestEvent CreateEvent(Type eventType, string message, string topic, int? priority)
+    {
+        if (!typeof(ITestEvent).IsAssignableFrom(eventType))
+        {
+            throw new ArgumentException($"Type '{eventType.Name}' does not implement {nameof(ITestEvent)}", nameof(eventType));
+        }
+
+        var evt = (ITestEvent)Activator.CreateInstance(eventType)!;
+        evt.Message = message;
+        evt.Topic = topic;
+
+        if (priority.HasValue)
+        {
+            var priorityProp = eventType.GetProperty(nameof(TestEventWithAdditionalField.Priority));
+            if (priorityProp == null)
+            {
+                throw new ArgumentException($"Type '{eventType.Name}' does not have a 'Priority' property");
+            }
+            priorityProp.SetValue(evt, priority.Value);
+        }
+
+        return evt;
     }
 }

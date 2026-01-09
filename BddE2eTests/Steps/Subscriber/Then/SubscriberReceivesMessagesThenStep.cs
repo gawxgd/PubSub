@@ -42,12 +42,12 @@ public class SubscriberReceivesMessagesThenStep(ScenarioContext scenarioContext)
         await ReceiveMessageCountAsync(receivedMessages, $"subscriber '{subscriberName}'", expectedCount);
     }
 
-    private async Task ReceiveMessageCountAsync(Channel<TestEvent> receivedMessages, string subscriberDescription, int expectedCount)
+    private async Task ReceiveMessageCountAsync(Channel<ITestEvent> receivedMessages, string subscriberDescription, int expectedCount)
     {
         await TestContext.Progress.WriteLineAsync(
             $"[Then Step] Expecting {expectedCount} messages for {subscriberDescription}.. .");
     
-        var allReceivedMessages = new List<TestEvent>();
+        var allReceivedMessages = new List<ITestEvent>();
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(TimeoutSeconds));
 
         try
@@ -73,7 +73,7 @@ public class SubscriberReceivesMessagesThenStep(ScenarioContext scenarioContext)
             $"[Then Step] Successfully received all {expectedCount} messages!");
     }
 
-    private async Task ReceiveMessagesAsync(Channel<TestEvent> receivedMessages, string subscriberDescription, Table table)
+    private async Task ReceiveMessagesAsync(Channel<ITestEvent> receivedMessages, string subscriberDescription, Table table)
     {
         TestContext.Progress.WriteLine($"[Then Step] Expecting {table.Rows.Count} messages for {subscriberDescription} (order not required)...");
         var expectedMessages = table.Rows.Select(row => row["Message"]).ToHashSet();

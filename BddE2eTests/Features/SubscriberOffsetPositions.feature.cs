@@ -101,6 +101,48 @@ namespace BddE2eTests.Features
             else
             {
                 await this.ScenarioStartAsync();
+                global::Reqnroll.Table table60 = new global::Reqnroll.Table(new string[] {
+                            "Setting",
+                            "Value"});
+                table60.AddRow(new string[] {
+                            "Topic",
+                            "default"});
+                table60.AddRow(new string[] {
+                            "Broker",
+                            "127.0.0.1:9096"});
+                table60.AddRow(new string[] {
+                            "Queue Size",
+                            "1000"});
+                table60.AddRow(new string[] {
+                            "Max Retry Attempts",
+                            "3"});
+                table60.AddRow(new string[] {
+                            "Max Send Attempts",
+                            "3"});
+#line 7
+        await testRunner.GivenAsync("a publisher is configured with the following options:", ((string)(null)), table60, "Given ");
+#line hidden
+#line 14
+        await testRunner.AndAsync("11 messages have been published to topic \"default\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+                global::Reqnroll.Table table61 = new global::Reqnroll.Table(new string[] {
+                            "Setting",
+                            "Value"});
+                table61.AddRow(new string[] {
+                            "Topic",
+                            "default"});
+                table61.AddRow(new string[] {
+                            "Broker",
+                            "127.0.0.1:9098"});
+                table61.AddRow(new string[] {
+                            "Poll Interval",
+                            "100"});
+                table61.AddRow(new string[] {
+                            "Max Retry Attempts",
+                            "3"});
+#line 15
+        await testRunner.AndAsync("subscriber S1 is configured starting at offset 11 with the following options:", ((string)(null)), table61, "And ");
+#line hidden
                 global::Reqnroll.Table table62 = new global::Reqnroll.Table(new string[] {
                             "Setting",
                             "Value"});
@@ -109,57 +151,15 @@ namespace BddE2eTests.Features
                             "default"});
                 table62.AddRow(new string[] {
                             "Broker",
-                            "127.0.0.1:9096"});
-                table62.AddRow(new string[] {
-                            "Queue Size",
-                            "1000"});
-                table62.AddRow(new string[] {
-                            "Max Retry Attempts",
-                            "3"});
-                table62.AddRow(new string[] {
-                            "Max Send Attempts",
-                            "3"});
-#line 7
-        await testRunner.GivenAsync("a publisher is configured with the following options:", ((string)(null)), table62, "Given ");
-#line hidden
-#line 14
-        await testRunner.AndAsync("11 messages have been published to topic \"default\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
-#line hidden
-                global::Reqnroll.Table table63 = new global::Reqnroll.Table(new string[] {
-                            "Setting",
-                            "Value"});
-                table63.AddRow(new string[] {
-                            "Topic",
-                            "default"});
-                table63.AddRow(new string[] {
-                            "Broker",
                             "127.0.0.1:9098"});
-                table63.AddRow(new string[] {
+                table62.AddRow(new string[] {
                             "Poll Interval",
                             "100"});
-                table63.AddRow(new string[] {
-                            "Max Retry Attempts",
-                            "3"});
-#line 15
-        await testRunner.AndAsync("subscriber S1 is configured starting at offset 11 with the following options:", ((string)(null)), table63, "And ");
-#line hidden
-                global::Reqnroll.Table table64 = new global::Reqnroll.Table(new string[] {
-                            "Setting",
-                            "Value"});
-                table64.AddRow(new string[] {
-                            "Topic",
-                            "default"});
-                table64.AddRow(new string[] {
-                            "Broker",
-                            "127.0.0.1:9098"});
-                table64.AddRow(new string[] {
-                            "Poll Interval",
-                            "100"});
-                table64.AddRow(new string[] {
+                table62.AddRow(new string[] {
                             "Max Retry Attempts",
                             "3"});
 #line 21
-        await testRunner.AndAsync("subscriber S2 is configured starting at offset 5 with the following options:", ((string)(null)), table64, "And ");
+        await testRunner.AndAsync("subscriber S2 is configured starting at offset 5 with the following options:", ((string)(null)), table62, "And ");
 #line hidden
 #line 27
         await testRunner.WhenAsync("the publisher sends message \"m11\" to topic \"default\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
@@ -167,24 +167,24 @@ namespace BddE2eTests.Features
 #line 28
         await testRunner.ThenAsync("subscriber S1 should receive only message \"m11\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-                global::Reqnroll.Table table65 = new global::Reqnroll.Table(new string[] {
+                global::Reqnroll.Table table63 = new global::Reqnroll.Table(new string[] {
                             "Message"});
-                table65.AddRow(new string[] {
+                table63.AddRow(new string[] {
                             "msg5"});
-                table65.AddRow(new string[] {
+                table63.AddRow(new string[] {
                             "msg6"});
-                table65.AddRow(new string[] {
+                table63.AddRow(new string[] {
                             "msg7"});
-                table65.AddRow(new string[] {
+                table63.AddRow(new string[] {
                             "msg8"});
-                table65.AddRow(new string[] {
+                table63.AddRow(new string[] {
                             "msg9"});
-                table65.AddRow(new string[] {
+                table63.AddRow(new string[] {
                             "msg10"});
-                table65.AddRow(new string[] {
+                table63.AddRow(new string[] {
                             "m11"});
 #line 29
-        await testRunner.AndAsync("subscriber S2 should receive messages \"msg5\" to \"m11\":", ((string)(null)), table65, "And ");
+        await testRunner.AndAsync("subscriber S2 should receive messages \"msg5\" to \"m11\":", ((string)(null)), table63, "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();

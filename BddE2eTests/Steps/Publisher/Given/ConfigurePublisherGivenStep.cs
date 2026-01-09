@@ -4,7 +4,6 @@ using BddE2eTests.Configuration;
 using BddE2eTests.Configuration.Builder;
 using BddE2eTests.Configuration.Options;
 using BddE2eTests.Configuration.TestEvents;
-using Publisher.Domain.Port;
 
 namespace BddE2eTests.Steps.Publisher.Given;
 
@@ -31,7 +30,20 @@ public class ConfigurePublisherGivenStep(ScenarioContext scenarioContext)
     public async Task GivenAPublisherIsConfiguredWithTheFollowingOptions(Table table)
     {
         await TestContext.Progress.WriteLineAsync("[Publisher Step] Starting publisher configuration...");
-        var publisher = await CreatePublisherFromTableAsync(table);
+        var publisher = await CreatePublisherFromTableAsync<TestEvent>(table);
+        
+        _context.Publisher = publisher;
+        _context.Topic = ExtractTopicFromTable(table);
+    }
+    
+    [Given(@"a publisher of type ""(.*)"" is configured with the following options:")]
+    [When(@"a publisher of type ""(.*)"" is configured with the following options:")]
+    public async Task GivenAPublisherOfTypeIsConfiguredWithTheFollowingOptions(string eventType, Table table)
+    {
+        await TestContext.Progress.WriteLineAsync(
+            $"[Publisher Step] Starting publisher configuration for event type '{eventType}'...");
+        
+        var publisher = await CreatePublisherFromTableAsync(eventType, table);
         
         _context.Publisher = publisher;
         _context.Topic = ExtractTopicFromTable(table);
@@ -47,7 +59,7 @@ public class ConfigurePublisherGivenStep(ScenarioContext scenarioContext)
         foreach (var name in names)
         {
             await TestContext.Progress.WriteLineAsync($"[Publisher Step] Configuring publisher '{name}'...");
-            var publisher = await CreatePublisherFromTableAsync(table);
+            var publisher = await CreatePublisherFromTableAsync<TestEvent>(table);
             _context.SetPublisher(name, publisher);
         }
         
@@ -55,7 +67,27 @@ public class ConfigurePublisherGivenStep(ScenarioContext scenarioContext)
         await TestContext.Progress.WriteLineAsync($"[Publisher Step] All {names.Length} publishers configured!");
     }
 
-    private async Task<IPublisher<TestEvent>> CreatePublisherFromTableAsync(Table table)
+    private Task<PublisherHandle> CreatePublisherFromTableAsync(string eventType, Table table)
+    {
+        var resolvedType = TestEventTypeResolver.Resolve(eventType);
+        if (resolvedType == typeof(TestEvent))
+        {
+            return CreatePublisherFromTableAsync<TestEvent>(table);
+        }
+        if (resolvedType == typeof(TestEventWithAdditionalField))
+        {
+            return CreatePublisherFromTableAsync<TestEventWithAdditionalField>(table);
+        }
+        if (resolvedType == typeof(TestEventWithAdditionalDefaultField))
+        {
+            return CreatePublisherFromTableAsync<TestEventWithAdditionalDefaultField>(table);
+        }
+
+        throw new ArgumentException($"Unsupported publisher event type '{eventType}'", nameof(eventType));
+    }
+
+    private async Task<PublisherHandle> CreatePublisherFromTableAsync<TEvent>(Table table)
+        where TEvent : class, ITestEvent
     {
         var builder = CreatePublisherOptionsBuilderFromTable(table);
         var topic = ExtractTopicFromTable(table);
@@ -73,7 +105,7 @@ public class ConfigurePublisherGivenStep(ScenarioContext scenarioContext)
         var schemaRegistryClientFactory = schemaRegistryBuilder.BuildFactory();
 
         await TestContext.Progress.WriteLineAsync("[Publisher Step] Creating publisher factory...");
-        var publisherFactory = new PublisherFactory<TestEvent>(schemaRegistryClientFactory);
+        var publisherFactory = new PublisherFactory<TEvent>(schemaRegistryClientFactory);
 
         await TestContext.Progress.WriteLineAsync("[Publisher Step] Creating publisher...");
         var publisher = publisherFactory.CreatePublisher(publisherOptions);
@@ -82,7 +114,7 @@ public class ConfigurePublisherGivenStep(ScenarioContext scenarioContext)
         await publisher.CreateConnection();
         await TestContext.Progress.WriteLineAsync("[Publisher Step] Publisher connected!");
 
-        return publisher;
+        return new PublisherHandle(publisher, typeof(TEvent));
     }
 
     private PublisherOptionsBuilder CreatePublisherOptionsBuilderFromTable(Table table)
@@ -150,29 +182,25 @@ public class ConfigurePublisherGivenStep(ScenarioContext scenarioContext)
     {
         await TestContext.Progress.WriteLineAsync("[Cleanup] Starting publisher cleanup...");
 
-        if (_context.TryGetPublisher(out var publisher)
-            && publisher is IAsyncDisposable publisherDisposable)
+        if (_context.TryGetPublisher(out var publisher))
         {
-            await DisposePublisherAsync(publisherDisposable, "default");
+            await DisposePublisherAsync(publisher, "default");
         }
 
         foreach (var pub in _context.GetAllPublishers())
         {
-            if (pub is IAsyncDisposable disposable)
-            {
-                await DisposePublisherAsync(disposable, "named");
-            }
+            await DisposePublisherAsync(pub, "named");
         }
 
         await TestContext.Progress.WriteLineAsync("[Cleanup] Publisher cleanup complete");
     }
 
-    private async Task DisposePublisherAsync(IAsyncDisposable publisherDisposable, string type)
+    private async Task DisposePublisherAsync(PublisherHandle publisher, string type)
     {
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(CleanupTimeoutSeconds));
         try
         {
-            var disposeTask = publisherDisposable.DisposeAsync().AsTask();
+            var disposeTask = publisher.DisposeAsync().AsTask();
             var completedTask = await Task.WhenAny(disposeTask, Task.Delay(Timeout.Infinite, cts.Token));
 
             if (completedTask != disposeTask)
