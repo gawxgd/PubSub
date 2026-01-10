@@ -31,6 +31,10 @@ public static class MultiTopicPeakPerformanceScenario
     private static readonly ConcurrentDictionary<string, ConcurrentDictionary<long, DateTime>> ReceivedMessagesByTopic = new();
     private static readonly ConcurrentDictionary<string, List<IPublisher<TestMessage>>> PublishersByTopic = new();
     private static readonly ConcurrentDictionary<string, List<ISubscriber<TestMessage>>> SubscribersByTopic = new();
+    
+    // DODAJ: Tracking subscriber tasks i cancellation tokens
+    private static readonly ConcurrentDictionary<string, List<Task>> SubscriberTasksByTopic = new();
+    private static readonly ConcurrentDictionary<string, CancellationTokenSource> CancellationTokensByTopic = new();
 
     private static string CleanTopicName(string topic) =>
         topic.Replace("schema/topic/", "").Trim('/');
@@ -44,9 +48,8 @@ public static class MultiTopicPeakPerformanceScenario
         const int numTopics = 10;
         const int publishersPerTopic = 10;
         const int subscribersPerTopic = 5;
-
-        const int totalRate = 10000;          // msg/s total
-        const int ratePerTopic = totalRate / numTopics; // 500 msg/s per topic
+        const int totalRate = 10000;
+        const int ratePerTopic = totalRate / numTopics;
 
         var scenarios = new List<ScenarioProps>();
 
@@ -63,9 +66,7 @@ public static class MultiTopicPeakPerformanceScenario
                     if (!PublishersByTopic.TryGetValue(topicName, out var publishers) || publishers.Count == 0)
                         return Response.Fail<object>("Publishers not initialized");
 
-                    var publisherIndex =
-                        (int)(Interlocked.Read(ref messageCounter) % publishers.Count);
-
+                    var publisherIndex = (int)(Interlocked.Read(ref messageCounter) % publishers.Count);
                     var publisher = publishers[publisherIndex];
                     var sequenceNumber = Interlocked.Increment(ref messageCounter);
 
@@ -89,22 +90,27 @@ public static class MultiTopicPeakPerformanceScenario
                 }
                 catch (Exception ex)
                 {
-                    return Response.Fail<object>(
-                        $"{topicName}: {ex.GetType().Name} - {ex.Message}");
+                    return Response.Fail<object>($"{topicName}: {ex.GetType().Name} - {ex.Message}");
                 }
             })
-
+            
             // ================= INIT =================
             .WithInit(async context =>
             {
-                Console.WriteLine($"\nInitializing topic: {cleanTopicName}");
+                Console.WriteLine($"\n[{DateTime.UtcNow:HH:mm:ss}] Initializing topic: {cleanTopicName}");
                 Console.WriteLine($"  Publishers : {publishersPerTopic}");
                 Console.WriteLine($"  Subscribers: {subscribersPerTopic}");
                 Console.WriteLine($"  Base rate  : {ratePerTopic} msg/s");
 
                 var publishers = new List<IPublisher<TestMessage>>();
                 var subscribers = new List<ISubscriber<TestMessage>>();
+                var subscriberTasks = new List<Task>();
+                
+                // DODAJ: CancellationTokenSource dla tego topiku
+                var cts = new CancellationTokenSource();
+                CancellationTokensByTopic.TryAdd(topicName, cts);
 
+                // Publishers
                 for (int i = 0; i < publishersPerTopic; i++)
                 {
                     var pubOptions = publisherOptionsTemplate with { Topic = cleanTopicName };
@@ -115,90 +121,161 @@ public static class MultiTopicPeakPerformanceScenario
 
                 await Task.Delay(500);
 
+                // Subscribers
                 for (int i = 0; i < subscribersPerTopic; i++)
                 {
                     var subOptions = subscriberOptionsTemplate with { Topic = cleanTopicName };
                     var subscriber = subscriberFactory.CreateSubscriber(subOptions, async msg =>
                     {
                         var receivedAt = DateTime.UtcNow;
-
                         ReceivedMessagesByTopic
                             .GetOrAdd(topicName, _ => new ConcurrentDictionary<long, DateTime>())
                             .TryAdd(msg.SequenceNumber, receivedAt);
-
                         await Task.CompletedTask;
                     });
 
                     await subscriber.StartConnectionAsync();
 
-                    _ = Task.Run(() => subscriber.StartMessageProcessingAsync());
+                    // ZMIENIONE: Używaj CancellationToken
+                    var subscriberTask = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            // Jeśli twój StartMessageProcessingAsync nie przyjmuje CancellationToken,
+                            // musisz to obsłużyć przez Task.WaitAsync lub timeout
+                            await subscriber.StartMessageProcessingAsync();
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            // Expected during cleanup
+                            Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Subscriber cancelled for {cleanTopicName}");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Subscriber error in {cleanTopicName}: {ex.Message}");
+                        }
+                    }, cts.Token);
+                    
+                    subscriberTasks.Add(subscriberTask);
                     subscribers.Add(subscriber);
                 }
 
                 PublishersByTopic[topicName] = publishers;
                 SubscribersByTopic[topicName] = subscribers;
+                SubscriberTasksByTopic[topicName] = subscriberTasks;
 
-                Console.WriteLine($"  ✓ Topic {cleanTopicName} ready");
+                Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] ✓ Topic {cleanTopicName} ready");
             })
 
             // ================= LOAD PROFILE =================
             .WithLoadSimulations(
-
-                // 15 min – 50% (warm-up)
-                Simulation.Inject(
-                        rate: (int)(ratePerTopic * 0.5),
-                        interval: TimeSpan.FromSeconds(1),
-                        during: TimeSpan.FromMinutes(15)),
-
-                // 60 min – 100%
-                Simulation.Inject(
-                        rate: ratePerTopic,
-                        interval: TimeSpan.FromSeconds(1),
-                        during: TimeSpan.FromMinutes(60)),
-
-                // 15 min – 150% (peak)
-                Simulation.Inject(
-                        rate: (int)(ratePerTopic * 1.5),
-                        interval: TimeSpan.FromSeconds(1),
-                        during: TimeSpan.FromMinutes(15)),
-
-                // 2 h – 80% (long run)
-                Simulation.Inject(
-                        rate: (int)(ratePerTopic * 0.8),
-                        interval: TimeSpan.FromSeconds(1),
-                        during: TimeSpan.FromHours(2))
+                Simulation.Inject(rate: 20, interval: TimeSpan.FromSeconds(1), during: TimeSpan.FromMinutes(5)),
+                Simulation.Inject(rate: 8000, interval: TimeSpan.FromSeconds(1), during: TimeSpan.FromMinutes(3)),
+                Simulation.Inject(rate: 20, interval: TimeSpan.FromSeconds(1), during: TimeSpan.FromMinutes(5))
             )
 
             // ================= CLEANUP =================
             .WithClean(async context =>
             {
-                Console.WriteLine($"\n=== Cleanup for {cleanTopicName} ===");
+                var cleanupStart = DateTime.UtcNow;
+                Console.WriteLine($"\n[{cleanupStart:HH:mm:ss}] === Cleanup START for {cleanTopicName} ===");
 
-                if (SubscribersByTopic.TryRemove(topicName, out var subscribers))
+                try
                 {
-                    foreach (var sub in subscribers)
+                    // 1. Cancel subscriber tasks
+                    if (CancellationTokensByTopic.TryRemove(topicName, out var cts))
                     {
-                        if (sub is IAsyncDisposable d)
+                        Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Cancelling subscriber tasks...");
+                        cts.Cancel();
+                    }
+
+                    // 2. Wait for subscriber tasks to finish (WITH TIMEOUT!)
+                    if (SubscriberTasksByTopic.TryRemove(topicName, out var subscriberTasks))
+                    {
+                        Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Waiting for {subscriberTasks.Count} subscriber tasks...");
+                        
+                        try
                         {
-                            try { await d.DisposeAsync(); }
-                            catch { /* ignore */ }
+                            // Wait max 10 seconds for tasks to finish
+                            await Task.WhenAll(subscriberTasks).WaitAsync(TimeSpan.FromSeconds(10));
+                            Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] ✓ All subscriber tasks finished");
+                        }
+                        catch (TimeoutException)
+                        {
+                            Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Subscriber tasks timeout - forcing cleanup");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Error waiting for tasks: {ex.Message}");
                         }
                     }
-                }
 
-                if (PublishersByTopic.TryRemove(topicName, out var publishers))
-                {
-                    foreach (var pub in publishers)
+                    // 3. Dispose subscribers (WITH TIMEOUT!)
+                    if (SubscribersByTopic.TryRemove(topicName, out var subscribers))
                     {
-                        if (pub is IAsyncDisposable d)
+                        Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Disposing {subscribers.Count} subscribers...");
+                        
+                        for (int i = 0; i < subscribers.Count; i++)
                         {
-                            try { await d.DisposeAsync(); }
-                            catch { /* ignore */ }
+                            try
+                            {
+                                if (subscribers[i] is IAsyncDisposable d)
+                                {
+                                    // Wrap DisposeAsync in timeout
+                                    using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                                    await d.DisposeAsync().AsTask().WaitAsync(timeoutCts.Token);
+                                }
+                            }
+                            catch (OperationCanceledException)
+                            {
+                                Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Subscriber {i} dispose timeout");
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Subscriber {i} dispose error: {ex.Message}");
+                            }
                         }
                     }
-                }
 
-                Console.WriteLine($"✓ Cleanup done for {cleanTopicName}");
+                    // 4. Dispose publishers (WITH TIMEOUT!)
+                    if (PublishersByTopic.TryRemove(topicName, out var publishers))
+                    {
+                        Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Disposing {publishers.Count} publishers...");
+                        
+                        for (int i = 0; i < publishers.Count; i++)
+                        {
+                            try
+                            {
+                                if (publishers[i] is IAsyncDisposable d)
+                                {
+                                    using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                                    await d.DisposeAsync().AsTask().WaitAsync(timeoutCts.Token);
+                                }
+                            }
+                            catch (OperationCanceledException)
+                            {
+                                Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Publisher {i} dispose timeout");
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Publisher {i} dispose error: {ex.Message}");
+                            }
+                        }
+                    }
+
+                    var cleanupEnd = DateTime.UtcNow;
+                    var totalTime = (cleanupEnd - cleanupStart).TotalSeconds;
+                    Console.WriteLine($"[{cleanupEnd:HH:mm:ss}] === Cleanup END for {cleanTopicName} in {totalTime:F1}s ===");
+                    
+                    // Stats
+                    var publishedCount = PublishedMessagesByTopic.TryGetValue(topicName, out var pub) ? pub.Count : 0;
+                    var receivedCount = ReceivedMessagesByTopic.TryGetValue(topicName, out var rec) ? rec.Count : 0;
+                    Console.WriteLine($"  Published: {publishedCount}, Received: {receivedCount}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Fatal cleanup error for {cleanTopicName}: {ex.Message}");
+                }
             });
 
             scenarios.Add(scenario);

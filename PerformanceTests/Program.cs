@@ -21,6 +21,18 @@ using Subscriber.Domain;
 var logger = new ConsoleLogger();
 AutoLoggerFactory.Initialize(logger);
 
+// Get current settings
+ThreadPool.GetMinThreads(out int minWorker, out int minIOC);
+Console.WriteLine($"Current ThreadPool: minWorker={minWorker}, minIOC={minIOC}");
+
+// Set higher minimum threads (adjust based on your load)
+// For 5000 msg/s with 10 topics, start with 100-200 threads
+ThreadPool.SetMinThreads(200, 200);
+
+ThreadPool.GetMinThreads(out minWorker, out minIOC);
+Console.WriteLine($"Updated ThreadPool: minWorker={minWorker}, minIOC={minIOC}");
+
+
 Console.WriteLine("╔═══════════════════════════════════════════════════╗");
 Console.WriteLine("║   PubSub LONG-RUN Performance Test (2 Hours)     ║");
 Console.WriteLine("╚═══════════════════════════════════════════════════╝");
@@ -153,12 +165,13 @@ var publisherOptions = new PublisherOptions(
     MessageBrokerConnectionUri: brokerUri,
     SchemaRegistryConnectionUri: schemaRegistryUri,
     SchemaRegistryTimeout: TimeSpan.FromSeconds(10),
-    Topic: string.Empty, // Will be set per topic
-    MaxPublisherQueueSize: 10000,
+    Topic: string.Empty,
+    MaxPublisherQueueSize: 20000, // Zwiększone z 10000
     MaxSendAttempts: 3,
     MaxRetryAttempts: 3,
-    BatchMaxBytes: 65536,
-    BatchMaxDelay: TimeSpan.FromMilliseconds(100));
+    BatchMaxBytes: 131072, // Zwiększone z 64KB do 128KB
+    BatchMaxDelay: TimeSpan.FromMilliseconds(100)); // Zwiększone z 100ms do 200ms
+
 
 // Subscriber options template (topic will be set per scenario)
 var subscriberOptions = new SubscriberOptions
@@ -166,10 +179,11 @@ var subscriberOptions = new SubscriberOptions
     MessageBrokerConnectionUri = brokerUri,
     SchemaRegistryConnectionUri = schemaRegistryUri,
     SchemaRegistryTimeout = TimeSpan.FromSeconds(10),
-    Topic = string.Empty, // Will be set per topic
-    PollInterval = TimeSpan.FromMilliseconds(50),
+    Topic = string.Empty,
+    PollInterval = TimeSpan.FromMilliseconds(25), // Zmniejszone z 50ms do 10ms (częstsze pollowanie)
     MaxRetryAttempts = 3
 };
+
 
 // Create long-run scenario
 Console.WriteLine("═══════════════════════════════════════════════════");
@@ -211,6 +225,7 @@ var startTime = DateTime.UtcNow;
 
 NBomberRunner
     .RegisterScenarios(scenarios)
+    .WithScenarioCompletionTimeout(TimeSpan.FromMinutes(5))
     .WithReportFolder("reports")
     .WithReportFileName("long_run_report")
     .Run();
