@@ -47,6 +47,20 @@ public class ConfigurePublisherGivenStep(ScenarioContext scenarioContext)
         _context.Topic = ExtractTopicFromTable(table);
     }
 
+    [Given(@"publisher (.+) of type ""(.*)"" is configured with the following options:")]
+    public async Task GivenPublisherOfTypeIsConfiguredWithTheFollowingOptions(
+        string publisherName,
+        string eventType,
+        Table table)
+    {
+        await TestContext.Progress.WriteLineAsync(
+            $"[Publisher Step] Starting configuration for publisher '{publisherName}' with event type '{eventType}'...");
+
+        var publisher = await CreatePublisherFromTableAsync(eventType, table);
+        _context.SetPublisher(publisherName, publisher);
+        _context.Topic = ExtractTopicFromTable(table);
+    }
+
     [Given(@"publishers (.+) are configured with the following options:")]
     public async Task GivenPublishersAreConfiguredWithTheFollowingOptions(string publisherNames, Table table)
     {

@@ -15,6 +15,7 @@ public class PublishMessageWhenStep(ScenarioContext scenarioContext)
     {
         try
         {
+            _context.PublishException = null;
             await TestContext.Progress.WriteLineAsync($"[When Step] Sending message '{message}' to topic '{topic}'...");
             _context.TryGetPublisher(out var publisher);
             await PublishSingleMessage(publisher!, message, topic);
@@ -34,6 +35,7 @@ public class PublishMessageWhenStep(ScenarioContext scenarioContext)
     {
         try
         {
+            _context.PublishException = null;
             await TestContext.Progress.WriteLineAsync(
                 $"[When Step] Sending message '{message}' with priority {priority} to topic '{topic}'...");
 
@@ -42,6 +44,54 @@ public class PublishMessageWhenStep(ScenarioContext scenarioContext)
 
             await TestContext.Progress.WriteLineAsync("[When Step] Message sent!");
 
+            _context.SentMessage = message;
+            _context.Topic = topic;
+        }
+        catch (Exception ex)
+        {
+            _context.PublishException = ex;
+        }
+    }
+
+    [When(@"the publisher (.+) sends message ""(.*)"" to topic ""(.*)""")]
+    public async Task WhenTheNamedPublisherSendsMessageToTopic(string publisherName, string message, string topic)
+    {
+        try
+        {
+            _context.PublishException = null;
+            await TestContext.Progress.WriteLineAsync(
+                $"[When Step] Publisher '{publisherName}' sending message '{message}' to topic '{topic}'...");
+
+            var publisher = _context.GetPublisher(publisherName);
+            await PublishSingleMessage(publisher, message, topic);
+
+            await TestContext.Progress.WriteLineAsync("[When Step] Message sent!");
+            _context.SentMessage = message;
+            _context.Topic = topic;
+        }
+        catch (Exception ex)
+        {
+            _context.PublishException = ex;
+        }
+    }
+
+    [When(@"the publisher (.+) sends message ""(.*)"" priority (\d+) to topic ""(.*)""")]
+    public async Task WhenTheNamedPublisherSendsMessageWithPriorityToTopic(
+        string publisherName,
+        string message,
+        int priority,
+        string topic)
+    {
+        try
+        {
+            _context.PublishException = null;
+            await TestContext.Progress.WriteLineAsync(
+                $"[When Step] Publisher '{publisherName}' sending message '{message}' with priority {priority} to topic '{topic}'...");
+
+            var publisher = _context.GetPublisher(publisherName);
+            await PublishSingleMessage(publisher, message, topic, priority);
+
+            await TestContext.Progress.WriteLineAsync("[When Step] Message sent!");
             _context.SentMessage = message;
             _context.Topic = topic;
         }

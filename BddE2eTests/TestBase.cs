@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 using LoggerLib.Outbound.Adapter;
@@ -17,13 +18,15 @@ namespace BddE2eTests;
 
 [Binding]
 [CancelAfter(60000)] // 60 second timeout for all tests to prevent hanging
-public class TestBase
+public class TestBase(ScenarioContext scenarioContext)
 {
     private const string TestConfigFileName = "config.test.json";
     private const int SchemaRegistryPort = 8081;
     private const int PublisherPort = 9096;
     private const int SubscriberPort = 9098;
     private static readonly TimeSpan PortAvailabilityTimeout = TimeSpan.FromSeconds(10);
+    private const string SchemaRegistryModeTagPrefix = "schemaRegistryMode_";
+    private const string DefaultSchemaRegistryCompatibilityMode = "NONE";
 
     private static IHost? _brokerHost;
     private static WebApplication? _schemaRegistryApp;
@@ -221,6 +224,10 @@ public class TestBase
     {
         TestContext.Progress.WriteLine("[TestBase] === Starting new scenario setup ===");
 
+        var schemaRegistryCompatibilityMode = ResolveSchemaRegistryCompatibilityMode();
+        TestContext.Progress.WriteLine(
+            $"[TestBase] SchemaRegistry CompatibilityMode: {schemaRegistryCompatibilityMode}");
+
         await EnsureAllPortsAvailableAsync();
 
         TestContext.Progress.WriteLine("[TestBase] Creating broker host...");
@@ -241,13 +248,34 @@ public class TestBase
         TestContext.Progress.WriteLine("[TestBase] MessageBroker started");
 
         TestContext.Progress.WriteLine("[TestBase] Creating schema registry...");
-        _schemaRegistryApp = CreateSchemaRegistryHost();
+        _schemaRegistryApp = CreateSchemaRegistryHost(schemaRegistryCompatibilityMode);
 
         TestContext.Progress.WriteLine("[TestBase] Starting schema registry...");
         await _schemaRegistryApp.StartAsync();
         TestContext.Progress.WriteLine($"[TestBase] SchemaRegistry started on port {SchemaRegistryPort}");
 
         TestContext.Progress.WriteLine("[TestBase] Setup complete!");
+    }
+
+    private string ResolveSchemaRegistryCompatibilityMode()
+    {
+        var tags = scenarioContext.ScenarioInfo.Tags;
+        var modeTag = tags.FirstOrDefault(t =>
+            t.StartsWith(SchemaRegistryModeTagPrefix, StringComparison.OrdinalIgnoreCase));
+
+        if (string.IsNullOrWhiteSpace(modeTag))
+        {
+            return DefaultSchemaRegistryCompatibilityMode;
+        }
+
+        var mode = modeTag[SchemaRegistryModeTagPrefix.Length..].Trim();
+        if (string.IsNullOrWhiteSpace(mode))
+        {
+            return DefaultSchemaRegistryCompatibilityMode;
+        }
+
+        // normalize to expected enum strings (BACKWARD/FORWARD/FULL/NONE)
+        return mode.ToUpper(CultureInfo.InvariantCulture);
     }
 
     [AfterScenario(Order = 1000)]
@@ -326,7 +354,7 @@ public class TestBase
             .Build();
     }
 
-    private static WebApplication CreateSchemaRegistryHost()
+    private static WebApplication CreateSchemaRegistryHost(string schemaRegistryCompatibilityMode)
     {
         _schemaStorePath = Path.Combine(Path.GetTempPath(), $"bdd-schema-store-{Guid.NewGuid()}");
         Directory.CreateDirectory(_schemaStorePath);
@@ -341,7 +369,7 @@ public class TestBase
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["SchemaRegistry:FileStoreFolderPath"] = _schemaStorePath,
-            ["SchemaRegistry:CompatibilityMode"] = "NONE"
+            ["SchemaRegistry:CompatibilityMode"] = schemaRegistryCompatibilityMode
         });
 
         builder.Services.AddSchemaRegistryServices(builder.Configuration);
