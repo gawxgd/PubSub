@@ -101,26 +101,26 @@ namespace BddE2eTests.Features
             else
             {
                 await this.ScenarioStartAsync();
-                global::Reqnroll.Table table49 = new global::Reqnroll.Table(new string[] {
+                global::Reqnroll.Table table50 = new global::Reqnroll.Table(new string[] {
                             "Setting",
                             "Value"});
-                table49.AddRow(new string[] {
+                table50.AddRow(new string[] {
                             "Topic",
                             "non-existent"});
-                table49.AddRow(new string[] {
+                table50.AddRow(new string[] {
                             "Broker",
                             "127.0.0.1:9096"});
-                table49.AddRow(new string[] {
+                table50.AddRow(new string[] {
                             "Queue Size",
                             "1000"});
-                table49.AddRow(new string[] {
+                table50.AddRow(new string[] {
                             "Max Retry Attempts",
                             "3"});
-                table49.AddRow(new string[] {
+                table50.AddRow(new string[] {
                             "Max Send Attempts",
                             "3"});
 #line 4
-        await testRunner.GivenAsync("a publisher is configured with the following options:", ((string)(null)), table49, "Given ");
+        await testRunner.GivenAsync("a publisher is configured with the following options:", ((string)(null)), table50, "Given ");
 #line hidden
 #line 11
         await testRunner.WhenAsync("the publisher sends message \"message-content\" to topic \"non-existent\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");

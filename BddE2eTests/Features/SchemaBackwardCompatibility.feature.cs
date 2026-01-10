@@ -103,52 +103,52 @@ namespace BddE2eTests.Features
             else
             {
                 await this.ScenarioStartAsync();
-                global::Reqnroll.Table table50 = new global::Reqnroll.Table(new string[] {
-                            "Setting",
-                            "Value"});
-                table50.AddRow(new string[] {
-                            "topic",
-                            "test-topic"});
-                table50.AddRow(new string[] {
-                            "Broker",
-                            "127.0.0.1:9096"});
-                table50.AddRow(new string[] {
-                            "Queue Size",
-                            "1000"});
-                table50.AddRow(new string[] {
-                            "Max Retry Attempts",
-                            "3"});
-                table50.AddRow(new string[] {
-                            "Max Send Attempts",
-                            "3"});
-#line 6
-        await testRunner.GivenAsync("a publisher of type \"TestEvent\" is configured with the following options:", ((string)(null)), table50, "Given ");
-#line hidden
                 global::Reqnroll.Table table51 = new global::Reqnroll.Table(new string[] {
                             "Setting",
                             "Value"});
                 table51.AddRow(new string[] {
-                            "Topic",
+                            "topic",
                             "test-topic"});
                 table51.AddRow(new string[] {
                             "Broker",
-                            "127.0.0.1:9098"});
+                            "127.0.0.1:9096"});
                 table51.AddRow(new string[] {
+                            "Queue Size",
+                            "1000"});
+                table51.AddRow(new string[] {
+                            "Max Retry Attempts",
+                            "3"});
+                table51.AddRow(new string[] {
+                            "Max Send Attempts",
+                            "3"});
+#line 6
+        await testRunner.GivenAsync("a publisher of type \"TestEvent\" is configured with the following options:", ((string)(null)), table51, "Given ");
+#line hidden
+                global::Reqnroll.Table table52 = new global::Reqnroll.Table(new string[] {
+                            "Setting",
+                            "Value"});
+                table52.AddRow(new string[] {
+                            "Topic",
+                            "test-topic"});
+                table52.AddRow(new string[] {
+                            "Broker",
+                            "127.0.0.1:9098"});
+                table52.AddRow(new string[] {
                             "Poll Interval",
                             "100"});
-                table51.AddRow(new string[] {
+                table52.AddRow(new string[] {
                             "Max Retry Attempts",
                             "3"});
 #line 13
         await testRunner.AndAsync("a subscriber of type \"TestEventWithAdditionalDefaultField\" is configured with the" +
-                        " following options:", ((string)(null)), table51, "And ");
+                        " following options:", ((string)(null)), table52, "And ");
 #line hidden
-                global::Reqnroll.Table table52 = new global::Reqnroll.Table(new string[] {
+                global::Reqnroll.Table table53 = new global::Reqnroll.Table(new string[] {
                             "Message"});
-                table52.AddRow(new string[] {
+                table53.AddRow(new string[] {
                             "p1"});
 #line 19
-        await testRunner.WhenAsync("the publisher sends a message", ((string)(null)), table52, "When ");
+        await testRunner.WhenAsync("the publisher sends a message", ((string)(null)), table53, "When ");
 #line hidden
 #line 22
         await testRunner.ThenAsync("the subscriber successfully receives 1 messages", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
@@ -176,54 +176,54 @@ namespace BddE2eTests.Features
             else
             {
                 await this.ScenarioStartAsync();
-                global::Reqnroll.Table table53 = new global::Reqnroll.Table(new string[] {
-                            "Setting",
-                            "Value"});
-                table53.AddRow(new string[] {
-                            "topic",
-                            "test-topic"});
-                table53.AddRow(new string[] {
-                            "Broker",
-                            "127.0.0.1:9096"});
-                table53.AddRow(new string[] {
-                            "Queue Size",
-                            "1000"});
-                table53.AddRow(new string[] {
-                            "Max Retry Attempts",
-                            "3"});
-                table53.AddRow(new string[] {
-                            "Max Send Attempts",
-                            "3"});
-#line 26
-        await testRunner.GivenAsync("a publisher of type \"TestEventWithAdditionalField\" is configured with the followi" +
-                        "ng options:", ((string)(null)), table53, "Given ");
-#line hidden
                 global::Reqnroll.Table table54 = new global::Reqnroll.Table(new string[] {
                             "Setting",
                             "Value"});
                 table54.AddRow(new string[] {
-                            "Topic",
+                            "topic",
                             "test-topic"});
                 table54.AddRow(new string[] {
                             "Broker",
-                            "127.0.0.1:9098"});
+                            "127.0.0.1:9096"});
                 table54.AddRow(new string[] {
-                            "Poll Interval",
-                            "100"});
+                            "Queue Size",
+                            "1000"});
                 table54.AddRow(new string[] {
                             "Max Retry Attempts",
                             "3"});
-#line 33
-        await testRunner.AndAsync("a subscriber of type \"TestEvent\" is configured with the following options:", ((string)(null)), table54, "And ");
+                table54.AddRow(new string[] {
+                            "Max Send Attempts",
+                            "3"});
+#line 26
+        await testRunner.GivenAsync("a publisher of type \"TestEventWithAdditionalField\" is configured with the followi" +
+                        "ng options:", ((string)(null)), table54, "Given ");
 #line hidden
                 global::Reqnroll.Table table55 = new global::Reqnroll.Table(new string[] {
+                            "Setting",
+                            "Value"});
+                table55.AddRow(new string[] {
+                            "Topic",
+                            "test-topic"});
+                table55.AddRow(new string[] {
+                            "Broker",
+                            "127.0.0.1:9098"});
+                table55.AddRow(new string[] {
+                            "Poll Interval",
+                            "100"});
+                table55.AddRow(new string[] {
+                            "Max Retry Attempts",
+                            "3"});
+#line 33
+        await testRunner.AndAsync("a subscriber of type \"TestEvent\" is configured with the following options:", ((string)(null)), table55, "And ");
+#line hidden
+                global::Reqnroll.Table table56 = new global::Reqnroll.Table(new string[] {
                             "Message"});
-                table55.AddRow(new string[] {
+                table56.AddRow(new string[] {
                             "p1"});
-                table55.AddRow(new string[] {
+                table56.AddRow(new string[] {
                             "5"});
 #line 39
-         await testRunner.WhenAsync("the publisher sends a message", ((string)(null)), table55, "When ");
+         await testRunner.WhenAsync("the publisher sends a message", ((string)(null)), table56, "When ");
 #line hidden
 #line 43
         await testRunner.ThenAsync("the subscriber receives message \"p1\" from topic \"test-topic\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");

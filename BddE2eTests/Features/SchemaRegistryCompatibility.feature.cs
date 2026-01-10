@@ -102,28 +102,6 @@ namespace BddE2eTests.Features
             else
             {
                 await this.ScenarioStartAsync();
-                global::Reqnroll.Table table69 = new global::Reqnroll.Table(new string[] {
-                            "Setting",
-                            "Value"});
-                table69.AddRow(new string[] {
-                            "topic",
-                            "test-topic"});
-                table69.AddRow(new string[] {
-                            "Broker",
-                            "127.0.0.1:9096"});
-                table69.AddRow(new string[] {
-                            "Queue Size",
-                            "1000"});
-                table69.AddRow(new string[] {
-                            "Max Retry Attempts",
-                            "3"});
-                table69.AddRow(new string[] {
-                            "Max Send Attempts",
-                            "3"});
-#line 7
-        await testRunner.GivenAsync("publisher oldSchemaPublisher of type \"TestEventWithAdditionalField\" is configured" +
-                        " with the following options:", ((string)(null)), table69, "Given ");
-#line hidden
                 global::Reqnroll.Table table70 = new global::Reqnroll.Table(new string[] {
                             "Setting",
                             "Value"});
@@ -142,9 +120,31 @@ namespace BddE2eTests.Features
                 table70.AddRow(new string[] {
                             "Max Send Attempts",
                             "3"});
+#line 7
+        await testRunner.GivenAsync("publisher oldSchemaPublisher of type \"TestEventWithAdditionalField\" is configured" +
+                        " with the following options:", ((string)(null)), table70, "Given ");
+#line hidden
+                global::Reqnroll.Table table71 = new global::Reqnroll.Table(new string[] {
+                            "Setting",
+                            "Value"});
+                table71.AddRow(new string[] {
+                            "topic",
+                            "test-topic"});
+                table71.AddRow(new string[] {
+                            "Broker",
+                            "127.0.0.1:9096"});
+                table71.AddRow(new string[] {
+                            "Queue Size",
+                            "1000"});
+                table71.AddRow(new string[] {
+                            "Max Retry Attempts",
+                            "3"});
+                table71.AddRow(new string[] {
+                            "Max Send Attempts",
+                            "3"});
 #line 14
         await testRunner.AndAsync("publisher newSchemaPublisher of type \"TestEvent\" is configured with the following" +
-                        " options:", ((string)(null)), table70, "And ");
+                        " options:", ((string)(null)), table71, "And ");
 #line hidden
 #line 21
         await testRunner.WhenAsync("the publisher oldSchemaPublisher sends message \"seed\" priority 0 to topic \"test-t" +
@@ -183,28 +183,6 @@ namespace BddE2eTests.Features
             else
             {
                 await this.ScenarioStartAsync();
-                global::Reqnroll.Table table71 = new global::Reqnroll.Table(new string[] {
-                            "Setting",
-                            "Value"});
-                table71.AddRow(new string[] {
-                            "topic",
-                            "test-topic"});
-                table71.AddRow(new string[] {
-                            "Broker",
-                            "127.0.0.1:9096"});
-                table71.AddRow(new string[] {
-                            "Queue Size",
-                            "1000"});
-                table71.AddRow(new string[] {
-                            "Max Retry Attempts",
-                            "3"});
-                table71.AddRow(new string[] {
-                            "Max Send Attempts",
-                            "3"});
-#line 28
-        await testRunner.GivenAsync("publisher oldSchemaPublisher of type \"TestEvent\" is configured with the following" +
-                        " options:", ((string)(null)), table71, "Given ");
-#line hidden
                 global::Reqnroll.Table table72 = new global::Reqnroll.Table(new string[] {
                             "Setting",
                             "Value"});
@@ -223,9 +201,31 @@ namespace BddE2eTests.Features
                 table72.AddRow(new string[] {
                             "Max Send Attempts",
                             "3"});
+#line 28
+        await testRunner.GivenAsync("publisher oldSchemaPublisher of type \"TestEvent\" is configured with the following" +
+                        " options:", ((string)(null)), table72, "Given ");
+#line hidden
+                global::Reqnroll.Table table73 = new global::Reqnroll.Table(new string[] {
+                            "Setting",
+                            "Value"});
+                table73.AddRow(new string[] {
+                            "topic",
+                            "test-topic"});
+                table73.AddRow(new string[] {
+                            "Broker",
+                            "127.0.0.1:9096"});
+                table73.AddRow(new string[] {
+                            "Queue Size",
+                            "1000"});
+                table73.AddRow(new string[] {
+                            "Max Retry Attempts",
+                            "3"});
+                table73.AddRow(new string[] {
+                            "Max Send Attempts",
+                            "3"});
 #line 35
         await testRunner.AndAsync("publisher newSchemaPublisher of type \"TestEventWithAdditionalField\" is configured" +
-                        " with the following options:", ((string)(null)), table72, "And ");
+                        " with the following options:", ((string)(null)), table73, "And ");
 #line hidden
 #line 42
         await testRunner.WhenAsync("the publisher oldSchemaPublisher sends message \"seed\" to topic \"test-topic\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
@@ -265,28 +265,6 @@ namespace BddE2eTests.Features
             else
             {
                 await this.ScenarioStartAsync();
-                global::Reqnroll.Table table73 = new global::Reqnroll.Table(new string[] {
-                            "Setting",
-                            "Value"});
-                table73.AddRow(new string[] {
-                            "topic",
-                            "test-topic"});
-                table73.AddRow(new string[] {
-                            "Broker",
-                            "127.0.0.1:9096"});
-                table73.AddRow(new string[] {
-                            "Queue Size",
-                            "1000"});
-                table73.AddRow(new string[] {
-                            "Max Retry Attempts",
-                            "3"});
-                table73.AddRow(new string[] {
-                            "Max Send Attempts",
-                            "3"});
-#line 49
-        await testRunner.GivenAsync("publisher oldSchemaPublisher of type \"TestEvent\" is configured with the following" +
-                        " options:", ((string)(null)), table73, "Given ");
-#line hidden
                 global::Reqnroll.Table table74 = new global::Reqnroll.Table(new string[] {
                             "Setting",
                             "Value"});
@@ -305,9 +283,31 @@ namespace BddE2eTests.Features
                 table74.AddRow(new string[] {
                             "Max Send Attempts",
                             "3"});
+#line 49
+        await testRunner.GivenAsync("publisher oldSchemaPublisher of type \"TestEvent\" is configured with the following" +
+                        " options:", ((string)(null)), table74, "Given ");
+#line hidden
+                global::Reqnroll.Table table75 = new global::Reqnroll.Table(new string[] {
+                            "Setting",
+                            "Value"});
+                table75.AddRow(new string[] {
+                            "topic",
+                            "test-topic"});
+                table75.AddRow(new string[] {
+                            "Broker",
+                            "127.0.0.1:9096"});
+                table75.AddRow(new string[] {
+                            "Queue Size",
+                            "1000"});
+                table75.AddRow(new string[] {
+                            "Max Retry Attempts",
+                            "3"});
+                table75.AddRow(new string[] {
+                            "Max Send Attempts",
+                            "3"});
 #line 56
         await testRunner.AndAsync("publisher newSchemaPublisher of type \"TestEventWithAdditionalField\" is configured" +
-                        " with the following options:", ((string)(null)), table74, "And ");
+                        " with the following options:", ((string)(null)), table75, "And ");
 #line hidden
 #line 63
         await testRunner.WhenAsync("the publisher oldSchemaPublisher sends message \"seed\" to topic \"test-topic\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
@@ -344,28 +344,6 @@ namespace BddE2eTests.Features
             else
             {
                 await this.ScenarioStartAsync();
-                global::Reqnroll.Table table75 = new global::Reqnroll.Table(new string[] {
-                            "Setting",
-                            "Value"});
-                table75.AddRow(new string[] {
-                            "topic",
-                            "test-topic"});
-                table75.AddRow(new string[] {
-                            "Broker",
-                            "127.0.0.1:9096"});
-                table75.AddRow(new string[] {
-                            "Queue Size",
-                            "1000"});
-                table75.AddRow(new string[] {
-                            "Max Retry Attempts",
-                            "3"});
-                table75.AddRow(new string[] {
-                            "Max Send Attempts",
-                            "3"});
-#line 69
-        await testRunner.GivenAsync("publisher oldSchemaPublisher of type \"TestEventWithAdditionalField\" is configured" +
-                        " with the following options:", ((string)(null)), table75, "Given ");
-#line hidden
                 global::Reqnroll.Table table76 = new global::Reqnroll.Table(new string[] {
                             "Setting",
                             "Value"});
@@ -384,9 +362,31 @@ namespace BddE2eTests.Features
                 table76.AddRow(new string[] {
                             "Max Send Attempts",
                             "3"});
+#line 69
+        await testRunner.GivenAsync("publisher oldSchemaPublisher of type \"TestEventWithAdditionalField\" is configured" +
+                        " with the following options:", ((string)(null)), table76, "Given ");
+#line hidden
+                global::Reqnroll.Table table77 = new global::Reqnroll.Table(new string[] {
+                            "Setting",
+                            "Value"});
+                table77.AddRow(new string[] {
+                            "topic",
+                            "test-topic"});
+                table77.AddRow(new string[] {
+                            "Broker",
+                            "127.0.0.1:9096"});
+                table77.AddRow(new string[] {
+                            "Queue Size",
+                            "1000"});
+                table77.AddRow(new string[] {
+                            "Max Retry Attempts",
+                            "3"});
+                table77.AddRow(new string[] {
+                            "Max Send Attempts",
+                            "3"});
 #line 76
         await testRunner.AndAsync("publisher newSchemaPublisher of type \"TestEvent\" is configured with the following" +
-                        " options:", ((string)(null)), table76, "And ");
+                        " options:", ((string)(null)), table77, "And ");
 #line hidden
 #line 83
         await testRunner.WhenAsync("the publisher oldSchemaPublisher sends message \"seed\" priority 0 to topic \"test-t" +
@@ -422,28 +422,6 @@ namespace BddE2eTests.Features
             else
             {
                 await this.ScenarioStartAsync();
-                global::Reqnroll.Table table77 = new global::Reqnroll.Table(new string[] {
-                            "Setting",
-                            "Value"});
-                table77.AddRow(new string[] {
-                            "topic",
-                            "test-topic"});
-                table77.AddRow(new string[] {
-                            "Broker",
-                            "127.0.0.1:9096"});
-                table77.AddRow(new string[] {
-                            "Queue Size",
-                            "1000"});
-                table77.AddRow(new string[] {
-                            "Max Retry Attempts",
-                            "3"});
-                table77.AddRow(new string[] {
-                            "Max Send Attempts",
-                            "3"});
-#line 89
-        await testRunner.GivenAsync("publisher oldSchemaPublisher of type \"TestEvent\" is configured with the following" +
-                        " options:", ((string)(null)), table77, "Given ");
-#line hidden
                 global::Reqnroll.Table table78 = new global::Reqnroll.Table(new string[] {
                             "Setting",
                             "Value"});
@@ -462,9 +440,31 @@ namespace BddE2eTests.Features
                 table78.AddRow(new string[] {
                             "Max Send Attempts",
                             "3"});
+#line 89
+        await testRunner.GivenAsync("publisher oldSchemaPublisher of type \"TestEvent\" is configured with the following" +
+                        " options:", ((string)(null)), table78, "Given ");
+#line hidden
+                global::Reqnroll.Table table79 = new global::Reqnroll.Table(new string[] {
+                            "Setting",
+                            "Value"});
+                table79.AddRow(new string[] {
+                            "topic",
+                            "test-topic"});
+                table79.AddRow(new string[] {
+                            "Broker",
+                            "127.0.0.1:9096"});
+                table79.AddRow(new string[] {
+                            "Queue Size",
+                            "1000"});
+                table79.AddRow(new string[] {
+                            "Max Retry Attempts",
+                            "3"});
+                table79.AddRow(new string[] {
+                            "Max Send Attempts",
+                            "3"});
 #line 96
         await testRunner.AndAsync("publisher newSchemaPublisher of type \"TestEventWithAdditionalDefaultField\" is con" +
-                        "figured with the following options:", ((string)(null)), table78, "And ");
+                        "figured with the following options:", ((string)(null)), table79, "And ");
 #line hidden
 #line 103
         await testRunner.WhenAsync("the publisher oldSchemaPublisher sends message \"seed\" to topic \"test-topic\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
@@ -504,28 +504,6 @@ namespace BddE2eTests.Features
             else
             {
                 await this.ScenarioStartAsync();
-                global::Reqnroll.Table table79 = new global::Reqnroll.Table(new string[] {
-                            "Setting",
-                            "Value"});
-                table79.AddRow(new string[] {
-                            "topic",
-                            "test-topic"});
-                table79.AddRow(new string[] {
-                            "Broker",
-                            "127.0.0.1:9096"});
-                table79.AddRow(new string[] {
-                            "Queue Size",
-                            "1000"});
-                table79.AddRow(new string[] {
-                            "Max Retry Attempts",
-                            "3"});
-                table79.AddRow(new string[] {
-                            "Max Send Attempts",
-                            "3"});
-#line 110
-        await testRunner.GivenAsync("publisher oldSchemaPublisher of type \"TestEventWithAdditionalDefaultField\" is con" +
-                        "figured with the following options:", ((string)(null)), table79, "Given ");
-#line hidden
                 global::Reqnroll.Table table80 = new global::Reqnroll.Table(new string[] {
                             "Setting",
                             "Value"});
@@ -544,9 +522,31 @@ namespace BddE2eTests.Features
                 table80.AddRow(new string[] {
                             "Max Send Attempts",
                             "3"});
+#line 110
+        await testRunner.GivenAsync("publisher oldSchemaPublisher of type \"TestEventWithAdditionalDefaultField\" is con" +
+                        "figured with the following options:", ((string)(null)), table80, "Given ");
+#line hidden
+                global::Reqnroll.Table table81 = new global::Reqnroll.Table(new string[] {
+                            "Setting",
+                            "Value"});
+                table81.AddRow(new string[] {
+                            "topic",
+                            "test-topic"});
+                table81.AddRow(new string[] {
+                            "Broker",
+                            "127.0.0.1:9096"});
+                table81.AddRow(new string[] {
+                            "Queue Size",
+                            "1000"});
+                table81.AddRow(new string[] {
+                            "Max Retry Attempts",
+                            "3"});
+                table81.AddRow(new string[] {
+                            "Max Send Attempts",
+                            "3"});
 #line 117
         await testRunner.AndAsync("publisher newSchemaPublisher of type \"TestEvent\" is configured with the following" +
-                        " options:", ((string)(null)), table80, "And ");
+                        " options:", ((string)(null)), table81, "And ");
 #line hidden
 #line 124
         await testRunner.WhenAsync("the publisher oldSchemaPublisher sends message \"seed\" priority 0 to topic \"test-t" +
@@ -587,28 +587,6 @@ namespace BddE2eTests.Features
             else
             {
                 await this.ScenarioStartAsync();
-                global::Reqnroll.Table table81 = new global::Reqnroll.Table(new string[] {
-                            "Setting",
-                            "Value"});
-                table81.AddRow(new string[] {
-                            "topic",
-                            "test-topic"});
-                table81.AddRow(new string[] {
-                            "Broker",
-                            "127.0.0.1:9096"});
-                table81.AddRow(new string[] {
-                            "Queue Size",
-                            "1000"});
-                table81.AddRow(new string[] {
-                            "Max Retry Attempts",
-                            "3"});
-                table81.AddRow(new string[] {
-                            "Max Send Attempts",
-                            "3"});
-#line 131
-        await testRunner.GivenAsync("publisher oldSchemaPublisher of type \"TestEvent\" is configured with the following" +
-                        " options:", ((string)(null)), table81, "Given ");
-#line hidden
                 global::Reqnroll.Table table82 = new global::Reqnroll.Table(new string[] {
                             "Setting",
                             "Value"});
@@ -627,9 +605,31 @@ namespace BddE2eTests.Features
                 table82.AddRow(new string[] {
                             "Max Send Attempts",
                             "3"});
+#line 131
+        await testRunner.GivenAsync("publisher oldSchemaPublisher of type \"TestEvent\" is configured with the following" +
+                        " options:", ((string)(null)), table82, "Given ");
+#line hidden
+                global::Reqnroll.Table table83 = new global::Reqnroll.Table(new string[] {
+                            "Setting",
+                            "Value"});
+                table83.AddRow(new string[] {
+                            "topic",
+                            "test-topic"});
+                table83.AddRow(new string[] {
+                            "Broker",
+                            "127.0.0.1:9096"});
+                table83.AddRow(new string[] {
+                            "Queue Size",
+                            "1000"});
+                table83.AddRow(new string[] {
+                            "Max Retry Attempts",
+                            "3"});
+                table83.AddRow(new string[] {
+                            "Max Send Attempts",
+                            "3"});
 #line 138
         await testRunner.AndAsync("publisher newSchemaPublisher of type \"TestEventWithAdditionalField\" is configured" +
-                        " with the following options:", ((string)(null)), table82, "And ");
+                        " with the following options:", ((string)(null)), table83, "And ");
 #line hidden
 #line 145
         await testRunner.WhenAsync("the publisher oldSchemaPublisher sends message \"seed\" to topic \"test-topic\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
@@ -666,28 +666,6 @@ namespace BddE2eTests.Features
             else
             {
                 await this.ScenarioStartAsync();
-                global::Reqnroll.Table table83 = new global::Reqnroll.Table(new string[] {
-                            "Setting",
-                            "Value"});
-                table83.AddRow(new string[] {
-                            "topic",
-                            "test-topic"});
-                table83.AddRow(new string[] {
-                            "Broker",
-                            "127.0.0.1:9096"});
-                table83.AddRow(new string[] {
-                            "Queue Size",
-                            "1000"});
-                table83.AddRow(new string[] {
-                            "Max Retry Attempts",
-                            "3"});
-                table83.AddRow(new string[] {
-                            "Max Send Attempts",
-                            "3"});
-#line 151
-        await testRunner.GivenAsync("publisher oldSchemaPublisher of type \"TestEventWithAdditionalField\" is configured" +
-                        " with the following options:", ((string)(null)), table83, "Given ");
-#line hidden
                 global::Reqnroll.Table table84 = new global::Reqnroll.Table(new string[] {
                             "Setting",
                             "Value"});
@@ -706,9 +684,31 @@ namespace BddE2eTests.Features
                 table84.AddRow(new string[] {
                             "Max Send Attempts",
                             "3"});
+#line 151
+        await testRunner.GivenAsync("publisher oldSchemaPublisher of type \"TestEventWithAdditionalField\" is configured" +
+                        " with the following options:", ((string)(null)), table84, "Given ");
+#line hidden
+                global::Reqnroll.Table table85 = new global::Reqnroll.Table(new string[] {
+                            "Setting",
+                            "Value"});
+                table85.AddRow(new string[] {
+                            "topic",
+                            "test-topic"});
+                table85.AddRow(new string[] {
+                            "Broker",
+                            "127.0.0.1:9096"});
+                table85.AddRow(new string[] {
+                            "Queue Size",
+                            "1000"});
+                table85.AddRow(new string[] {
+                            "Max Retry Attempts",
+                            "3"});
+                table85.AddRow(new string[] {
+                            "Max Send Attempts",
+                            "3"});
 #line 158
         await testRunner.AndAsync("publisher newSchemaPublisher of type \"TestEvent\" is configured with the following" +
-                        " options:", ((string)(null)), table84, "And ");
+                        " options:", ((string)(null)), table85, "And ");
 #line hidden
 #line 165
         await testRunner.WhenAsync("the publisher oldSchemaPublisher sends message \"seed\" priority 0 to topic \"test-t" +
