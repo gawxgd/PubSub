@@ -270,6 +270,13 @@ public sealed class TcpPublisherConnection(
 
     private async Task SendBatchAsync()
     {
+        // Check if there are any messages to send before building batch
+        if (batchMessagesUseCase.Count == 0)
+        {
+            Logger.LogDebug("SendBatchAsync called but no messages to send");
+            return;
+        }
+
         var batchBytes = batchMessagesUseCase.Build();
         var count = batchMessagesUseCase.Count;
         batchMessagesUseCase.Clear();

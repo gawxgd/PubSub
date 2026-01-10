@@ -109,45 +109,6 @@ catch (Exception ex)
 }
 Console.WriteLine();
 
-// Register schemas for 10 topics
-Console.WriteLine("═══════════════════════════════════════════════════");
-Console.WriteLine("REGISTERING SCHEMAS FOR 10 TOPICS");
-Console.WriteLine("═══════════════════════════════════════════════════");
-
-for (int i = 1; i <= 10; i++)
-{
-    var topicName = $"long-run-topic-{i:D2}";
-    Console.WriteLine($"[{i}/10] Registering schema for: {topicName}...");
-
-    try
-    {
-        await RegisterSchemaForTestMessage(schemaRegistryUri, topicName);
-        
-        // Verify
-        await Task.Delay(TimeSpan.FromMilliseconds(300));
-        using var verifyClient = new HttpClient();
-        verifyClient.BaseAddress = schemaRegistryUri;
-        verifyClient.Timeout = TimeSpan.FromSeconds(10);
-
-        var verifyResponse = await verifyClient.GetAsync($"schema/topic/{topicName}");
-        if (verifyResponse.IsSuccessStatusCode)
-        {
-            var verifyResult = await verifyResponse.Content.ReadFromJsonAsync<JsonElement>();
-            var schemaId = verifyResult.GetProperty("id").GetInt32();
-            Console.WriteLine($"      ✓ Schema registered and verified - ID: {schemaId}");
-        }
-        else
-        {
-            Console.WriteLine($"      ⚠ Schema registered but verification failed: {verifyResponse.StatusCode}");
-        }
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"      ✗ ERROR: {ex.Message}");
-        Console.WriteLine("      Test will likely fail for this topic!");
-    }
-    Console.WriteLine();
-}
 
 Console.WriteLine("═══════════════════════════════════════════════════");
 Console.WriteLine();
@@ -165,13 +126,12 @@ var publisherOptions = new PublisherOptions(
     MessageBrokerConnectionUri: brokerUri,
     SchemaRegistryConnectionUri: schemaRegistryUri,
     SchemaRegistryTimeout: TimeSpan.FromSeconds(10),
-    Topic: string.Empty,
-    MaxPublisherQueueSize: 20000, // Zwiększone z 10000
+    Topic: string.Empty, // Will be set per topic
+    MaxPublisherQueueSize: 10000,
     MaxSendAttempts: 3,
     MaxRetryAttempts: 3,
-    BatchMaxBytes: 131072, // Zwiększone z 64KB do 128KB
-    BatchMaxDelay: TimeSpan.FromMilliseconds(100)); // Zwiększone z 100ms do 200ms
-
+    BatchMaxBytes: 65536,
+    BatchMaxDelay: TimeSpan.FromMilliseconds(100));
 
 // Subscriber options template (topic will be set per scenario)
 var subscriberOptions = new SubscriberOptions
@@ -179,8 +139,8 @@ var subscriberOptions = new SubscriberOptions
     MessageBrokerConnectionUri = brokerUri,
     SchemaRegistryConnectionUri = schemaRegistryUri,
     SchemaRegistryTimeout = TimeSpan.FromSeconds(10),
-    Topic = string.Empty,
-    PollInterval = TimeSpan.FromMilliseconds(25), // Zmniejszone z 50ms do 10ms (częstsze pollowanie)
+    Topic = string.Empty, // Will be set per topic
+    PollInterval = TimeSpan.FromMilliseconds(50),
     MaxRetryAttempts = 3
 };
 
