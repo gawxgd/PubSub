@@ -1,6 +1,7 @@
 Feature: Schema backward compatibility - subscriber with newer schema reads messages from a publisher using old schema
     # Reading messages serialized with an older schema 
     
+    @schemaRegistryMode_BACKWARD
     Scenario: New schema has a new field with a default value 
         Given a publisher of type "TestEvent" is configured with the following options:
             | Setting             | Value          |
@@ -20,6 +21,7 @@ Feature: Schema backward compatibility - subscriber with newer schema reads mess
             | p1      |
         Then the subscriber successfully receives 1 messages
 
+    @schemaRegistryMode_BACKWARD
     Scenario: A field has been removed from the new schema
         Given a publisher of type "TestEventWithAdditionalField" is configured with the following options:
             | Setting             | Value          |

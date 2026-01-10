@@ -86,12 +86,14 @@ namespace BddE2eTests.Features
         
         [NUnit.Framework.TestAttribute()]
         [NUnit.Framework.DescriptionAttribute("New schema has a new field with a default value")]
+        [NUnit.Framework.CategoryAttribute("schemaRegistryMode_BACKWARD")]
         public async System.Threading.Tasks.Task NewSchemaHasANewFieldWithADefaultValue()
         {
-            string[] tagsOfScenario = ((string[])(null));
+            string[] tagsOfScenario = new string[] {
+                    "schemaRegistryMode_BACKWARD"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("New schema has a new field with a default value", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 4
+#line 5
     this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -119,7 +121,7 @@ namespace BddE2eTests.Features
                 table50.AddRow(new string[] {
                             "Max Send Attempts",
                             "3"});
-#line 5
+#line 6
         await testRunner.GivenAsync("a publisher of type \"TestEvent\" is configured with the following options:", ((string)(null)), table50, "Given ");
 #line hidden
                 global::Reqnroll.Table table51 = new global::Reqnroll.Table(new string[] {
@@ -137,7 +139,7 @@ namespace BddE2eTests.Features
                 table51.AddRow(new string[] {
                             "Max Retry Attempts",
                             "3"});
-#line 12
+#line 13
         await testRunner.AndAsync("a subscriber of type \"TestEventWithAdditionalDefaultField\" is configured with the" +
                         " following options:", ((string)(null)), table51, "And ");
 #line hidden
@@ -145,10 +147,10 @@ namespace BddE2eTests.Features
                             "Message"});
                 table52.AddRow(new string[] {
                             "p1"});
-#line 18
+#line 19
         await testRunner.WhenAsync("the publisher sends a message", ((string)(null)), table52, "When ");
 #line hidden
-#line 21
+#line 22
         await testRunner.ThenAsync("the subscriber successfully receives 1 messages", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
@@ -157,12 +159,14 @@ namespace BddE2eTests.Features
         
         [NUnit.Framework.TestAttribute()]
         [NUnit.Framework.DescriptionAttribute("A field has been removed from the new schema")]
+        [NUnit.Framework.CategoryAttribute("schemaRegistryMode_BACKWARD")]
         public async System.Threading.Tasks.Task AFieldHasBeenRemovedFromTheNewSchema()
         {
-            string[] tagsOfScenario = ((string[])(null));
+            string[] tagsOfScenario = new string[] {
+                    "schemaRegistryMode_BACKWARD"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("A field has been removed from the new schema", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 23
+#line 25
     this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -190,7 +194,7 @@ namespace BddE2eTests.Features
                 table53.AddRow(new string[] {
                             "Max Send Attempts",
                             "3"});
-#line 24
+#line 26
         await testRunner.GivenAsync("a publisher of type \"TestEventWithAdditionalField\" is configured with the followi" +
                         "ng options:", ((string)(null)), table53, "Given ");
 #line hidden
@@ -209,7 +213,7 @@ namespace BddE2eTests.Features
                 table54.AddRow(new string[] {
                             "Max Retry Attempts",
                             "3"});
-#line 31
+#line 33
         await testRunner.AndAsync("a subscriber of type \"TestEvent\" is configured with the following options:", ((string)(null)), table54, "And ");
 #line hidden
                 global::Reqnroll.Table table55 = new global::Reqnroll.Table(new string[] {
@@ -218,10 +222,10 @@ namespace BddE2eTests.Features
                             "p1"});
                 table55.AddRow(new string[] {
                             "5"});
-#line 37
+#line 39
          await testRunner.WhenAsync("the publisher sends a message", ((string)(null)), table55, "When ");
 #line hidden
-#line 41
+#line 43
         await testRunner.ThenAsync("the subscriber receives message \"p1\" from topic \"test-topic\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
@@ -239,7 +243,7 @@ namespace BddE2eTests.Features
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("BACKWARD rejects adding required field without default (new schema registration f" +
                     "ails)", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 44
+#line 46
     this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -267,7 +271,7 @@ namespace BddE2eTests.Features
                 table56.AddRow(new string[] {
                             "Max Send Attempts",
                             "3"});
-#line 45
+#line 47
         await testRunner.GivenAsync("publisher oldSchemaPublisher of type \"TestEvent\" is configured with the following" +
                         " options:", ((string)(null)), table56, "Given ");
 #line hidden
@@ -289,18 +293,18 @@ namespace BddE2eTests.Features
                 table57.AddRow(new string[] {
                             "Max Send Attempts",
                             "3"});
-#line 52
+#line 54
         await testRunner.AndAsync("publisher newSchemaPublisher of type \"TestEventWithAdditionalField\" is configured" +
                         " with the following options:", ((string)(null)), table57, "And ");
 #line hidden
-#line 59
+#line 61
         await testRunner.WhenAsync("the publisher oldSchemaPublisher sends message \"seed\" to topic \"test-topic\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 60
+#line 62
         await testRunner.AndAsync("the publisher newSchemaPublisher sends message \"should-fail\" priority 0 to topic " +
                         "\"test-topic\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 61
+#line 63
         await testRunner.ThenAsync("publish fails with schema incompatibility", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }

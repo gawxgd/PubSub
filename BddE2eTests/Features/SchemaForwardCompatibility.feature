@@ -35,21 +35,28 @@ Feature: Schema Forward compatibility
         Then the subscriber receives message "message-content" with default priority
 
     @schemaRegistryMode_FORWARD
-    Scenario: FORWARD rejects removing required field without default (new schema registration fails)
-        Given publisher oldSchemaPublisher of type "TestEventWithAdditionalField" is configured with the following options:
+    Scenario: FORWARD upgrade path - old subscriber reads messages after new schema is registered
+        Given a subscriber of type "TestEvent" is configured with the following options:
+            | Setting             | Value          |
+            | Topic               | test-topic     |
+            | Broker              | 127.0.0.1:9098 |
+            | Poll Interval       | 100            |
+            | Max Retry Attempts  | 3              |
+        And publisher oldSchemaPublisher of type "TestEvent" is configured with the following options:
             | Setting             | Value          |
             | topic               | test-topic     |
             | Broker              | 127.0.0.1:9096 |
             | Queue Size          | 1000           |
             | Max Retry Attempts  | 3              |
             | Max Send Attempts   | 3              |
-        And publisher newSchemaPublisher of type "TestEvent" is configured with the following options:
+        And publisher newSchemaPublisher of type "TestEventWithAdditionalField" is configured with the following options:
             | Setting             | Value          |
             | topic               | test-topic     |
             | Broker              | 127.0.0.1:9096 |
             | Queue Size          | 1000           |
             | Max Retry Attempts  | 3              |
             | Max Send Attempts   | 3              |
-        When the publisher oldSchemaPublisher sends message "seed" priority 0 to topic "test-topic"
-        And the publisher newSchemaPublisher sends message "should-fail" to topic "test-topic"
-        Then publish fails with schema incompatibility
+        When the publisher oldSchemaPublisher sends message "seed" to topic "test-topic"
+        Then the subscriber successfully receives 1 messages
+        When the publisher newSchemaPublisher sends message "message-content" priority 0 to topic "test-topic"
+        Then the subscriber successfully receives 1 messages

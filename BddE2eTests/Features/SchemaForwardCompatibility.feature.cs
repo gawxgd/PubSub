@@ -221,16 +221,16 @@ namespace BddE2eTests.Features
         }
         
         [NUnit.Framework.TestAttribute()]
-        [NUnit.Framework.DescriptionAttribute("FORWARD rejects removing required field without default (new schema registration " +
-            "fails)")]
+        [NUnit.Framework.DescriptionAttribute("FORWARD upgrade path - old subscriber reads messages after new schema is register" +
+            "ed")]
         [NUnit.Framework.CategoryAttribute("schemaRegistryMode_FORWARD")]
-        public async System.Threading.Tasks.Task FORWARDRejectsRemovingRequiredFieldWithoutDefaultNewSchemaRegistrationFails()
+        public async System.Threading.Tasks.Task FORWARDUpgradePath_OldSubscriberReadsMessagesAfterNewSchemaIsRegistered()
         {
             string[] tagsOfScenario = new string[] {
                     "schemaRegistryMode_FORWARD"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("FORWARD rejects removing required field without default (new schema registration " +
-                    "fails)", null, tagsOfScenario, argumentsOfScenario, featureTags);
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("FORWARD upgrade path - old subscriber reads messages after new schema is register" +
+                    "ed", null, tagsOfScenario, argumentsOfScenario, featureTags);
 #line 38
     this.ScenarioInitialize(scenarioInfo);
 #line hidden
@@ -245,23 +245,19 @@ namespace BddE2eTests.Features
                             "Setting",
                             "Value"});
                 table62.AddRow(new string[] {
-                            "topic",
+                            "Topic",
                             "test-topic"});
                 table62.AddRow(new string[] {
                             "Broker",
-                            "127.0.0.1:9096"});
+                            "127.0.0.1:9098"});
                 table62.AddRow(new string[] {
-                            "Queue Size",
-                            "1000"});
+                            "Poll Interval",
+                            "100"});
                 table62.AddRow(new string[] {
                             "Max Retry Attempts",
                             "3"});
-                table62.AddRow(new string[] {
-                            "Max Send Attempts",
-                            "3"});
 #line 39
-        await testRunner.GivenAsync("publisher oldSchemaPublisher of type \"TestEventWithAdditionalField\" is configured" +
-                        " with the following options:", ((string)(null)), table62, "Given ");
+        await testRunner.GivenAsync("a subscriber of type \"TestEvent\" is configured with the following options:", ((string)(null)), table62, "Given ");
 #line hidden
                 global::Reqnroll.Table table63 = new global::Reqnroll.Table(new string[] {
                             "Setting",
@@ -281,20 +277,44 @@ namespace BddE2eTests.Features
                 table63.AddRow(new string[] {
                             "Max Send Attempts",
                             "3"});
-#line 46
-        await testRunner.AndAsync("publisher newSchemaPublisher of type \"TestEvent\" is configured with the following" +
+#line 45
+        await testRunner.AndAsync("publisher oldSchemaPublisher of type \"TestEvent\" is configured with the following" +
                         " options:", ((string)(null)), table63, "And ");
 #line hidden
-#line 53
-        await testRunner.WhenAsync("the publisher oldSchemaPublisher sends message \"seed\" priority 0 to topic \"test-t" +
-                        "opic\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+                global::Reqnroll.Table table64 = new global::Reqnroll.Table(new string[] {
+                            "Setting",
+                            "Value"});
+                table64.AddRow(new string[] {
+                            "topic",
+                            "test-topic"});
+                table64.AddRow(new string[] {
+                            "Broker",
+                            "127.0.0.1:9096"});
+                table64.AddRow(new string[] {
+                            "Queue Size",
+                            "1000"});
+                table64.AddRow(new string[] {
+                            "Max Retry Attempts",
+                            "3"});
+                table64.AddRow(new string[] {
+                            "Max Send Attempts",
+                            "3"});
+#line 52
+        await testRunner.AndAsync("publisher newSchemaPublisher of type \"TestEventWithAdditionalField\" is configured" +
+                        " with the following options:", ((string)(null)), table64, "And ");
 #line hidden
-#line 54
-        await testRunner.AndAsync("the publisher newSchemaPublisher sends message \"should-fail\" to topic \"test-topic" +
-                        "\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line 59
+        await testRunner.WhenAsync("the publisher oldSchemaPublisher sends message \"seed\" to topic \"test-topic\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 55
-        await testRunner.ThenAsync("publish fails with schema incompatibility", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line 60
+        await testRunner.ThenAsync("the subscriber successfully receives 1 messages", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 61
+        await testRunner.WhenAsync("the publisher newSchemaPublisher sends message \"message-content\" priority 0 to to" +
+                        "pic \"test-topic\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 62
+        await testRunner.ThenAsync("the subscriber successfully receives 1 messages", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
