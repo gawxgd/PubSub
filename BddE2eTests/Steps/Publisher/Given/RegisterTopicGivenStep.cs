@@ -1,7 +1,7 @@
 using BddE2eTests.Configuration;
-using BddE2eTests.Configuration.Options;
 using BddE2eTests.Configuration.TestEvents;
 using Reqnroll;
+using Shared.Domain.Avro;
 
 namespace BddE2eTests.Steps.Publisher.Given;
 
@@ -20,6 +20,7 @@ public class RegisterTopicGivenStep(ScenarioContext scenarioContext)
             options.Port,
             TimeSpan.FromSeconds(options.TimeoutSeconds));
 
-        await adminClient.RegisterSchemaAsync(topic, TestSchemas.ValidSchemaJson);
+        var schemaJson = AvroSchemaGenerator.GenerateSchemaJson<TestEvent>();
+        await adminClient.RegisterSchemaAsync(topic, schemaJson);
     }
 }
