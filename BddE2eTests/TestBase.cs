@@ -30,7 +30,7 @@ public class TestBase(ScenarioContext scenarioContext)
 
     private static IHost? _brokerHost;
     private static WebApplication? _schemaRegistryApp;
-    private static string? _schemaStorePath;
+    private static string? _schemaDbPath;
     private static string? _commitLogDirectory;
     private static bool _loggerInitialized;
     
@@ -299,19 +299,19 @@ public class TestBase(ScenarioContext scenarioContext)
             TestContext.Progress.WriteLine("[TestBase] MessageBroker stopped");
         }
 
-        // Cleanup schema store
-        if (_schemaStorePath != null && Directory.Exists(_schemaStorePath))
+        // Cleanup schema registry SQLite DB
+        if (!string.IsNullOrWhiteSpace(_schemaDbPath) && File.Exists(_schemaDbPath))
         {
             try
             {
-                Directory.Delete(_schemaStorePath, recursive: true);
+                File.Delete(_schemaDbPath);
             }
             catch
             {
                 /* ignore cleanup errors */
             }
 
-            _schemaStorePath = null;
+            _schemaDbPath = null;
         }
 
         // Cleanup commit log
@@ -356,8 +356,8 @@ public class TestBase(ScenarioContext scenarioContext)
 
     private static WebApplication CreateSchemaRegistryHost(string schemaRegistryCompatibilityMode)
     {
-        _schemaStorePath = Path.Combine(Path.GetTempPath(), $"bdd-schema-store-{Guid.NewGuid()}");
-        Directory.CreateDirectory(_schemaStorePath);
+        _schemaDbPath = Path.Combine(Path.GetTempPath(), $"bdd-schema-registry-{Guid.NewGuid()}.db");
+        var sqliteConnectionString = $"Data Source={_schemaDbPath}";
 
         var builder = WebApplication.CreateBuilder();
 
@@ -368,7 +368,8 @@ public class TestBase(ScenarioContext scenarioContext)
 
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ["SchemaRegistry:FileStoreFolderPath"] = _schemaStorePath,
+            ["SchemaRegistry:StorageType"] = "Sqlite",
+            ["SchemaRegistry:ConnectionString"] = sqliteConnectionString,
             ["SchemaRegistry:CompatibilityMode"] = schemaRegistryCompatibilityMode
         });
 
