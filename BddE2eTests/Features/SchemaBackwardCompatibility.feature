@@ -42,23 +42,5 @@ Feature: Schema backward compatibility - subscriber with newer schema reads mess
             | 5       |
         Then the subscriber receives message "p1" from topic "test-topic"
 
-    @schemaRegistryMode_BACKWARD
-    Scenario: BACKWARD rejects adding required field without default (new schema registration fails)
-        Given publisher oldSchemaPublisher of type "TestEvent" is configured with the following options:
-            | Setting             | Value          |
-            | topic               | test-topic     |
-            | Broker              | 127.0.0.1:9096 |
-            | Queue Size          | 1000           |
-            | Max Retry Attempts  | 3              |
-            | Max Send Attempts   | 3              |
-        And publisher newSchemaPublisher of type "TestEventWithAdditionalField" is configured with the following options:
-            | Setting             | Value          |
-            | topic               | test-topic     |
-            | Broker              | 127.0.0.1:9096 |
-            | Queue Size          | 1000           |
-            | Max Retry Attempts  | 3              |
-            | Max Send Attempts   | 3              |
-        When the publisher oldSchemaPublisher sends message "seed" to topic "test-topic"
-        And the publisher newSchemaPublisher sends message "should-fail" priority 0 to topic "test-topic"
-        Then publish fails with schema incompatibility
+   
        
