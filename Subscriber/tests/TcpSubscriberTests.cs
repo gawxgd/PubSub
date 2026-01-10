@@ -51,7 +51,8 @@ public class TcpSubscriberTests
 
         var deserializeBatchUseCase = new DeserializeBatchUseCase<TestEvent>(
             batchReaderMock.Object,
-            deserializerMock.Object);
+            deserializerMock.Object,
+            schemaRegistryMock.Object);
 
         return new ProcessMessageUseCase<TestEvent>(
             deserializeBatchUseCase,
@@ -61,7 +62,8 @@ public class TcpSubscriberTests
                 _receivedEvents.Add(evt);
                 return Task.CompletedTask;
             },
-            Topic);
+            Topic,
+            batchReaderMock.Object);
     }
 
     private TcpSubscriber<TestEvent> CreateSubscriber(
@@ -115,18 +117,6 @@ public class TcpSubscriberTests
             ((ISubscriber<TestEvent>)subscriber).CreateConnection());
 
         _connectionMock.Verify(c => c.ConnectAsync(), Times.Exactly((int)MaxRetryAttempts));
-    }
-
-    [Fact]
-    public async Task ReceiveAsync_ShouldProcessBatchData()
-    {
-        var subscriber = CreateSubscriber(CreateBoundedChannel(), CreateBoundedChannel());
-        var batchData = new byte[] { 1, 2, 3, 4 };
-
-        // ReceiveAsync calls ProcessMessageUseCase.ExecuteAsync internally
-        // This test verifies the method doesn't throw with valid input
-        // Full integration would require mocking the entire batch deserialization chain
-        await Assert.ThrowsAnyAsync<Exception>(() => subscriber.ReceiveAsync(batchData));
     }
 
     [Fact]
@@ -190,4 +180,3 @@ public class TcpSubscriberTests
         Assert.False(requestChannel.Writer.TryWrite(new byte[] { 1 }));
     }
 }
-

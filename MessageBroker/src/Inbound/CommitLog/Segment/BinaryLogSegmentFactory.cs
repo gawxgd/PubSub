@@ -26,7 +26,6 @@ public sealed class BinaryLogSegmentFactory(
         return new BinaryLogSegmentWriter(
             offsetIndexWriter,
             timeIndexWriter,
-            batchWriter,
             segment,
             opt.MaxSegmentBytes,
             opt.IndexIntervalBytes,

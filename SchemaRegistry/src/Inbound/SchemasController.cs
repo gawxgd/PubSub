@@ -5,13 +5,13 @@ using SchemaRegistry.Domain.Port;
 using SchemaRegistry.Inbound.DTOs;
 using SchemaRegistry.Outbound.DTOs;
 
-namespace SchemaRegistry.Controllers;
+namespace SchemaRegistry.Inbound;
 
 [ApiController]
-[Route("topics/{topic}/versions")] // TODO: rethink routes
+[Route("schema")]
 public class SchemasController(ISchemaRegistryService schemaRegistryService) : ControllerBase
 {
-    [HttpPost]
+    [HttpPost("topic/{topic}")]
     public async Task<IActionResult> Register(string topic, [FromBody] RegisterRequest req)
     {
         try
@@ -25,7 +25,7 @@ public class SchemasController(ISchemaRegistryService schemaRegistryService) : C
         }
     }
 
-    [HttpGet("latest")]
+    [HttpGet("topic/{topic}")]
     public async Task<IActionResult> GetLatest(string topic)
     {
         var s = await schemaRegistryService.GetLatestSchemaAsync(topic);
@@ -43,7 +43,7 @@ public class SchemasController(ISchemaRegistryService schemaRegistryService) : C
         return Ok(dto);
     }
 
-    [HttpGet("~/schemas/ids/{id}")]
+    [HttpGet("id/{id}")]
     public async Task<IActionResult> GetById(int id)
     {
         var s = await schemaRegistryService.GetSchemaByIdAsync(id);

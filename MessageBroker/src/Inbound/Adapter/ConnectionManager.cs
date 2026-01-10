@@ -14,7 +14,9 @@ namespace MessageBroker.Inbound.Adapter;
 public class ConnectionManager(
     IConnectionRepository connectionRepository,
     ICommitLogFactory commitLogFactory,
-    ILogRecordBatchReader batchReader)
+    ILogRecordBatchWriter batchWriter,
+    IMessageDeframer messageDeframer,
+    SendPublishResponseUseCase sendPublishResponseUseCase)
     : IConnectionManager
 {
     private static readonly IAutoLogger Logger =
@@ -31,20 +33,20 @@ public class ConnectionManager(
         {
             Logger.LogDebug(
                 $"Started handler thread for connection {connectionId} with client: {acceptedSocket.RemoteEndPoint}");
+
             IMessageProcessorUseCase messageProcessorUseCase = connectionType switch
             {
-                ConnectionType.Publisher => new ProcessReceivedPublisherMessageUseCase(commitLogFactory, "default",
-                    batchReader),
-                ConnectionType.Subscriber => new ProcessSubscriberRequestUseCase(commitLogFactory),
+                ConnectionType.Publisher => new ProcessReceivedPublisherMessageUseCase(commitLogFactory,
+                    sendPublishResponseUseCase),
+                ConnectionType.Subscriber => new ProcessSubscriberRequestUseCase(commitLogFactory, batchWriter),
                 _ => throw new ArgumentOutOfRangeException(nameof(connectionType), connectionType, null),
             };
 
             IHandleClientConnectionUseCase handleClientConnectionUseCase = new HandleClientConnectionUseCase(
                 acceptedSocket,
                 () => UnregisterConnectionAfterThreadFinish(connectionId),
-                messageProcessorUseCase,
-                commitLogFactory,
-                batchReader);
+                messageDeframer,
+                messageProcessorUseCase);
 
             return handleClientConnectionUseCase.HandleConnection(cancellationTokenSource.Token);
         }, cancellationTokenSource.Token);

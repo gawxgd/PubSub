@@ -1,66 +1,63 @@
-﻿﻿using System.Net.Sockets;
+﻿using System.Net.Sockets;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
+using MessageBroker.Domain.Entities;
+using MessageBroker.Domain.Logic;
 using MessageBroker.Domain.Port;
 using MessageBroker.Domain.Port.CommitLog;
+using MessageBroker.Domain.Port.CommitLog.RecordBatch;
 
 namespace MessageBroker.Domain.Logic.TcpServer.UseCase;
 
-public class ProcessSubscriberRequestUseCase(ICommitLogFactory commitLogFactory) : IMessageProcessorUseCase
+public class ProcessSubscriberRequestUseCase(
+    ICommitLogFactory commitLogFactory,
+    ILogRecordBatchWriter batchWriter) : IMessageProcessorUseCase
 {
     private static readonly IAutoLogger Logger =
         AutoLoggerFactory.CreateLogger<ProcessSubscriberRequestUseCase>(LogSource.MessageBroker);
-    
+
+    private readonly TopicOffsetDeformatter _deformatter = new();
+
     public async Task ProcessAsync(ReadOnlyMemory<byte> message, Socket socket, CancellationToken cancellationToken)
     {
-        // TODO read topic and offset from message
-        var topic = "default";
-        ulong offset = 0;
-        
-        Logger.LogDebug($"Processing subscriber request: {message.Length} bytes");
-        var commitLogReader = commitLogFactory.GetReader(topic);
-        
+        var parsedMessage = ParseMessage(message);
+
+        if (parsedMessage == null)
+        {
+            return;
+        }
+
+        var (topic, offset) = parsedMessage.Value;
+
+        Logger.LogDebug($"Processing subscriber request: topic={topic}, offset={offset}");
+
         try
         {
-            ulong currentOffset = offset;
-            
-            while (!cancellationToken.IsCancellationRequested)
+            var commitLogReader = commitLogFactory.GetReader(topic);
+
+            var batch = commitLogReader.ReadBatchBytes(offset);
+
+            if (batch == null)
             {
-                var batch = commitLogReader.ReadRecordBatch(currentOffset);
-                
-                if (batch == null)
-                {
-                    Logger.LogDebug($"No more batches available at offset {currentOffset}");
-                    break;
-                }
-                
-                Logger.LogDebug($"Read batch with {batch.Records.Count} records, base offset: {batch.BaseOffset}, last offset: {batch.LastOffset}");
-                
-                foreach (var record in batch.Records)
-                {
-                    if (cancellationToken.IsCancellationRequested)
-                    {
-                        break;
-                    }
-                    
-                    var payload = record.Payload;
-                    if (payload.Length > 0)
-                    {
-                        await socket.SendAsync(payload, SocketFlags.None, cancellationToken);
-                        Logger.LogDebug($"Sent record at offset {record.Offset}: {payload.Length} bytes");
-                    }
-                }
-                
-                currentOffset = batch.LastOffset + 1;
-                
-                var highWaterMark = commitLogReader.GetHighWaterMark();
-                if (currentOffset > highWaterMark)
-                {
-                    Logger.LogDebug($"Reached high water mark: {highWaterMark}");
-                    break;
-                }
+                Logger.LogDebug($"No more batches available at offset {offset}");
             }
+            else
+            {
+                var (batchBytes, batchOffset, lastOffset) = batch.Value;
+
+                Logger.LogDebug(
+                    $"Read batch with offset {batchOffset} and last offset {lastOffset} (requested: {offset})");
+
+                await socket.SendAsync(batchBytes, SocketFlags.None, cancellationToken);
+
+                Logger.LogDebug(
+                    $"Send batch with offset {batchOffset} and last offset {lastOffset}");
+            }
+        }
+        catch (FileNotFoundException)
+        {
+            Logger.LogDebug($"No commit log found for topic '{topic}' - topic may be empty");
         }
         catch (SocketException ex)
         {
@@ -74,11 +71,19 @@ public class ProcessSubscriberRequestUseCase(ICommitLogFactory commitLogFactory)
         {
             Logger.LogError($"Error in subscriber processing: {ex.Message}", ex);
         }
-        finally
-        {
-            await commitLogReader.DisposeAsync();
-        }
-        
+
         Logger.LogInfo("Messages from commit log sent to subscriber");
+    }
+
+    private (string topic, ulong offset)? ParseMessage(ReadOnlyMemory<byte> message)
+    {
+        var topicOffset = _deformatter.Deformat(message);
+        if (topicOffset == null)
+        {
+            Logger.LogWarning("Failed to parse subscriber request returning null");
+            return null;
+        }
+
+        return (topicOffset.Topic, topicOffset.Offset);
     }
 }

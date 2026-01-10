@@ -8,6 +8,11 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="Chr.Avro" Version="10.11.1" />
+        <PackageReference Include="Chr.Avro.Json" Version="10.11.1" />
+    </ItemGroup>
+
+    <ItemGroup>
         <ProjectReference Include="..\LoggerLib\LoggerLib.csproj" />
     </ItemGroup>
 

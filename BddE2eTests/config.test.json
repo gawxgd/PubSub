@@ -1,0 +1,67 @@
+{
+  "Server": {
+    "PublisherPort": 9096,
+    "SubscriberPort": 9098,
+    "Address": "127.0.0.1",
+    "MaxRequestSizeBytes": 512,
+    "InlineCompletions": false,
+    "SocketPolling": false,
+    "Backlog": 4096
+  },
+  "CommitLog": {
+    "MaxSegmentBytes": 1024,
+    "IndexIntervalBytes": 128,
+    "TimeIndexIntervalMs": 1000,
+    "ReaderLogBufferSize": 65536,
+    "ReaderIndexBufferSize": 8192,
+    "FileBufferSize": 4096
+  },
+  "CommitLogTopics": [
+    {
+      "Name": "default",
+      "BaseOffset": 0,
+      "FlushIntervalMs": 1,
+      "Directory": null
+    },
+    {
+      "Name": "test-topic",
+      "BaseOffset": 0,
+      "FlushIntervalMs": 1,
+      "Directory": null
+    },
+    {
+      "Name": "custom-topic",
+      "BaseOffset": 0,
+      "FlushIntervalMs": 1,
+      "Directory": null
+    }
+  ],
+  "Publisher": {
+    "BrokerHost": "127.0.0.1",
+    "BrokerPort": 9096,
+    "Topic": "test-topic",
+    "MaxPublisherQueueSize": 1000,
+    "MaxSendAttempts": 3,
+    "MaxRetryAttempts": 3,
+    "SchemaRegistryHost": "127.0.0.1",
+    "SchemaRegistryPort": 8081,
+    "BatchMaxBytes": 1,
+    "BatchMaxDelayMs": 1,
+    "SchemaRegistryTimeoutSeconds": 10
+  },
+  "Subscriber": {
+    "BrokerHost": "127.0.0.1",
+    "BrokerPort": 9098,
+    "Topic": "test-topic",
+    "PollIntervalMs": 100,
+    "MaxRetryAttempts": 3,
+    "SchemaRegistryHost": "127.0.0.1",
+    "SchemaRegistryPort": 8081,
+    "SchemaRegistryTimeoutSeconds": 10
+  },
+  "SchemaRegistry": {
+    "Host": "127.0.0.1",
+    "Port": 8081,
+    "TimeoutSeconds": 10
+  }
+}

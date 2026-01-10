@@ -44,13 +44,10 @@ public class SchemaRegistryService(
         
         var checksum = ComputeChecksum(schemaJson);
 
-        // If same schema exists globally -> return its id (deduplication)
-        var existing = await store.GetByChecksumAsync(checksum);
-        if (existing != null)
-            return existing.Id;
-
-        // get latest for topic to check compatibility
+        // Deduplicate within the same topic only
         var latest = await store.GetLatestForTopicAsync(topic);
+        if (latest != null && latest.Checksum == checksum)
+            return latest.Id;
         if (latest != null &&
             !compatibility.IsCompatible(latest.SchemaJson, schemaJson, _compatMode))
             throw new SchemaCompatibilityException($"New schema is not {_compatMode}-compatible with latest for topic.");

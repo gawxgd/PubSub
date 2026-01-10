@@ -1,3 +1,4 @@
+using System;
 using System.Buffers;
 using System.IO.Pipelines;
 using System.Net.Sockets;
@@ -6,17 +7,14 @@ using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
 using MessageBroker.Domain.Port;
-using MessageBroker.Domain.Port.CommitLog;
-using MessageBroker.Domain.Port.CommitLog.RecordBatch;
 
 namespace MessageBroker.Domain.Logic.TcpServer.UseCase;
 
 public class HandleClientConnectionUseCase(
     Socket socket,
     Action onConnectionClosed,
-    IMessageProcessorUseCase messageProcessorUseCase,
-    ICommitLogFactory commitLogFactory,
-    ILogRecordBatchReader batchReader) : IHandleClientConnectionUseCase
+    IMessageDeframer messageDeframer,
+    IMessageProcessorUseCase messageProcessorUseCase) : IHandleClientConnectionUseCase
 {
     private readonly string _connectedClientEndpoint = socket.RemoteEndPoint?.ToString() ?? "Unknown";
 
@@ -106,13 +104,12 @@ public class HandleClientConnectionUseCase(
                 var result = await reader.ReadAsync(cancellationToken);
                 var buffer = result.Buffer;
 
-                if (buffer.Length > 0)
+                while (messageDeframer.TryReadFramedMessage(ref buffer, out var message))
                 {
-                    var capturedBuffer = buffer.ToArray();
-                    await _messageChannel.Writer.WriteAsync(capturedBuffer, cancellationToken);
+                    await _messageChannel.Writer.WriteAsync(message, cancellationToken);
                 }
 
-                reader.AdvanceTo(buffer.End);
+                reader.AdvanceTo(buffer.Start, buffer.End);
 
                 if (result.IsCompleted)
                 {
@@ -127,6 +124,7 @@ public class HandleClientConnectionUseCase(
             Logger.LogInfo($"ProcessPipe completed for {_connectedClientEndpoint}");
         }
     }
+
 
     private async Task CleanupAsync(CancellationToken cancellationToken)
     {
@@ -160,7 +158,7 @@ public class HandleClientConnectionUseCase(
 
         await foreach (var message in _messageChannel.Reader.ReadAllAsync(cancellationToken))
         {
-            Logger.LogInfo($"[{_connectedClientEndpoint}] Received {message.Length} bytes");
+            Logger.LogInfo($"[{_connectedClientEndpoint}] Received deframed message: {message.Length} bytes");
 
             await messageProcessorUseCase.ProcessAsync(message, Socket, cancellationToken);
         }

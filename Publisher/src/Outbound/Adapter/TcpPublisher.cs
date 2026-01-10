@@ -82,7 +82,7 @@ public sealed class TcpPublisher<T>(
                     _deadLetterChannel,
                     batchUseCase);
                 await _currentPublisherConnection.ConnectAsync();
-                break;
+                return;
             }
             catch (PublisherConnectionException ex)
             {
@@ -99,7 +99,7 @@ public sealed class TcpPublisher<T>(
             catch (OperationCanceledException)
             {
                 _logger.LogInfo("Operation cancelled");
-                break;
+                return;
             }
             catch (Exception ex)
             {
@@ -109,6 +109,8 @@ public sealed class TcpPublisher<T>(
                 throw;
             }
         }
+
+        throw new PublisherConnectionException($"Failed to connect to broker after {retryCount} retries");
     }
 
     public async Task PublishAsync(T message)
@@ -116,6 +118,32 @@ public sealed class TcpPublisher<T>(
         var serializedMessage = await serializeMessageUseCase.Serialize(message);
 
         await _channel.Writer.WriteAsync(serializedMessage, _cancellationTokenSource.Token);
+    }
+
+    public async Task<bool> WaitForAcknowledgmentsAsync(int count, TimeSpan timeout)
+    {
+        if (_currentPublisherConnection is TcpPublisherConnection tcpConnection)
+        {
+            return await tcpConnection.ResponseHandler.WaitForAcknowledgmentsAsync(count, timeout,
+                _cancellationTokenSource.Token);
+        }
+
+        _logger.LogWarning("WaitForAcknowledgmentsAsync called but connection is not a TcpPublisherConnection");
+        return false;
+    }
+
+
+    public long AcknowledgedCount
+    {
+        get
+        {
+            if (_currentPublisherConnection is TcpPublisherConnection tcpConnection)
+            {
+                return tcpConnection.ResponseHandler.AcknowledgedCount;
+            }
+
+            return 0;
+        }
     }
 
     private async Task SafeDisconnectPublisher()

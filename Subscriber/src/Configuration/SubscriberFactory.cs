@@ -16,17 +16,20 @@ using Subscriber.Outbound.Adapter;
 
 namespace Subscriber.Configuration;
 
-public sealed class SubscriberFactory<T>(ISchemaRegistryClient schemaRegistryClient) : ISubscriberFactory<T> where T : new()
+public sealed class SubscriberFactory<T>(ISchemaRegistryClient schemaRegistryClient)
+    : ISubscriberFactory<T> where T : new()
 {
     private const int MinPort = 1;
     private const int MaxPort = 65535;
     private const string AllowedUriScheme = "messageBroker";
-    private static readonly IAutoLogger Logger = AutoLoggerFactory.CreateLogger<SubscriberFactory<T>>(LogSource.MessageBroker);
+
+    private static readonly IAutoLogger Logger =
+        AutoLoggerFactory.CreateLogger<SubscriberFactory<T>>(LogSource.MessageBroker);
 
     public ISubscriber<T> CreateSubscriber(SubscriberOptions options, Func<T, Task> messageHandler)
     {
         ArgumentNullException.ThrowIfNull(messageHandler);
-        
+
         var (host, port, topic, poll, retry) = ValidateOptions(options);
 
         var requestChannel = Channel.CreateBounded<byte[]>(
@@ -49,8 +52,9 @@ public sealed class SubscriberFactory<T>(ISchemaRegistryClient schemaRegistryCli
 
         var batchReader = CreateBatchReader();
         var deserializer = new AvroDeserializer<T>();
-        var deserializeBatchUseCase = new DeserializeBatchUseCase<T>(batchReader, deserializer);
-        var processMessageUseCase = new ProcessMessageUseCase<T>(deserializeBatchUseCase, schemaRegistryClient, messageHandler, topic);
+        var deserializeBatchUseCase = new DeserializeBatchUseCase<T>(batchReader, deserializer, schemaRegistryClient);
+        var processMessageUseCase = new ProcessMessageUseCase<T>(deserializeBatchUseCase, schemaRegistryClient,
+            messageHandler, topic, batchReader);
 
         return new TcpSubscriber<T>(
             topic,
@@ -83,7 +87,8 @@ public sealed class SubscriberFactory<T>(ISchemaRegistryClient schemaRegistryCli
         if (!string.Equals(uri.Scheme, AllowedUriScheme, StringComparison.OrdinalIgnoreCase))
         {
             Logger.LogError($"{options.MessageBrokerConnectionUri.Scheme} is not a valid scheme.");
-            throw new SubscriberFactoryException("Unsupported URI scheme", SubscriberFactoryErrorCode.UnsupportedScheme);
+            throw new SubscriberFactoryException("Unsupported URI scheme",
+                SubscriberFactoryErrorCode.UnsupportedScheme);
         }
 
         if (uri.Port is < MinPort or > MaxPort)

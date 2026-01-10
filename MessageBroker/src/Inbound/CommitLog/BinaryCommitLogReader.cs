@@ -60,27 +60,23 @@ public sealed class BinaryCommitLogReader : ICommitLogReader
         return record;
     }
 
+
     public LogRecordBatch? ReadRecordBatch(ulong baseOffset)
     {
-        var segment = _segmentRegistry.GetSegmentContainingOffset(baseOffset);
-
-        if (segment == null)
-        {
-            Logger.LogWarning($"Cannot find segment containing offset {baseOffset}");
-            return null;
-        }
-
-        var segmentReader = GetOrCreateSegmentReader(segment);
-        var batch = segmentReader.ReadBatch(baseOffset);
-
-        if (batch == null)
-        {
-            Logger.LogWarning($"Read batch for {baseOffset} returned null");
-            return null;
-        }
-
-        return batch;
+        return ReadFromSegment(
+            baseOffset,
+            (reader, offset) => reader.ReadBatch(offset),
+            "Read batch");
     }
+
+    public (byte[] batchBytes, ulong baseOffset, ulong lastOffset)? ReadBatchBytes(ulong offset)
+    {
+        return ReadFromSegment(
+            offset,
+            (reader, off) => reader.ReadBatchBytes(off),
+            "Read batch bytes");
+    }
+
 
     public IEnumerable<LogRecord> ReadFromTimestamp(ulong timestamp)
     {
@@ -108,6 +104,32 @@ public sealed class BinaryCommitLogReader : ICommitLogReader
         if (_activeSegmentReader != null)
             await _activeSegmentReader.DisposeAsync();
     }
+
+    private T? ReadFromSegment<T>(
+        ulong offset,
+        Func<ILogSegmentReader, ulong, T?> readFunc,
+        string operationName)
+    {
+        var segment = _segmentRegistry.GetSegmentContainingOffset(offset);
+
+        if (segment == null)
+        {
+            Logger.LogWarning($"Cannot find segment containing offset {offset}");
+            return default;
+        }
+
+        var segmentReader = GetOrCreateSegmentReader(segment);
+        var result = readFunc(segmentReader, offset);
+
+        if (result == null)
+        {
+            Logger.LogWarning($"{operationName} for {offset} returned null");
+            return default;
+        }
+
+        return result;
+    }
+
 
     private ILogSegmentReader GetOrCreateSegmentReader(LogSegment segment)
     {

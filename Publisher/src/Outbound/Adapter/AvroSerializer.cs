@@ -9,7 +9,7 @@ using Publisher.Domain.Exceptions;
 using Publisher.Domain.Port;
 using Shared.Domain.Entities.SchemaRegistryClient;
 
-namespace Publisher.Domain.Service;
+namespace Publisher.Outbound.Adapter;
 
 public sealed class AvroSerializer<T> : IAvroSerializer<T>
 {

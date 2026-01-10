@@ -9,9 +9,15 @@ using static MessageBroker.Domain.Util.VarEncodingSize;
 
 namespace MessageBroker.Inbound.CommitLog.BatchRecord;
 
-public class  LogRecordBatchBinaryWriter(ILogRecordWriter recordIo, ICompressor compressor, Encoding encoding)
+public class LogRecordBatchBinaryWriter(ILogRecordWriter recordIo, ICompressor compressor, Encoding encoding)
     : ILogRecordBatchWriter
 {
+    private const int MagicNumberSize = sizeof(byte);
+    private const int CrcSize = sizeof(uint);
+    private const int CompressedFlagSize = sizeof(byte);
+    private const int TimestampSize = sizeof(ulong);
+    private const int RecordPayloadLengthSize = sizeof(uint);
+
     public void WriteTo(LogRecordBatch recordBatch, Stream stream)
     {
         var recordBytes = WriteRecords(recordBatch.Records, recordBatch.BaseTimestamp);
@@ -23,7 +29,7 @@ public class  LogRecordBatchBinaryWriter(ILogRecordWriter recordIo, ICompressor 
 
         var crc = Crc32Algorithm.Compute(recordBytes);
         var recordBytesLength = (uint)recordBytes.Length;
-        var batchLength = GetBatchSize(crc, recordBatch.BaseTimestamp, recordBytesLength);
+        var batchLength = GetBatchSize(recordBytesLength);
 
         WriteHeaders(stream, recordBatch, batchLength, crc, recordBytesLength, recordBytes);
     }
@@ -41,29 +47,29 @@ public class  LogRecordBatchBinaryWriter(ILogRecordWriter recordIo, ICompressor 
         return recordsStream.ToArray();
     }
 
-    private ulong GetBatchSize(uint crc, ulong baseTimestamp, uint recordBytesLength)
+    private uint GetBatchSize(uint recordBytesLength)
     {
-        return (ulong)(sizeof(byte) // magic number
-                       + GetVarUIntSize(crc)
-                       + sizeof(byte) // isCompressed 
-                       + GetVarULongSize(baseTimestamp)
-                       + GetVarUIntSize(recordBytesLength)
-                       + sizeof(byte) * recordBytesLength);
+        return MagicNumberSize +
+               CrcSize
+               + CompressedFlagSize
+               + TimestampSize
+               // + RecordPayloadLengthSize ToDo verify
+               + sizeof(byte) * recordBytesLength;
     }
 
-    private void WriteHeaders(Stream stream, LogRecordBatch recordBatch, ulong batchLength, uint crc,
+    private void WriteHeaders(Stream stream, LogRecordBatch recordBatch, uint batchLength, uint crc,
         uint recordBytesLength, byte[] recordBytes)
     {
         using var batchRecordWriter = new BinaryWriter(stream, encoding, true);
 
-        batchRecordWriter.Write(recordBatch.BaseOffset);
-        batchRecordWriter.Write(batchLength);
-        // it is important that baseOffset and batch length is const in size
+        batchRecordWriter.Write((ulong)recordBatch.BaseOffset); //ToDo delte offset
+        batchRecordWriter.Write((uint)batchLength);
+        batchRecordWriter.Write((ulong)recordBatch.LastOffset);
+        batchRecordWriter.Write((uint)recordBytesLength);
         batchRecordWriter.Write((byte)recordBatch.MagicNumber);
-        batchRecordWriter.WriteVarUInt(crc);
-        batchRecordWriter.WriteVarUInt((byte)(recordBatch.Compressed ? 1 : 0));
-        batchRecordWriter.WriteVarULong(recordBatch.BaseTimestamp);
-        batchRecordWriter.WriteVarUInt(recordBytesLength);
+        batchRecordWriter.Write((uint)crc);
+        batchRecordWriter.Write((byte)(recordBatch.Compressed ? 1 : 0));
+        batchRecordWriter.Write((ulong)recordBatch.BaseTimestamp);
         batchRecordWriter.Write(recordBytes);
     }
 }

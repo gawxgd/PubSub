@@ -105,15 +105,76 @@ namespace SchemaRegistry.Tests
             // Arrange
             ResetMocks();
 
-            var existing = new SchemaEntity { Id = 42, Topic = Topic, SchemaJson = ValidSchemaJson, Checksum = "abc" };
-            _store.Setup(s => s.GetByChecksumAsync(It.IsAny<string>())).ReturnsAsync(existing);
+            string? savedChecksum = null;
+
+            _store.SetupSequence(s => s.GetLatestForTopicAsync(Topic))
+                .ReturnsAsync((SchemaEntity?)null) // 1st call: no previous schema -> will Save
+                .ReturnsAsync(() => new SchemaEntity // 2nd call: latest has checksum from first save
+                {
+                    Id = 42,
+                    Topic = Topic,
+                    SchemaJson = ValidSchemaJson,
+                    Checksum = savedChecksum!
+                });
+
+            _store.Setup(s => s.SaveAsync(It.IsAny<SchemaEntity>()))
+                .ReturnsAsync((SchemaEntity e) =>
+                {
+                    savedChecksum = e.Checksum; // checksum computed by production code
+                    e.Id = 42;
+                    return e;
+                });
 
             // Act
-            var id = await _service.RegisterSchemaAsync(Topic, ValidSchemaJson);
+            var id1 = await _service.RegisterSchemaAsync(Topic, ValidSchemaJson);
+            var id2 = await _service.RegisterSchemaAsync(Topic, ValidSchemaJson);
 
             // Assert
-            id.Should().Be(42);
-            _store.Verify(s => s.SaveAsync(It.IsAny<SchemaEntity>()), Times.Never);
+            id1.Should().Be(42);
+            id2.Should().Be(42);
+            _store.Verify(s => s.SaveAsync(It.IsAny<SchemaEntity>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RegisterSchemaAsync_ShouldNotDeduplicateAcrossTopics_WhenChecksumMatches()
+        {
+            // Arrange
+            ResetMocks();
+
+            var otherTopic = "orders";
+            string? checksumFromOtherTopic = null;
+            string? checksumFromTopic = null;
+
+            _store.Setup(s => s.GetLatestForTopicAsync(otherTopic)).ReturnsAsync((SchemaEntity?)null);
+            _store.Setup(s => s.SaveAsync(It.Is<SchemaEntity>(e => e.Topic == otherTopic)))
+                .ReturnsAsync((SchemaEntity e) =>
+                {
+                    checksumFromOtherTopic = e.Checksum;
+                    e.Id = 10;
+                    return e;
+                });
+
+            _store.Setup(s => s.GetLatestForTopicAsync(Topic)).ReturnsAsync((SchemaEntity?)null);
+            _store.Setup(s => s.SaveAsync(It.Is<SchemaEntity>(e => e.Topic == Topic)))
+                .ReturnsAsync((SchemaEntity e) =>
+                {
+                    checksumFromTopic = e.Checksum;
+                    e.Id = 100;
+                    return e;
+                });
+
+            // Act
+            var idOther = await _service.RegisterSchemaAsync(otherTopic, ValidSchemaJson);
+            var idTopic = await _service.RegisterSchemaAsync(Topic, ValidSchemaJson);
+
+            // Assert
+            checksumFromOtherTopic.Should().NotBeNullOrEmpty();
+            checksumFromTopic.Should().NotBeNullOrEmpty();
+            checksumFromTopic.Should().Be(checksumFromOtherTopic); // same schema => same checksum
+
+            idOther.Should().Be(10);
+            idTopic.Should().Be(100);
+            _store.Verify(s => s.SaveAsync(It.IsAny<SchemaEntity>()), Times.Exactly(2));
         }
 
         // ============================================================
