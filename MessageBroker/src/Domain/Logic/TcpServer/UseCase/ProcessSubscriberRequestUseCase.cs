@@ -21,14 +21,21 @@ public class ProcessSubscriberRequestUseCase(
 
     public async Task ProcessAsync(ReadOnlyMemory<byte> message, Socket socket, CancellationToken cancellationToken)
     {
-        var (topic, offset) = ParseMessage(message);
+        var parsedMessage = ParseMessage(message);
+
+        if (parsedMessage == null)
+        {
+            return;
+        }
+
+        var (topic, offset) = parsedMessage.Value;
 
         Logger.LogDebug($"Processing subscriber request: topic={topic}, offset={offset}");
 
         try
         {
             var commitLogReader = commitLogFactory.GetReader(topic);
-            
+
             var batch = commitLogReader.ReadBatchBytes(offset);
 
             if (batch == null)
@@ -68,13 +75,13 @@ public class ProcessSubscriberRequestUseCase(
         Logger.LogInfo("Messages from commit log sent to subscriber");
     }
 
-    private (string topic, ulong offset) ParseMessage(ReadOnlyMemory<byte> message)
+    private (string topic, ulong offset)? ParseMessage(ReadOnlyMemory<byte> message)
     {
         var topicOffset = _deformatter.Deformat(message);
         if (topicOffset == null)
         {
-            Logger.LogWarning("Failed to parse subscriber request, using defaults");
-            topicOffset = new TopicOffset("default", 0);
+            Logger.LogWarning("Failed to parse subscriber request returning null");
+            return null;
         }
 
         return (topicOffset.Topic, topicOffset.Offset);
