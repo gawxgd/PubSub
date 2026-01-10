@@ -6,7 +6,7 @@ test suite: `nbomber_default_test_suite_name`
 
 test name: `nbomber_default_test_name`
 
-session id: `2026-01-10_20.50.00_session_4882840a`
+session id: `2026-01-10_21.02.47_session_b798c772`
 
 > scenario stats
 
@@ -34,8 +34,8 @@ load simulations:
 |---|---|
 |name|`global information`|
 |request count|all = `140480`, ok = `140480`, RPS = `780.44`|
-|latency (ms)|min = `0.01`, mean = `3.91`, max = `1515.42`, StdDev = `40.44`|
-|latency percentile (ms)|p50 = `0.06`, p75 = `0.07`, p95 = `0.22`, p99 = `79.87`|
+|latency (ms)|min = `0.03`, mean = `21.74`, max = `856.52`, StdDev = `42.89`|
+|latency percentile (ms)|p50 = `0.08`, p75 = `29.6`, p95 = `105.73`, p99 = `198.02`|
 
 
 
@@ -66,8 +66,8 @@ load simulations:
 |---|---|
 |name|`global information`|
 |request count|all = `140480`, ok = `140480`, RPS = `780.44`|
-|latency (ms)|min = `0.01`, mean = `2.83`, max = `2019.83`, StdDev = `30.55`|
-|latency percentile (ms)|p50 = `0.06`, p75 = `0.07`, p95 = `0.19`, p99 = `52.22`|
+|latency (ms)|min = `0.03`, mean = `21.86`, max = `705.78`, StdDev = `43.74`|
+|latency percentile (ms)|p50 = `0.08`, p75 = `29.18`, p95 = `109.25`, p99 = `199.81`|
 
 
 
@@ -98,8 +98,8 @@ load simulations:
 |---|---|
 |name|`global information`|
 |request count|all = `140480`, ok = `140480`, RPS = `780.44`|
-|latency (ms)|min = `0.01`, mean = `2.98`, max = `1950.79`, StdDev = `32.02`|
-|latency percentile (ms)|p50 = `0.06`, p75 = `0.07`, p95 = `0.19`, p99 = `56.13`|
+|latency (ms)|min = `0.03`, mean = `21.76`, max = `688.25`, StdDev = `43.52`|
+|latency percentile (ms)|p50 = `0.08`, p75 = `29.36`, p95 = `108.99`, p99 = `199.68`|
 
 
 
@@ -130,8 +130,8 @@ load simulations:
 |---|---|
 |name|`global information`|
 |request count|all = `140480`, ok = `140480`, RPS = `780.44`|
-|latency (ms)|min = `0.02`, mean = `3.53`, max = `1654.53`, StdDev = `35.2`|
-|latency percentile (ms)|p50 = `0.06`, p75 = `0.07`, p95 = `0.24`, p99 = `80.51`|
+|latency (ms)|min = `0.03`, mean = `24.61`, max = `699.72`, StdDev = `45.75`|
+|latency percentile (ms)|p50 = `0.1`, p75 = `36.1`, p95 = `119.36`, p99 = `204.8`|
 
 
 
@@ -162,8 +162,8 @@ load simulations:
 |---|---|
 |name|`global information`|
 |request count|all = `140480`, ok = `140480`, RPS = `780.44`|
-|latency (ms)|min = `0.01`, mean = `3.85`, max = `1963.14`, StdDev = `38.56`|
-|latency percentile (ms)|p50 = `0.06`, p75 = `0.07`, p95 = `0.23`, p99 = `87.23`|
+|latency (ms)|min = `0.03`, mean = `23.96`, max = `786.16`, StdDev = `46.57`|
+|latency percentile (ms)|p50 = `0.12`, p75 = `33.95`, p95 = `117.5`, p99 = `212.22`|
 
 
 
@@ -194,8 +194,8 @@ load simulations:
 |---|---|
 |name|`global information`|
 |request count|all = `140480`, ok = `140480`, RPS = `780.44`|
-|latency (ms)|min = `0.01`, mean = `3.41`, max = `1379.32`, StdDev = `33.94`|
-|latency percentile (ms)|p50 = `0.06`, p75 = `0.07`, p95 = `0.22`, p99 = `69.89`|
+|latency (ms)|min = `0.03`, mean = `24.2`, max = `862.4`, StdDev = `47.35`|
+|latency percentile (ms)|p50 = `0.1`, p75 = `33.79`, p95 = `118.98`, p99 = `216.45`|
 
 
 
@@ -226,8 +226,8 @@ load simulations:
 |---|---|
 |name|`global information`|
 |request count|all = `140480`, ok = `140480`, RPS = `780.44`|
-|latency (ms)|min = `0.01`, mean = `3.49`, max = `1910.02`, StdDev = `34.55`|
-|latency percentile (ms)|p50 = `0.06`, p75 = `0.07`, p95 = `0.24`, p99 = `73.47`|
+|latency (ms)|min = `0.04`, mean = `23.63`, max = `746.73`, StdDev = `45.31`|
+|latency percentile (ms)|p50 = `0.11`, p75 = `34.02`, p95 = `115.52`, p99 = `207.49`|
 
 
 
@@ -258,8 +258,8 @@ load simulations:
 |---|---|
 |name|`global information`|
 |request count|all = `140480`, ok = `140480`, RPS = `780.44`|
-|latency (ms)|min = `0.01`, mean = `3.64`, max = `1505.34`, StdDev = `37.46`|
-|latency percentile (ms)|p50 = `0.06`, p75 = `0.07`, p95 = `0.2`, p99 = `82.43`|
+|latency (ms)|min = `0.03`, mean = `24.34`, max = `625.17`, StdDev = `46.91`|
+|latency percentile (ms)|p50 = `0.12`, p75 = `34.46`, p95 = `118.4`, p99 = `216.45`|
 
 
 
@@ -290,8 +290,8 @@ load simulations:
 |---|---|
 |name|`global information`|
 |request count|all = `140480`, ok = `140480`, RPS = `780.44`|
-|latency (ms)|min = `0.01`, mean = `3.31`, max = `1644.85`, StdDev = `33.41`|
-|latency percentile (ms)|p50 = `0.06`, p75 = `0.07`, p95 = `0.2`, p99 = `73.92`|
+|latency (ms)|min = `0.03`, mean = `24.81`, max = `709.19`, StdDev = `47.6`|
+|latency percentile (ms)|p50 = `0.13`, p75 = `35.01`, p95 = `122.24`, p99 = `218.37`|
 
 
 
@@ -322,8 +322,8 @@ load simulations:
 |---|---|
 |name|`global information`|
 |request count|all = `140480`, ok = `140480`, RPS = `780.44`|
-|latency (ms)|min = `0.02`, mean = `3.48`, max = `1296.91`, StdDev = `31.38`|
-|latency percentile (ms)|p50 = `0.06`, p75 = `0.07`, p95 = `0.28`, p99 = `84.8`|
+|latency (ms)|min = `0.03`, mean = `22.52`, max = `623.65`, StdDev = `43.59`|
+|latency percentile (ms)|p50 = `0.09`, p75 = `31.22`, p95 = `109.31`, p99 = `198.02`|
 
 
 

@@ -27,7 +27,7 @@ public class FrameMessageUseCase(IMessageFramer messageFramer)
         var framedMessage = messageFramer.FrameMessage(formattedMessage);
         await writer.WriteAsync(framedMessage, cancellationToken);
 
-        //Logger.LogDebug(
-        //    $"Framed message: topic='{topic}', totalLength={formattedMessage.Length}, batchLength={batchBytes.Length}");
+        Logger.LogDebug(
+            $"Framed message: topic='{topic}', totalLength={formattedMessage.Length}, batchLength={batchBytes.Length}");
     }
 }

@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text;
@@ -144,6 +144,11 @@ var subscriberOptions = new SubscriberOptions
     MaxRetryAttempts = 3
 };
 
+
+// Note: Schemas will be registered automatically by SerializeMessageUseCase
+// during the first publish for each topic. No manual registration needed.
+// All topics use the same TestMessage type, so they will share the same schema
+// with namespace "PerformanceTests.Models" (from the class namespace).
 
 // Create long-run scenario
 Console.WriteLine("═══════════════════════════════════════════════════");

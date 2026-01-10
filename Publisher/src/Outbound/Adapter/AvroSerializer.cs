@@ -32,7 +32,7 @@ public sealed class AvroSerializer<T> : IAvroSerializer<T>
             writer.Write(message, encoder);
             encoder.Flush();
 
-            //Logger.LogDebug($"Successfully serialized message with schema ID: {schemaInfo.SchemaId}");
+            Logger.LogDebug($"Successfully serialized message with schema ID: {schemaInfo.SchemaId}");
             return stream.ToArray();
         }
         catch (Exception ex)

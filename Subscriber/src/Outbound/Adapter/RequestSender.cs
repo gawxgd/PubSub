@@ -27,7 +27,7 @@ public class RequestSender(
         var framedMessage = _messageFramer.FrameMessage(requestBytes);
 
         await requestChannel.Writer.WriteAsync(framedMessage, cancellationToken);
-        //Logger.LogDebug(
-        //    $"Sent request for topic: {topic}, offset: {offset} (framed: {framedMessage.Length} bytes)");
+        Logger.LogDebug(
+            $"Sent request for topic: {topic}, offset: {offset} (framed: {framedMessage.Length} bytes)");
     }
 }
