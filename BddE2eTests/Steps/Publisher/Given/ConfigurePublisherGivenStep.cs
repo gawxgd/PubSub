@@ -26,7 +26,6 @@ public class ConfigurePublisherGivenStep(ScenarioContext scenarioContext)
     private static readonly TestOptions TestOptions = TestOptionsLoader.Load();
 
     [Given(@"a publisher is configured with the following options:")]
-    [When(@"a publisher is configured with the following options:")]
     public async Task GivenAPublisherIsConfiguredWithTheFollowingOptions(Table table)
     {
         await TestContext.Progress.WriteLineAsync("[Publisher Step] Starting publisher configuration...");
@@ -37,7 +36,6 @@ public class ConfigurePublisherGivenStep(ScenarioContext scenarioContext)
     }
     
     [Given(@"a publisher of type ""(.*)"" is configured with the following options:")]
-    [When(@"a publisher of type ""(.*)"" is configured with the following options:")]
     public async Task GivenAPublisherOfTypeIsConfiguredWithTheFollowingOptions(string eventType, Table table)
     {
         await TestContext.Progress.WriteLineAsync(
@@ -49,7 +47,6 @@ public class ConfigurePublisherGivenStep(ScenarioContext scenarioContext)
         _context.Topic = ExtractTopicFromTable(table);
     }
 
-    [When(@"publishers (.+) are configured with the following options:")]
     [Given(@"publishers (.+) are configured with the following options:")]
     public async Task GivenPublishersAreConfiguredWithTheFollowingOptions(string publisherNames, Table table)
     {
