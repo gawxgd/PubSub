@@ -88,23 +88,18 @@ public sealed class TcpSubscriberConnection(
             Logger.LogInfo("Disconnecting from broker...");
 
             _cts.Cancel();
-
-            if (_writeLoopTask != null)
-            {
-                try { await _writeLoopTask.ConfigureAwait(false); }
-                catch (Exception ex) { Logger.LogDebug($"Error waiting for write loop: {ex.Message}"); }
-                _writeLoopTask = null;
-            }
-
-            if (_readLoopTask != null)
-            {
-                try { await _readLoopTask.ConfigureAwait(false); }
-                catch (Exception ex) { Logger.LogDebug($"Error waiting for read loop: {ex.Message}"); }
-                _readLoopTask = null;
-            }
-
-            await CompletePipesAsync().ConfigureAwait(false);
+            
+            // Close socket first - this will unblock any pending I/O operations
             CloseSocketResources();
+            
+            // Don't await pipe completion - just set to null
+            // The socket closure already invalidated them
+            _pipeReader = null;
+            _pipeWriter = null;
+
+            // Don't wait for loops - they will exit on their own due to cancellation/socket closure
+            _writeLoopTask = null;
+            _readLoopTask = null;
 
             Logger.LogInfo("Disconnected from broker");
         }
@@ -141,6 +136,7 @@ public sealed class TcpSubscriberConnection(
                     var reader = _pipeReader;
                     if (reader == null)
                     {
+                        if (cancellationToken.IsCancellationRequested) break;
                         await Task.Delay(100, cancellationToken).ConfigureAwait(false);
                         continue;
                     }
@@ -150,12 +146,17 @@ public sealed class TcpSubscriberConnection(
 
                     if (result.IsCompleted && buffer.Length == 0)
                     {
+                        if (cancellationToken.IsCancellationRequested)
+                        {
+                            Logger.LogInfo("Read loop: stream completed and cancellation requested, exiting");
+                            break;
+                        }
                         Logger.LogWarning("Read loop: stream completed (likely broker restart), attempting reconnect...");
                         _ = ReconnectAsync();
                         continue;
                     }
 
-                    Logger.LogDebug($"Read {buffer.Length} bytes from broker");
+                    //Logger.LogDebug($"Read {buffer.Length} bytes from broker");
 
                     while (TryReadBatchMessage(ref buffer, out var batchBytes))
                     {
@@ -168,16 +169,19 @@ public sealed class TcpSubscriberConnection(
                 }
                 catch (IOException ex)
                 {
+                    if (cancellationToken.IsCancellationRequested) break;
                     Logger.LogWarning($"Read loop IO error: {ex.Message}, attempting reconnect...");
                     _ = ReconnectAsync();
                 }
                 catch (SocketException ex)
                 {
+                    if (cancellationToken.IsCancellationRequested) break;
                     Logger.LogWarning($"Read loop socket error: {ex.Message}, attempting reconnect...");
                     _ = ReconnectAsync();
                 }
                 catch (SubscriberConnectionException ex)
                 {
+                    if (cancellationToken.IsCancellationRequested) break;
                     Logger.LogWarning($"Read loop connection exception: {ex.Message}, attempting reconnect...");
                     _ = ReconnectAsync();
                 }
@@ -191,6 +195,8 @@ public sealed class TcpSubscriberConnection(
         {
             Logger.LogError($"Unexpected error in read loop: {ex.Message}");
         }
+        
+        Logger.LogInfo("Read loop exited");
     }
 
     private async Task WriteLoopAsync(CancellationToken cancellationToken)
@@ -199,6 +205,8 @@ public sealed class TcpSubscriberConnection(
         {
             await foreach (var message in requestChannel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
             {
+                if (cancellationToken.IsCancellationRequested) break;
+                
                 while (!cancellationToken.IsCancellationRequested)
                 {
                     try
@@ -206,6 +214,7 @@ public sealed class TcpSubscriberConnection(
                         var writer = _pipeWriter;
                         if (writer == null)
                         {
+                            if (cancellationToken.IsCancellationRequested) break;
                             Logger.LogWarning("Write loop: no active writer, attempting reconnect...");
                             _ = ReconnectAsync();
                             await Task.Delay(100, cancellationToken).ConfigureAwait(false);
@@ -221,6 +230,7 @@ public sealed class TcpSubscriberConnection(
 
                         if (result.IsCompleted)
                         {
+                            if (cancellationToken.IsCancellationRequested) break;
                             Logger.LogWarning("Write loop: flush completed (likely broker restart), attempting reconnect...");
                             _ = ReconnectAsync();
                         }
@@ -229,6 +239,7 @@ public sealed class TcpSubscriberConnection(
                     }
                     catch (Exception ex) when (ex is IOException || ex is SocketException || ex is InvalidOperationException)
                     {
+                        if (cancellationToken.IsCancellationRequested) break;
                         Logger.LogWarning($"Write loop error: {ex.Message}, attempting reconnect...");
                         _ = ReconnectAsync();
                         await Task.Delay(100, cancellationToken).ConfigureAwait(false);
@@ -239,6 +250,10 @@ public sealed class TcpSubscriberConnection(
         catch (OperationCanceledException)
         {
             Logger.LogInfo("Write loop cancelled");
+        }
+        catch (ChannelClosedException)
+        {
+            Logger.LogInfo("Write loop: channel closed");
         }
         catch (Exception ex)
         {
@@ -253,6 +268,8 @@ public sealed class TcpSubscriberConnection(
                 catch (Exception ex) { Logger.LogDebug($"Error completing pipe writer: {ex.Message}"); }
             }
         }
+        
+        Logger.LogInfo("Write loop exited");
     }
 
     private async Task ReconnectAsync()

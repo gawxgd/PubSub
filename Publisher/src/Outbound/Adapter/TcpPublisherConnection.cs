@@ -65,50 +65,28 @@ public sealed class TcpPublisherConnection(
 
     public async Task DisconnectAsync()
     {
-        await _cancellationSource.CancelAsync();
-
         try
         {
-            var tasks = new List<Task>();
-            if (_processChannelTask != null) tasks.Add(_processChannelTask);
-            if (_receiveResponseTask != null) tasks.Add(_receiveResponseTask);
+            Logger.LogInfo("Disconnecting from broker...");
             
-            if (tasks.Count > 0)
-            {
-                try
-                {
-                    await Task.WhenAll(tasks);
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogDebug($"Error waiting for tasks: {ex.Message}");
-                }
-            }
+            await _cancellationSource.CancelAsync();
 
-            if (_pipeWriter != null)
-            {
-                try
-                {
-                    await _pipeWriter.FlushAsync();
-                    await _pipeWriter.CompleteAsync();
-                }
-                catch { /* ignore */ }
-            }
-
-            if (_pipeReader != null)
-            {
-                try
-                {
-                    await _pipeReader.CompleteAsync();
-                }
-                catch { /* ignore */ }
-            }
-
+            // Close socket FIRST to unblock any pending I/O operations
             CloseSocketResources();
+            
+            // Clear pipe references (don't await completion - can block)
+            _pipeWriter = null;
+            _pipeReader = null;
+
+            // Don't wait for tasks - they will exit on their own due to cancellation/socket closure
+            _processChannelTask = null;
+            _receiveResponseTask = null;
             
             deadLetterChannel.Writer.TryComplete();
             _reconnectLock.Dispose();
             _cancellationSource.Dispose();
+            
+            Logger.LogInfo("Disconnected from broker");
         }
         catch (Exception ex)
         {
@@ -358,8 +336,8 @@ public sealed class TcpPublisherConnection(
                 }
 
                 sent = true;
-                Logger.LogDebug(
-                    $"Sent batch with {count} records, topic: {options.Topic}, batch size: {batchBytes.Length} bytes");
+                //Logger.LogDebug(
+                //    $"Sent batch with {count} records, topic: {options.Topic}, batch size: {batchBytes.Length} bytes");
             }
             catch (IOException ex)
             {

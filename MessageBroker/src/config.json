@@ -3,23 +3,29 @@
   "Server": {
     "Port": 9096,
     "Address": "127.0.0.1",
-    "MaxRequestSizeBytes": 512,
+    "MaxRequestSizeBytes": 1048576,
     "InlineCompletions": false,
     "SocketPolling": false,
-    "Backlog": 4096
+    "Backlog": 8192
   },
   "CommitLog": {
     "Directory": "logs",
-    "MaxSegmentBytes": 1024,
-    "IndexIntervalBytes": 128,
+    "MaxSegmentBytes": 134217728,
+    "IndexIntervalBytes": 4096,
     "TimeIndexIntervalMs": 1000,
-    "ReaderLogBufferSize": 65536,
-    "ReaderIndexBufferSize": 8192,
-    "FileBufferSize": 4096
+    "ReaderLogBufferSize": 524288,
+    "ReaderIndexBufferSize": 65536,
+    "FileBufferSize": 65536
   },
   "CommitLogTopics": [
     {
       "Name": "default",
+      "BaseOffset": 0,
+      "FlushIntervalMs": 100,
+      "Directory": null
+    },
+    {
+      "Name": "performance-test",
       "BaseOffset": 0,
       "FlushIntervalMs": 100,
       "Directory": null
@@ -35,6 +41,66 @@
       "BaseOffset": 0,
       "FlushIntervalMs": 500,
       "Directory": "logs/audit"
+    },
+    {
+      "Name": "long-run-topic-01",
+      "BaseOffset": 0,
+      "FlushIntervalMs": 100,
+      "Directory": null
+    },
+    {
+      "Name": "long-run-topic-02",
+      "BaseOffset": 0,
+      "FlushIntervalMs": 100,
+      "Directory": null
+    },
+    {
+      "Name": "long-run-topic-03",
+      "BaseOffset": 0,
+      "FlushIntervalMs": 100,
+      "Directory": null
+    },
+    {
+      "Name": "long-run-topic-04",
+      "BaseOffset": 0,
+      "FlushIntervalMs": 100,
+      "Directory": null
+    },
+    {
+      "Name": "long-run-topic-05",
+      "BaseOffset": 0,
+      "FlushIntervalMs": 100,
+      "Directory": null
+    },
+    {
+      "Name": "long-run-topic-06",
+      "BaseOffset": 0,
+      "FlushIntervalMs": 100,
+      "Directory": null
+    },
+    {
+      "Name": "long-run-topic-07",
+      "BaseOffset": 0,
+      "FlushIntervalMs": 100,
+      "Directory": null
+    },
+    {
+      "Name": "long-run-topic-08",
+      "BaseOffset": 0,
+      "FlushIntervalMs": 100,
+      "Directory": null
+    },
+    {
+      "Name": "long-run-topic-09",
+      "BaseOffset": 0,
+      "FlushIntervalMs": 100,
+      "Directory": null
+    },
+    {
+      "Name": "long-run-topic-10",
+      "BaseOffset": 0,
+      "FlushIntervalMs": 100,
+      "Directory": null
     }
   ]
 }

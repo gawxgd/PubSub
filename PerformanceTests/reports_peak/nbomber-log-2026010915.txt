@@ -1,0 +1,21 @@
+2026-01-09 15:32:38.648 +01:00 [INF] [ThreadId:6] NBomber 6.1.2 started a new session: 2026-01-09_14.32.55_session_c8c2bb27
+2026-01-09 15:32:38.699 +01:00 [INF] [ThreadId:6] NBomber started as single node
+2026-01-09 15:32:38.701 +01:00 [INF] [ThreadId:6] License validation....
+2026-01-09 15:32:38.702 +01:00 [WRN] [ThreadId:6] THIS VERSION IS FREE ONLY FOR PERSONAL USE. You can't use it for an organization.
+2026-01-09 15:32:38.713 +01:00 [INF] [ThreadId:6] Reports folder: C:\src\github\sandrawar\PubSub\PerformanceTests\bin\Debug\net9.0\reports
+2026-01-09 15:32:38.714 +01:00 [INF] [ThreadId:6] Plugins: no plugins were loaded
+2026-01-09 15:32:38.726 +01:00 [INF] [ThreadId:6] Reporting sinks: no reporting sinks were loaded
+2026-01-09 15:32:38.726 +01:00 [INF] [ThreadId:6] Starting init...
+2026-01-09 15:32:38.734 +01:00 [INF] [ThreadId:6] Target scenarios: long_run_long-run-topic-01, long_run_long-run-topic-02, long_run_long-run-topic-03, long_run_long-run-topic-04, long_run_long-run-topic-05, long_run_long-run-topic-06, long_run_long-run-topic-07, long_run_long-run-topic-08, long_run_long-run-topic-09, long_run_long-run-topic-10
+2026-01-09 15:32:38.736 +01:00 [INF] [ThreadId:6] Start init scenario: long_run_long-run-topic-01
+2026-01-09 15:32:39.288 +01:00 [INF] [ThreadId:10] Start init scenario: long_run_long-run-topic-02
+2026-01-09 15:32:39.817 +01:00 [INF] [ThreadId:14] Start init scenario: long_run_long-run-topic-03
+2026-01-09 15:32:40.346 +01:00 [INF] [ThreadId:13] Start init scenario: long_run_long-run-topic-04
+2026-01-09 15:32:40.887 +01:00 [INF] [ThreadId:12] Start init scenario: long_run_long-run-topic-05
+2026-01-09 15:32:41.425 +01:00 [INF] [ThreadId:18] Start init scenario: long_run_long-run-topic-06
+2026-01-09 15:32:41.956 +01:00 [INF] [ThreadId:12] Start init scenario: long_run_long-run-topic-07
+2026-01-09 15:32:42.489 +01:00 [INF] [ThreadId:24] Start init scenario: long_run_long-run-topic-08
+2026-01-09 15:32:43.018 +01:00 [INF] [ThreadId:23] Start init scenario: long_run_long-run-topic-09
+2026-01-09 15:32:43.587 +01:00 [INF] [ThreadId:18] Start init scenario: long_run_long-run-topic-10
+2026-01-09 15:32:44.149 +01:00 [INF] [ThreadId:31] Init finished
+2026-01-09 15:32:44.207 +01:00 [INF] [ThreadId:31] Starting bombing...
