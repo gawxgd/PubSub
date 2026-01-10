@@ -2,6 +2,7 @@ using BddE2eTests.Configuration;
 using BddE2eTests.Configuration.TestEvents;
 using Reqnroll;
 using Shared.Domain.Avro;
+using System.Text.Json;
 
 namespace BddE2eTests.Steps.Publisher.Given;
 
@@ -9,6 +10,9 @@ namespace BddE2eTests.Steps.Publisher.Given;
 public class RegisterTopicGivenStep(ScenarioContext scenarioContext)
 {
     private readonly ScenarioTestContext _context = new (scenarioContext);
+
+    internal const string ExpectedSchemaIdKey = "ExpectedSchemaId";
+    internal const string ExpectedSchemaJsonKey = "ExpectedSchemaJson";
     
     [Given(@"the schema registry contains a schema for topic ""(.*)""")]
     public async Task GivenTheSchemaRegistryContainsASchemaForTopic(string topic)
@@ -21,6 +25,11 @@ public class RegisterTopicGivenStep(ScenarioContext scenarioContext)
             TimeSpan.FromSeconds(options.TimeoutSeconds));
 
         var schemaJson = AvroSchemaGenerator.GenerateSchemaJson<TestEvent>();
-        await adminClient.RegisterSchemaAsync(topic, schemaJson);
+        var schemaId = await adminClient.RegisterSchemaAsync(topic, schemaJson);
+        scenarioContext.Set(schemaId, ExpectedSchemaIdKey);
+
+        // Normalize JSON so comparisons are whitespace/format independent.
+        var normalizedExpected = JsonSerializer.Serialize(JsonDocument.Parse(schemaJson).RootElement);
+        scenarioContext.Set(normalizedExpected, ExpectedSchemaJsonKey);
     }
 }

@@ -25,6 +25,7 @@ public class TestBase(ScenarioContext scenarioContext)
     private const int PublisherPort = 9096;
     private const int SubscriberPort = 9098;
     private static readonly TimeSpan PortAvailabilityTimeout = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan ServiceStartupTimeout = TimeSpan.FromSeconds(10);
     private const string SchemaRegistryModeTagPrefix = "schemaRegistryMode_";
     private const string DefaultSchemaRegistryCompatibilityMode = "NONE";
 
@@ -32,6 +33,7 @@ public class TestBase(ScenarioContext scenarioContext)
     private static WebApplication? _schemaRegistryApp;
     private static string? _schemaDbPath;
     private static string? _commitLogDirectory;
+    private static string? _schemaRegistryCompatibilityMode;
     private static bool _loggerInitialized;
     
     public static string? CommitLogDirectory => _commitLogDirectory;
@@ -225,6 +227,7 @@ public class TestBase(ScenarioContext scenarioContext)
         TestContext.Progress.WriteLine("[TestBase] === Starting new scenario setup ===");
 
         var schemaRegistryCompatibilityMode = ResolveSchemaRegistryCompatibilityMode();
+        _schemaRegistryCompatibilityMode = schemaRegistryCompatibilityMode;
         TestContext.Progress.WriteLine(
             $"[TestBase] SchemaRegistry CompatibilityMode: {schemaRegistryCompatibilityMode}");
 
@@ -248,10 +251,12 @@ public class TestBase(ScenarioContext scenarioContext)
         TestContext.Progress.WriteLine("[TestBase] MessageBroker started");
 
         TestContext.Progress.WriteLine("[TestBase] Creating schema registry...");
-        _schemaRegistryApp = CreateSchemaRegistryHost(schemaRegistryCompatibilityMode);
+        _schemaDbPath = CreateTemporarySchemaDbPath();
+        _schemaRegistryApp = CreateSchemaRegistryHostWithDbPath(schemaRegistryCompatibilityMode, _schemaDbPath);
 
         TestContext.Progress.WriteLine("[TestBase] Starting schema registry...");
         await _schemaRegistryApp.StartAsync();
+        await WaitForSchemaRegistryResponsiveAsync();
         TestContext.Progress.WriteLine($"[TestBase] SchemaRegistry started on port {SchemaRegistryPort}");
 
         TestContext.Progress.WriteLine("[TestBase] Setup complete!");
@@ -354,10 +359,39 @@ public class TestBase(ScenarioContext scenarioContext)
             .Build();
     }
 
-    private static WebApplication CreateSchemaRegistryHost(string schemaRegistryCompatibilityMode)
+    public static async Task RestartSchemaRegistryAsync()
     {
-        _schemaDbPath = Path.Combine(Path.GetTempPath(), $"bdd-schema-registry-{Guid.NewGuid()}.db");
-        var sqliteConnectionString = $"Data Source={_schemaDbPath}";
+        if (_schemaRegistryApp != null)
+        {
+            TestContext.Progress.WriteLine("[TestBase] Stopping schema registry...");
+            await _schemaRegistryApp.StopAsync();
+            await _schemaRegistryApp.DisposeAsync();
+            _schemaRegistryApp = null;
+            TestContext.Progress.WriteLine("[TestBase] SchemaRegistry stopped");
+        }
+
+        await WaitForPortAvailabilityAsync(SchemaRegistryPort, PortAvailabilityTimeout);
+
+        if (string.IsNullOrWhiteSpace(_schemaDbPath))
+        {
+            throw new InvalidOperationException("Schema registry DB path is not initialized.");
+        }
+
+        var mode = _schemaRegistryCompatibilityMode ?? DefaultSchemaRegistryCompatibilityMode;
+        TestContext.Progress.WriteLine($"[TestBase] Restarting schema registry with DB: {_schemaDbPath}");
+
+        _schemaRegistryApp = CreateSchemaRegistryHostWithDbPath(mode, _schemaDbPath);
+
+        TestContext.Progress.WriteLine("[TestBase] Starting schema registry...");
+        await _schemaRegistryApp.StartAsync();
+        await WaitForSchemaRegistryResponsiveAsync();
+        TestContext.Progress.WriteLine("[TestBase] SchemaRegistry restarted");
+    }
+
+    private static WebApplication CreateSchemaRegistryHostWithDbPath(string schemaRegistryCompatibilityMode,
+        string schemaDbPath)
+    {
+        var sqliteConnectionString = $"Data Source={schemaDbPath}";
 
         var builder = WebApplication.CreateBuilder();
 
@@ -383,9 +417,41 @@ public class TestBase(ScenarioContext scenarioContext)
         return app;
     }
 
+    private static async Task WaitForSchemaRegistryResponsiveAsync()
+    {
+        var sw = Stopwatch.StartNew();
+        using var http = new HttpClient
+        {
+            BaseAddress = new Uri($"http://127.0.0.1:{SchemaRegistryPort}"),
+            Timeout = TimeSpan.FromSeconds(2)
+        };
+
+        while (sw.Elapsed < ServiceStartupTimeout)
+        {
+            try
+            {
+                // Any HTTP response (including 404) means the server is up and routing.
+                _ = await http.GetAsync("schema/id/0");
+                return;
+            }
+            catch (Exception)
+            {
+                await Task.Delay(100);
+            }
+        }
+
+        throw new TimeoutException(
+            $"SchemaRegistry did not become responsive within {ServiceStartupTimeout.TotalSeconds}s");
+    }
+
     private static string CreateTemporaryCommitLogDirectory()
     {
         return Path.Combine(Path.GetTempPath(), $"bdd-commit-log-{Guid.NewGuid()}");
+    }
+
+    private static string CreateTemporarySchemaDbPath()
+    {
+        return Path.Combine(Path.GetTempPath(), $"bdd-schema-registry-{Guid.NewGuid()}.db");
     }
 
     private static void InitializeLogger()
