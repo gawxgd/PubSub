@@ -18,6 +18,7 @@ public class SerializeMessageUseCase<T>(
 
     private SchemaInfo? _cachedSchema;
     private readonly SemaphoreSlim _schemaLock = new(1, 1);
+    private readonly AvroSchemaGenerator _avroSchemaGenerator = new();
 
     private async Task InitializeSchemaAsync(CancellationToken cancellationToken = default)
     {
@@ -28,7 +29,7 @@ public class SerializeMessageUseCase<T>(
 
             Logger.LogDebug($"Initializing schema for topic '{topic}'...");
 
-            var schemaJson = AvroSchemaGenerator.GenerateSchemaJson<T>();
+            var schemaJson = _avroSchemaGenerator.GenerateSchemaJson<T>();
             _cachedSchema = await schemaRegistryClient.RegisterSchemaAsync(topic, schemaJson, cancellationToken);
             Logger.LogInfo($"Registered new schema for topic '{topic}' with ID: {_cachedSchema.SchemaId}");
         }

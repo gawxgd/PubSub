@@ -43,7 +43,6 @@ public sealed class HttpSchemaRegistryClient : ISchemaRegistryClient
 
         try
         {
-            // RegisterRequest expects "Schema" with capital S (see SchemaRegistry/src/Inbound/DTOs/RegisterRequest.cs)
             var request = new { Schema = schemaJson };
             var response = await _httpClient.PostAsJsonAsync($"{TopicEndpoint}{topic}", request, cancellationToken);
 
