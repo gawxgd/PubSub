@@ -24,6 +24,7 @@ public static class MultiTopicPeakPerformanceScenario
     private static readonly ConcurrentDictionary<string, ImmutableList<ISubscriber<TestMessage>>> SubscribersByTopic = new();
     private static readonly ConcurrentDictionary<string, ImmutableList<Task>> SubscriberTasksByTopic = new();
     private static readonly ConcurrentDictionary<string, CancellationTokenSource> CancellationTokensByTopic = new();
+    private static readonly ConcurrentDictionary<string, bool> ShouldStopPublishingByTopic = new();
 
     private static string CleanTopicName(string topic) =>
         topic.Replace("schema/topic/", "").Trim('/');
@@ -50,6 +51,12 @@ public static class MultiTopicPeakPerformanceScenario
             {
                 try
                 {
+                    // Check if we should stop publishing (simulations completed)
+                    if (ShouldStopPublishingByTopic.TryGetValue(topicName, out var shouldStop) && shouldStop)
+                    {
+                        return Response.Ok(); // Return OK but don't publish
+                    }
+                    
                     // Get publishers list atomically and store locally to avoid race conditions
                     if (!PublishersByTopic.TryGetValue(topicName, out var publishers) || publishers == null)
                     {
@@ -121,8 +128,74 @@ public static class MultiTopicPeakPerformanceScenario
                 {
                     Console.WriteLine($"\n[{DateTime.UtcNow:HH:mm:ss}] === INIT: {cleanTopicName} ===");
 
+                    // Create cancellation token source - will be cancelled in WithClean when scenario ends
                     var cts = new CancellationTokenSource();
                     CancellationTokensByTopic.TryAdd(topicName, cts);
+                    
+                    // Start background task to stop publishers and subscribers after load simulations complete
+                    // Total simulation time: 5min (warm-up load) + 3min (peak) + 5min (cool-down) = 13 minutes
+                    // Plus 1 minute warm-up = 14 minutes total
+                    // Add 10 seconds buffer to ensure simulations are done
+                    var totalTestDuration = TimeSpan.FromMinutes(1) + TimeSpan.FromMinutes(5) + TimeSpan.FromMinutes(3) + TimeSpan.FromMinutes(5) + TimeSpan.FromSeconds(10);
+                    Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Starting auto-stop task for {cleanTopicName} (will stop after {totalTestDuration.TotalMinutes:F1} minutes)");
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await Task.Delay(totalTestDuration);
+                            Console.WriteLine($"\n[{DateTime.UtcNow:HH:mm:ss}] ═══ Auto-stopping publishers and subscribers for {cleanTopicName} (test duration elapsed) ═══");
+                            
+                            // Set flag to stop publishing in scenario function
+                            ShouldStopPublishingByTopic.TryAdd(topicName, true);
+                            Console.WriteLine($"  ✓ Publishing stopped flag set for {cleanTopicName}");
+                            
+                            // Dispose publishers FIRST to stop background publishing tasks
+                            if (PublishersByTopic.TryGetValue(topicName, out var autoPubs))
+                            {
+                                Console.WriteLine($"  Stopping {autoPubs.Count} publishers...");
+                                var disposeTasks = new List<Task>();
+                                foreach (var pub in autoPubs)
+                                {
+                                    if (pub is IAsyncDisposable d)
+                                    {
+                                        disposeTasks.Add(Task.Run(async () =>
+                                        {
+                                            try
+                                            {
+                                                await d.DisposeAsync();
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                Console.WriteLine($"  ⚠ Error disposing publisher: {ex.Message}");
+                                            }
+                                        }));
+                                    }
+                                }
+                                await Task.WhenAny(Task.WhenAll(disposeTasks), Task.Delay(TimeSpan.FromSeconds(5)));
+                                Console.WriteLine($"  ✓ Publishers stopped");
+                            }
+                            else
+                            {
+                                Console.WriteLine($"  ⚠ No publishers found for {cleanTopicName}");
+                            }
+                            
+                            // Cancel subscribers
+                            if (CancellationTokensByTopic.TryGetValue(topicName, out var autoCts) && !autoCts.Token.IsCancellationRequested)
+                            {
+                                autoCts.Cancel();
+                                Console.WriteLine($"  ✓ Subscribers cancelled");
+                            }
+                            else
+                            {
+                                Console.WriteLine($"  ⚠ No cancellation token found for {cleanTopicName} or already cancelled");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"  ⚠ Error in auto-stop task for {cleanTopicName}: {ex.Message}");
+                            Console.WriteLine($"  StackTrace: {ex.StackTrace}");
+                        }
+                    });
 
                     // ==================== STEP 1: Create ALL Publishers (like BDD test) ====================
                     Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Creating {publishersPerTopic} publishers...");
@@ -178,9 +251,14 @@ public static class MultiTopicPeakPerformanceScenario
                         {
                             try
                             {
-                                await subscriber.StartMessageProcessingAsync().WaitAsync(cts.Token);
+                                // StartMessageProcessingAsync checks CancellationToken internally
+                                // WaitAsync here just adds a timeout wrapper, but cancellation is handled by StartMessageProcessingAsync
+                                await subscriber.StartMessageProcessingAsync();
                             }
-                            catch (OperationCanceledException) { }
+                            catch (OperationCanceledException) 
+                            {
+                                // Expected when cancellation is requested
+                            }
                             catch (Exception ex)
                             {
                                 Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Subscriber {idx} error: {ex.Message}");
@@ -211,61 +289,166 @@ public static class MultiTopicPeakPerformanceScenario
             .WithWarmUpDuration(TimeSpan.FromSeconds(60))
             
             .WithLoadSimulations(
-                Simulation.Inject(rate: 20, interval: TimeSpan.FromSeconds(5), during: TimeSpan.FromMinutes(1)),
-                Simulation.Inject(rate: 7000, interval: TimeSpan.FromSeconds(3), during: TimeSpan.FromMinutes(1)),
-                Simulation.Inject(rate: 20, interval: TimeSpan.FromSeconds(5), during: TimeSpan.FromMinutes(1))
+                Simulation.Inject(rate: 20, interval: TimeSpan.FromSeconds(1), during: TimeSpan.FromMinutes(5)),
+                Simulation.Inject(rate: 7000, interval: TimeSpan.FromSeconds(1), during: TimeSpan.FromMinutes(3)),
+                Simulation.Inject(rate: 20, interval: TimeSpan.FromSeconds(1), during: TimeSpan.FromMinutes(5))
             )
 
             .WithClean(async context =>
             {
-                Console.WriteLine($"\n[{DateTime.UtcNow:HH:mm:ss}] === Cleanup: {cleanTopicName} ===");
+                var cleanupStart = DateTime.UtcNow;
+                Console.WriteLine($"\n[{cleanupStart:HH:mm:ss}] ═══ CLEANUP STARTED for {cleanTopicName} ═══");
 
                 try
                 {
-                    if (CancellationTokensByTopic.TryRemove(topicName, out var cts))
+                    // Cancel all subscriber tasks immediately
+                    CancellationTokenSource? cts = null;
+                    if (CancellationTokensByTopic.TryRemove(topicName, out cts))
                     {
-                        cts.Cancel();
+                        Console.WriteLine($"  [1/6] Cancelling subscriber tasks for {cleanTopicName}...");
+                        if (!cts.Token.IsCancellationRequested)
+                        {
+                            cts.Cancel();
+                            Console.WriteLine($"  [1/6] ✓ Subscriber cancellation token cancelled");
+                        }
+                        else
+                        {
+                            Console.WriteLine($"  [1/6] ✓ Subscriber cancellation token already cancelled");
+                        }
                         cts.Dispose();
                     }
-
-                    if (SubscriberTasksByTopic.TryRemove(topicName, out var tasks))
+                    else
                     {
-                        try { await Task.WhenAll(tasks).WaitAsync(TimeSpan.FromSeconds(10)); }
-                        catch { }
+                        Console.WriteLine($"  [1/6] ⚠ No subscriber cancellation token found for {cleanTopicName}");
                     }
-
-                    if (SubscribersByTopic.TryRemove(topicName, out var subs))
-                    {
-                        foreach (var sub in subs)
-                        {
-                            try
-                            {
-                                if (sub is IAsyncDisposable d)
-                                    await d.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5));
-                            }
-                            catch { }
-                        }
-                    }
-
+                    
+                    // Dispose publishers FIRST to stop background tasks (ProcessChannelAsync, ReceiveResponsesAsync)
+                    // This ensures publishers stop publishing immediately
                     if (PublishersByTopic.TryRemove(topicName, out var pubs))
                     {
+                        Console.WriteLine($"  [2/6] Disposing {pubs.Count} publishers to stop background tasks (max 2s each)...");
+                        var disposeTasks = new List<Task>();
                         foreach (var pub in pubs)
                         {
-                            try
+                            if (pub is IAsyncDisposable d)
                             {
-                                if (pub is IAsyncDisposable d)
-                                    await d.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5));
+                                disposeTasks.Add(Task.Run(async () =>
+                                {
+                                    try
+                                    {
+                                        var disposeTask = d.DisposeAsync().AsTask();
+                                        var timeoutTask = Task.Delay(TimeSpan.FromSeconds(2));
+                                        var completedTask = await Task.WhenAny(disposeTask, timeoutTask);
+                                        
+                                        if (completedTask == timeoutTask)
+                                        {
+                                            Console.WriteLine($"  ⚠ Publisher dispose timed out after 2s");
+                                        }
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Console.WriteLine($"  ⚠ Error disposing publisher: {ex.Message}");
+                                    }
+                                }));
                             }
-                            catch { }
                         }
+                        await Task.WhenAny(Task.WhenAll(disposeTasks), Task.Delay(TimeSpan.FromSeconds(5)));
+                        Console.WriteLine($"  [2/6] ✓ Publishers disposal completed");
                     }
 
+                    // Wait for subscriber tasks with shorter timeout - don't wait forever
+                    if (SubscriberTasksByTopic.TryRemove(topicName, out var tasks))
+                    {
+                        Console.WriteLine($"  [3/6] Waiting for {tasks.Count} subscriber tasks (max 5s)...");
+                        try 
+                        { 
+                            // Check task status
+                            var completedCount = tasks.Count(t => t.IsCompleted);
+                            var faultedCount = tasks.Count(t => t.IsFaulted);
+                            var cancelledCount = tasks.Count(t => t.IsCanceled);
+                            Console.WriteLine($"    Status: {completedCount} completed, {faultedCount} faulted, {cancelledCount} cancelled, {tasks.Count - completedCount - faultedCount - cancelledCount} running");
+                            
+                            var timeoutTask = Task.Delay(TimeSpan.FromSeconds(5));
+                            var allTasksTask = Task.WhenAll(tasks);
+                            var completedTask = await Task.WhenAny(allTasksTask, timeoutTask);
+                            
+                            if (completedTask == timeoutTask)
+                            {
+                                Console.WriteLine($"  ⚠ Subscriber tasks did not complete within 5s timeout - continuing anyway");
+                                // Log which tasks are still running
+                                for (int i = 0; i < tasks.Count; i++)
+                                {
+                                    if (!tasks[i].IsCompleted)
+                                    {
+                                        Console.WriteLine($"    Task {i}: Status={tasks[i].Status}, IsCompleted={tasks[i].IsCompleted}");
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                Console.WriteLine($"  ✓ All subscriber tasks completed");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"  ⚠ Error waiting for subscriber tasks: {ex.Message}");
+                            Console.WriteLine($"  StackTrace: {ex.StackTrace}");
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine($"  [2/5] ⚠ No subscriber tasks found for {cleanTopicName}");
+                    }
+
+                    // Dispose subscribers with timeout - do in parallel to speed up
+                    if (SubscribersByTopic.TryRemove(topicName, out var subs))
+                    {
+                        Console.WriteLine($"  [4/6] Disposing {subs.Count} subscribers (max 2s each)...");
+                        var disposeTasks = new List<Task>();
+                        foreach (var sub in subs)
+                        {
+                            if (sub is IAsyncDisposable d)
+                            {
+                                disposeTasks.Add(Task.Run(async () =>
+                                {
+                                    try
+                                    {
+                                        var disposeTask = d.DisposeAsync().AsTask();
+                                        var timeoutTask = Task.Delay(TimeSpan.FromSeconds(2));
+                                        var completedTask = await Task.WhenAny(disposeTask, timeoutTask);
+                                        
+                                        if (completedTask == timeoutTask)
+                                        {
+                                            Console.WriteLine($"  ⚠ Subscriber dispose timed out after 2s");
+                                        }
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Console.WriteLine($"  ⚠ Error disposing subscriber: {ex.Message}");
+                                    }
+                                }));
+                            }
+                        }
+                        await Task.WhenAny(Task.WhenAll(disposeTasks), Task.Delay(TimeSpan.FromSeconds(5)));
+                        Console.WriteLine($"  ✓ Subscribers disposal completed");
+                    }
+
+                    // Final statistics
+                    Console.WriteLine($"  [5/6] Collecting statistics...");
                     var pubCount = PublishedMessagesByTopic.TryGetValue(topicName, out var pubDict) ? pubDict.Count : 0;
                     var recCount = ReceivedMessagesByTopic.TryGetValue(topicName, out var recDict) ? recDict.Count : 0;
                     
+                    var cleanupEnd = DateTime.UtcNow;
+                    var cleanupDuration = (cleanupEnd - cleanupStart).TotalSeconds;
+                    
                     Console.WriteLine($"  Published: {pubCount:N0}, Received: {recCount:N0}, Loss: {pubCount - recCount:N0}");
+                    Console.WriteLine($"[{cleanupEnd:HH:mm:ss}] === Cleanup COMPLETE: {cleanTopicName} (took {cleanupDuration:F1}s) ===");
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"  ✗ Cleanup error: {ex.Message}");
+                    Console.WriteLine($"  StackTrace: {ex.StackTrace}");
+                }
             });
 
             scenarios.Add(scenario);

@@ -156,15 +156,19 @@ try
     var subscriberFactory = new SubscriberFactory<DemoMessage>(schemaRegistryClient);
     
     // Create subscriber options
-    var subscriberOptions = new SubscriberOptions
-    {
-        MessageBrokerConnectionUri = new Uri($"messageBroker://{brokerOptions.Host}:{brokerOptions.Port}"),
-        SchemaRegistryConnectionUri = schemaRegistryOptions.BaseAddress,
-        SchemaRegistryTimeout = schemaRegistryOptions.Timeout,
-        Topic = demoOptions.Topic ?? "default",
-        PollInterval = TimeSpan.FromMilliseconds(100),
-        MaxRetryAttempts = 3
-    };
+    var subscriberOptions = new SubscriberOptions(
+        MessageBrokerConnectionUri: new Uri($"messageBroker://{brokerOptions.Host}:{brokerOptions.Port}"),
+        SchemaRegistryConnectionUri: schemaRegistryOptions.BaseAddress,
+        Host: brokerOptions.Host,
+        Port: brokerOptions.Port,
+        Topic: demoOptions.Topic ?? "default",
+        MinMessageLength: 0,
+        MaxMessageLength: int.MaxValue,
+        MaxQueueSize: 65536,
+        PollInterval: TimeSpan.FromMilliseconds(100),
+        SchemaRegistryTimeout: schemaRegistryOptions.Timeout,
+        MaxRetryAttempts: 3
+    );
     
     // Create subscriber
     var subscriber = subscriberFactory.CreateSubscriber(subscriberOptions, async (message) =>

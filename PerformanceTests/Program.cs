@@ -25,9 +25,10 @@ AutoLoggerFactory.Initialize(logger);
 ThreadPool.GetMinThreads(out int minWorker, out int minIOC);
 Console.WriteLine($"Current ThreadPool: minWorker={minWorker}, minIOC={minIOC}");
 
-// Set higher minimum threads (adjust based on your load)
-// For 5000 msg/s with 10 topics, start with 100-200 threads
-ThreadPool.SetMinThreads(200, 200);
+// Set higher minimum threads for high throughput
+// For 70000 msg/s (7000 per topic × 10 topics), need more threads
+// Calculation: ~500 threads for 70k msg/s (allowing for async I/O overhead)
+ThreadPool.SetMinThreads(500, 500);
 
 ThreadPool.GetMinThreads(out minWorker, out minIOC);
 Console.WriteLine($"Updated ThreadPool: minWorker={minWorker}, minIOC={minIOC}");
@@ -122,27 +123,34 @@ var schemaRegistryClient = schemaRegistryClientFactory.Create();
 var subscriberFactory = new SubscriberFactory<TestMessage>(schemaRegistryClient);
 
 // Publisher options template (topic will be set per scenario)
+// Optimized for high throughput: 7000+ msg/s per topic
 var publisherOptions = new PublisherOptions(
     MessageBrokerConnectionUri: brokerUri,
     SchemaRegistryConnectionUri: schemaRegistryUri,
     SchemaRegistryTimeout: TimeSpan.FromSeconds(10),
     Topic: string.Empty, // Will be set per topic
-    MaxPublisherQueueSize: 10000,
+    MaxPublisherQueueSize: 50000, // Increased from 10000 to handle 700 msg/s per publisher (70k msg/s total)
     MaxSendAttempts: 3,
     MaxRetryAttempts: 3,
-    BatchMaxBytes: 65536,
-    BatchMaxDelay: TimeSpan.FromMilliseconds(100));
+    BatchMaxBytes: 65536, // 64KB batches
+    BatchMaxDelay: TimeSpan.FromMilliseconds(50)); // Reduced from 100ms for faster batching at high rates
 
 // Subscriber options template (topic will be set per scenario)
-var subscriberOptions = new SubscriberOptions
-{
-    MessageBrokerConnectionUri = brokerUri,
-    SchemaRegistryConnectionUri = schemaRegistryUri,
-    SchemaRegistryTimeout = TimeSpan.FromSeconds(10),
-    Topic = string.Empty, // Will be set per topic
-    PollInterval = TimeSpan.FromMilliseconds(50),
-    MaxRetryAttempts = 3
-};
+// Optimized for high throughput: 7000+ msg/s per topic
+// Note: Each subscriber receives ALL messages (fan-out), so broker must send 7000 msg/s × 5 subscribers = 35k msg/s per topic
+var subscriberOptions = new SubscriberOptions(
+    MessageBrokerConnectionUri: brokerUri,
+    SchemaRegistryConnectionUri: schemaRegistryUri,
+    Host: brokerHost,
+    Port: brokerPort,
+    Topic: string.Empty, // Will be set per topic
+    MinMessageLength: 0,
+    MaxMessageLength: int.MaxValue,
+    MaxQueueSize: 100000, // Increased from default 65536 to handle high message rates
+    PollInterval: TimeSpan.FromMilliseconds(25), // Reduced from 50ms for faster polling at high rates
+    SchemaRegistryTimeout: TimeSpan.FromSeconds(10),
+    MaxRetryAttempts: 3
+);
 
 
 // Note: Schemas will be registered automatically by SerializeMessageUseCase
@@ -165,7 +173,7 @@ Console.WriteLine("   Expected total messages: 36,000,000");
 Console.WriteLine("═══════════════════════════════════════════════════");
 Console.WriteLine();
 
-var scenarios = MultiTopicPeakPerformanceScenario.Create(
+var scenarios = MultiplePeaksPerformanceTestScenario.Create(
     publisherFactory,
     publisherOptions,
     subscriberFactory,
@@ -190,9 +198,9 @@ var startTime = DateTime.UtcNow;
 
 NBomberRunner
     .RegisterScenarios(scenarios)
-    .WithScenarioCompletionTimeout(TimeSpan.FromMinutes(5))
+    .WithScenarioCompletionTimeout(TimeSpan.FromMinutes(15)) // Increased timeout to allow cleanup for all 10 topics (10 topics × ~1-2 min cleanup each)
     .WithReportFolder("reports")
-    .WithReportFileName("long_run_report")
+    .WithReportFileName("oeak_report")
     .Run();
 
 var duration = DateTime.UtcNow - startTime;
