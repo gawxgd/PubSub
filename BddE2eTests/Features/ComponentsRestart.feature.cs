@@ -29,8 +29,8 @@ namespace BddE2eTests.Features
         
         private static string[] featureTags = ((string[])(null));
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new System.Globalization.CultureInfo("en-US"), "Features", "Restart Scenarios", "As a system integrator\r\nI want to verify that the system handles restarts correct" +
-                "ly\r\nSo that messages are not lost or duplicated when components restart", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags);
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new System.Globalization.CultureInfo("en-US"), "Features", "Restart Scenarios", "As a system integrator\nI want to verify that the system handles restarts correctl" +
+                "y\nSo that messages are not lost or duplicated when components restart", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags);
         
 #line 1 "ComponentsRestart.feature"
 #line hidden

@@ -29,10 +29,10 @@ namespace BddE2eTests.Features
         
         private static string[] featureTags = ((string[])(null));
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new System.Globalization.CultureInfo("en-US"), "Features", "Multiple Topics Publisher and Subscriber Communication", "    As a system integrator\r\n    I want to verify that multiple publishers and sub" +
-                "scribers can communicate across different topics simultaneously\r\n    So that the" +
-                " message broker correctly isolates and routes messages per topic without cross-c" +
-                "ontamination", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags);
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new System.Globalization.CultureInfo("en-US"), "Features", "Multiple Topics Publisher and Subscriber Communication", "    As a system integrator\n    I want to verify that multiple publishers and subs" +
+                "cribers can communicate across different topics simultaneously\n    So that the m" +
+                "essage broker correctly isolates and routes messages per topic without cross-con" +
+                "tamination", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags);
         
 #line 1 "MultipleTopics.feature"
 #line hidden

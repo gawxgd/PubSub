@@ -24,7 +24,7 @@ public class RegisterTopicGivenStep(ScenarioContext scenarioContext)
             options.Port,
             TimeSpan.FromSeconds(options.TimeoutSeconds));
 
-        var schemaJson = AvroSchemaGenerator.GenerateSchemaJson<TestEvent>();
+        var schemaJson = new AvroSchemaGenerator().GenerateSchemaJson<TestEvent>();
         var schemaId = await adminClient.RegisterSchemaAsync(topic, schemaJson);
         scenarioContext.Set(schemaId, ExpectedSchemaIdKey);
 

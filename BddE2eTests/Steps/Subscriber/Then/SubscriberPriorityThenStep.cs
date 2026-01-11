@@ -115,10 +115,10 @@ public class SubscriberPriorityThenStep(ScenarioContext scenarioContext)
     private static string GenerateSchemaJsonFor(Type t)
     {
         var method = typeof(AvroSchemaGenerator)
-            .GetMethod(nameof(AvroSchemaGenerator.GenerateSchemaJson), BindingFlags.Public | BindingFlags.Static)!;
+            .GetMethod(nameof(AvroSchemaGenerator.GenerateSchemaJson), BindingFlags.Public | BindingFlags.Instance)!;
 
         var closed = method.MakeGenericMethod(t);
-        return (string)closed.Invoke(null, null)!;
+        return (string)closed.Invoke(new AvroSchemaGenerator(), null)!;
     }
 }
 
