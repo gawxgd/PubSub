@@ -141,10 +141,10 @@ try
     
     // Create subscriber options
     var subscriberOptions = new SubscriberOptions(
-        MessageBrokerConnectionUri: new Uri($"messageBroker://{brokerOptions.Host}:{brokerOptions.Port}"),
+        MessageBrokerConnectionUri: new Uri($"messageBroker://{brokerOptions.Host}:{brokerOptions.SubscriberPort}"),
         SchemaRegistryConnectionUri: schemaRegistryOptions.BaseAddress,
         Host: brokerOptions.Host,
-        Port: brokerOptions.Port,
+        Port: brokerOptions.SubscriberPort,
         Topic: demoOptions.Topic ?? "default",
         MinMessageLength: 0,
         MaxMessageLength: int.MaxValue,
