@@ -18,12 +18,7 @@ public sealed class BatchMessagesUseCase(ILogRecordBatchWriter batchWriter)
     }
 
     public bool ShouldFlush(int maxBytes, TimeSpan maxDelay)
-    {
-        if (_messages.Count == 0)
-        {
-            return false;
-        }
-        
+    {   
         var now = DateTime.UtcNow;
         var full = _currentBatchBytes >= maxBytes;
         var timeout = now - _lastFlush >= maxDelay;
