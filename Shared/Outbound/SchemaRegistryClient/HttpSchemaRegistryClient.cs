@@ -40,7 +40,7 @@ public sealed class HttpSchemaRegistryClient : ISchemaRegistryClient
 
         try
         {
-            var request = new { schema = schemaJson };
+            var request = new { Schema = schemaJson };
             var response = await _httpClient.PostAsJsonAsync($"{TopicEndpoint}{topic}", request, cancellationToken);
 
             if (response.StatusCode == HttpStatusCode.Conflict)

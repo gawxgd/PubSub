@@ -65,50 +65,25 @@ public sealed class TcpPublisherConnection(
 
     public async Task DisconnectAsync()
     {
-        await _cancellationSource.CancelAsync();
-
         try
         {
-            var tasks = new List<Task>();
-            if (_processChannelTask != null) tasks.Add(_processChannelTask);
-            if (_receiveResponseTask != null) tasks.Add(_receiveResponseTask);
+            Logger.LogInfo("Disconnecting from broker...");
             
-            if (tasks.Count > 0)
-            {
-                try
-                {
-                    await Task.WhenAll(tasks);
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogDebug($"Error waiting for tasks: {ex.Message}");
-                }
-            }
-
-            if (_pipeWriter != null)
-            {
-                try
-                {
-                    await _pipeWriter.FlushAsync();
-                    await _pipeWriter.CompleteAsync();
-                }
-                catch { /* ignore */ }
-            }
-
-            if (_pipeReader != null)
-            {
-                try
-                {
-                    await _pipeReader.CompleteAsync();
-                }
-                catch { /* ignore */ }
-            }
+            await _cancellationSource.CancelAsync();
 
             CloseSocketResources();
+            
+            _pipeWriter = null;
+            _pipeReader = null;
+
+            _processChannelTask = null;
+            _receiveResponseTask = null;
             
             deadLetterChannel.Writer.TryComplete();
             _reconnectLock.Dispose();
             _cancellationSource.Dispose();
+            
+            Logger.LogInfo("Disconnected from broker");
         }
         catch (Exception ex)
         {
@@ -292,6 +267,13 @@ public sealed class TcpPublisherConnection(
 
     private async Task SendBatchAsync()
     {
+        // Check if there are any messages to send before building batch
+        if (batchMessagesUseCase.Count == 0)
+        {
+            Logger.LogDebug("SendBatchAsync called but no messages to send");
+            return;
+        }
+
         var batchBytes = batchMessagesUseCase.Build();
         var count = batchMessagesUseCase.Count;
         batchMessagesUseCase.Clear();

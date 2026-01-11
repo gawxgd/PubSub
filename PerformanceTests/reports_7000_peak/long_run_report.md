@@ -1,0 +1,330 @@
+> test info
+
+
+
+test suite: `nbomber_default_test_suite_name`
+
+test name: `nbomber_default_test_name`
+
+session id: `2026-01-10_14.19.76_session_c70f3f93`
+
+> scenario stats
+
+
+
+scenario: `long_run_long-run-topic-01`
+
+  - ok count: `1272000`
+
+  - fail count: `0`
+
+  - all data: `0` MB
+
+  - duration: `00:13:00`
+
+load simulations:
+
+  - `inject`, rate: `20`, interval: `00:00:01`, during: `00:05:00`
+
+  - `inject`, rate: `7000`, interval: `00:00:01`, during: `00:03:00`
+
+  - `inject`, rate: `20`, interval: `00:00:01`, during: `00:05:00`
+
+|step|ok stats|
+|---|---|
+|name|`global information`|
+|request count|all = `1272000`, ok = `1272000`, RPS = `1630.77`|
+|latency (ms)|min = `0.01`, mean = `87567.96`, max = `356672.14`, StdDev = `119777.95`|
+|latency percentile (ms)|p50 = `0.07`, p75 = `211681.28`, p95 = `309592.06`, p99 = `347078.66`|
+
+
+
+
+> scenario stats
+
+
+
+scenario: `long_run_long-run-topic-02`
+
+  - ok count: `1272000`
+
+  - fail count: `0`
+
+  - all data: `0` MB
+
+  - duration: `00:13:00`
+
+load simulations:
+
+  - `inject`, rate: `20`, interval: `00:00:01`, during: `00:05:00`
+
+  - `inject`, rate: `7000`, interval: `00:00:01`, during: `00:03:00`
+
+  - `inject`, rate: `20`, interval: `00:00:01`, during: `00:05:00`
+
+|step|ok stats|
+|---|---|
+|name|`global information`|
+|request count|all = `1272000`, ok = `1272000`, RPS = `1630.77`|
+|latency (ms)|min = `0.01`, mean = `64923.13`, max = `325482.16`, StdDev = `93282.83`|
+|latency percentile (ms)|p50 = `0.07`, p75 = `136839.17`, p95 = `257032.19`, p99 = `304349.18`|
+
+
+
+
+> scenario stats
+
+
+
+scenario: `long_run_long-run-topic-03`
+
+  - ok count: `1272000`
+
+  - fail count: `0`
+
+  - all data: `0` MB
+
+  - duration: `00:13:00`
+
+load simulations:
+
+  - `inject`, rate: `20`, interval: `00:00:01`, during: `00:05:00`
+
+  - `inject`, rate: `7000`, interval: `00:00:01`, during: `00:03:00`
+
+  - `inject`, rate: `20`, interval: `00:00:01`, during: `00:05:00`
+
+|step|ok stats|
+|---|---|
+|name|`global information`|
+|request count|all = `1272000`, ok = `1272000`, RPS = `1630.77`|
+|latency (ms)|min = `0.01`, mean = `64047.54`, max = `325827.91`, StdDev = `90250.73`|
+|latency percentile (ms)|p50 = `0.07`, p75 = `138149.89`, p95 = `242614.27`, p99 = `285212.67`|
+
+
+
+
+> scenario stats
+
+
+
+scenario: `long_run_long-run-topic-04`
+
+  - ok count: `1272000`
+
+  - fail count: `0`
+
+  - all data: `0` MB
+
+  - duration: `00:13:00`
+
+load simulations:
+
+  - `inject`, rate: `20`, interval: `00:00:01`, during: `00:05:00`
+
+  - `inject`, rate: `7000`, interval: `00:00:01`, during: `00:03:00`
+
+  - `inject`, rate: `20`, interval: `00:00:01`, during: `00:05:00`
+
+|step|ok stats|
+|---|---|
+|name|`global information`|
+|request count|all = `1272000`, ok = `1272000`, RPS = `1630.77`|
+|latency (ms)|min = `0.01`, mean = `68394.17`, max = `326554.66`, StdDev = `96772.31`|
+|latency percentile (ms)|p50 = `0.07`, p75 = `140115.97`, p95 = `281018.37`, p99 = `316669.95`|
+
+
+
+
+> scenario stats
+
+
+
+scenario: `long_run_long-run-topic-05`
+
+  - ok count: `1272000`
+
+  - fail count: `0`
+
+  - all data: `0` MB
+
+  - duration: `00:13:00`
+
+load simulations:
+
+  - `inject`, rate: `20`, interval: `00:00:01`, during: `00:05:00`
+
+  - `inject`, rate: `7000`, interval: `00:00:01`, during: `00:03:00`
+
+  - `inject`, rate: `20`, interval: `00:00:01`, during: `00:05:00`
+
+|step|ok stats|
+|---|---|
+|name|`global information`|
+|request count|all = `1272000`, ok = `1272000`, RPS = `1630.77`|
+|latency (ms)|min = `0.01`, mean = `93282.75`, max = `352074.66`, StdDev = `123160.17`|
+|latency percentile (ms)|p50 = `0.07`, p75 = `220463.1`, p95 = `312999.94`, p99 = `338165.76`|
+
+
+
+
+> scenario stats
+
+
+
+scenario: `long_run_long-run-topic-06`
+
+  - ok count: `1272000`
+
+  - fail count: `0`
+
+  - all data: `0` MB
+
+  - duration: `00:13:00`
+
+load simulations:
+
+  - `inject`, rate: `20`, interval: `00:00:01`, during: `00:05:00`
+
+  - `inject`, rate: `7000`, interval: `00:00:01`, during: `00:03:00`
+
+  - `inject`, rate: `20`, interval: `00:00:01`, during: `00:05:00`
+
+|step|ok stats|
+|---|---|
+|name|`global information`|
+|request count|all = `1272000`, ok = `1272000`, RPS = `1630.77`|
+|latency (ms)|min = `0.01`, mean = `102650.34`, max = `418137.29`, StdDev = `114904.68`|
+|latency percentile (ms)|p50 = `45514.75`, p75 = `196476.93`, p95 = `309592.06`, p99 = `389545.98`|
+
+
+
+
+> scenario stats
+
+
+
+scenario: `long_run_long-run-topic-07`
+
+  - ok count: `1272000`
+
+  - fail count: `0`
+
+  - all data: `0` MB
+
+  - duration: `00:13:00`
+
+load simulations:
+
+  - `inject`, rate: `20`, interval: `00:00:01`, during: `00:05:00`
+
+  - `inject`, rate: `7000`, interval: `00:00:01`, during: `00:03:00`
+
+  - `inject`, rate: `20`, interval: `00:00:01`, during: `00:05:00`
+
+|step|ok stats|
+|---|---|
+|name|`global information`|
+|request count|all = `1272000`, ok = `1272000`, RPS = `1630.77`|
+|latency (ms)|min = `0.01`, mean = `99900.01`, max = `427789.01`, StdDev = `122097.42`|
+|latency percentile (ms)|p50 = `23019.52`, p75 = `183107.58`, p95 = `353370.11`, p99 = `410517.5`|
+
+
+
+
+> scenario stats
+
+
+
+scenario: `long_run_long-run-topic-08`
+
+  - ok count: `1272000`
+
+  - fail count: `0`
+
+  - all data: `0` MB
+
+  - duration: `00:13:00`
+
+load simulations:
+
+  - `inject`, rate: `20`, interval: `00:00:01`, during: `00:05:00`
+
+  - `inject`, rate: `7000`, interval: `00:00:01`, during: `00:03:00`
+
+  - `inject`, rate: `20`, interval: `00:00:01`, during: `00:05:00`
+
+|step|ok stats|
+|---|---|
+|name|`global information`|
+|request count|all = `1272000`, ok = `1272000`, RPS = `1630.77`|
+|latency (ms)|min = `0.01`, mean = `106805.77`, max = `420763.58`, StdDev = `129514.62`|
+|latency percentile (ms)|p50 = `68485.12`, p75 = `184680.45`, p95 = `376700.93`, p99 = `412876.8`|
+
+
+
+
+> scenario stats
+
+
+
+scenario: `long_run_long-run-topic-09`
+
+  - ok count: `1272000`
+
+  - fail count: `0`
+
+  - all data: `0` MB
+
+  - duration: `00:13:00`
+
+load simulations:
+
+  - `inject`, rate: `20`, interval: `00:00:01`, during: `00:05:00`
+
+  - `inject`, rate: `7000`, interval: `00:00:01`, during: `00:03:00`
+
+  - `inject`, rate: `20`, interval: `00:00:01`, during: `00:05:00`
+
+|step|ok stats|
+|---|---|
+|name|`global information`|
+|request count|all = `1272000`, ok = `1272000`, RPS = `1630.77`|
+|latency (ms)|min = `0.01`, mean = `98763.12`, max = `419459.11`, StdDev = `118977.08`|
+|latency percentile (ms)|p50 = `25739.26`, p75 = `180224`, p95 = `338427.9`, p99 = `404488.19`|
+
+
+
+
+> scenario stats
+
+
+
+scenario: `long_run_long-run-topic-10`
+
+  - ok count: `1272000`
+
+  - fail count: `0`
+
+  - all data: `0` MB
+
+  - duration: `00:13:00`
+
+load simulations:
+
+  - `inject`, rate: `20`, interval: `00:00:01`, during: `00:05:00`
+
+  - `inject`, rate: `7000`, interval: `00:00:01`, during: `00:03:00`
+
+  - `inject`, rate: `20`, interval: `00:00:01`, during: `00:05:00`
+
+|step|ok stats|
+|---|---|
+|name|`global information`|
+|request count|all = `1272000`, ok = `1272000`, RPS = `1630.77`|
+|latency (ms)|min = `0.01`, mean = `102100.12`, max = `420526.64`, StdDev = `125542.33`|
+|latency percentile (ms)|p50 = `25919.49`, p75 = `179306.5`, p95 = `369623.04`, p99 = `411828.22`|
+
+
+
+
