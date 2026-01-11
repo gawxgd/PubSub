@@ -29,9 +29,9 @@ namespace BddE2eTests.Features
         
         private static string[] featureTags = ((string[])(null));
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new System.Globalization.CultureInfo("en-US"), "Features", "Subscriber Offset Positions", "    As a system integrator\n    I want to verify that multiple subscribers maintai" +
-                "n their own positions independently\n    So that each subscriber can consume mess" +
-                "ages at its own pace without affecting others", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags);
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new System.Globalization.CultureInfo("en-US"), "Features", "Subscriber Offset Positions", "    As a system integrator\r\n    I want to verify that multiple subscribers mainta" +
+                "in their own positions independently\r\n    So that each subscriber can consume me" +
+                "ssages at its own pace without affecting others", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags);
         
 #line 1 "SubscriberOffsetPositions.feature"
 #line hidden

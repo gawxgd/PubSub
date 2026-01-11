@@ -183,6 +183,9 @@ public sealed class TcpSubscriber<T>(
     {
         await _cts.CancelAsync();
 
+        requestChannel.Writer.TryComplete();
+        responseChannel.Writer.TryComplete();
+
         if (connection is TcpSubscriberConnection tcpConnection)
         {
             await tcpConnection.DisconnectAndCloseChannelsAsync();
@@ -190,12 +193,7 @@ public sealed class TcpSubscriber<T>(
         else
         {
             await connection.DisconnectAsync();
-            requestChannel.Writer.TryComplete();
-            responseChannel.Writer.TryComplete();
         }
-
-        await requestChannel.Reader.Completion;
-        await responseChannel.Reader.Completion;
 
         _cts.Dispose();
     }

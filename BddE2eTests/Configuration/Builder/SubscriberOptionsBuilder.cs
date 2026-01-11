@@ -69,13 +69,18 @@ public class SubscriberOptionsBuilder(SubscriberTestOptions options)
 
     public SubscriberOptions Build()
     {
-        return new SubscriberOptions
-        {
-            MessageBrokerConnectionUri = new Uri($"messageBroker://{_brokerHost}:{_brokerPort}"),
-            SchemaRegistryConnectionUri = new Uri($"http://{_schemaRegistryHost}:{_schemaRegistryPort}"),
-            Topic = _topic,
-            PollInterval = _pollInterval,
-            MaxRetryAttempts = _maxRetryAttempts
-        };
+        return new SubscriberOptions(
+            MessageBrokerConnectionUri: new Uri($"messageBroker://{_brokerHost}:{_brokerPort}"),
+            SchemaRegistryConnectionUri: new Uri($"http://{_schemaRegistryHost}:{_schemaRegistryPort}"),
+            Host: _brokerHost,
+            Port: _brokerPort,
+            Topic: _topic,
+            MinMessageLength: 0,
+            MaxMessageLength: int.MaxValue,
+            MaxQueueSize: 65536,
+            PollInterval: _pollInterval,
+            SchemaRegistryTimeout: _schemaRegistryTimeout,
+            MaxRetryAttempts: _maxRetryAttempts
+        );
     }
 }

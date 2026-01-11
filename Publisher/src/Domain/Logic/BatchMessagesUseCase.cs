@@ -18,15 +18,18 @@ public sealed class BatchMessagesUseCase(ILogRecordBatchWriter batchWriter)
     }
 
     public bool ShouldFlush(int maxBytes, TimeSpan maxDelay)
-    {
+    {   
         var now = DateTime.UtcNow;
         var full = _currentBatchBytes >= maxBytes;
         var timeout = now - _lastFlush >= maxDelay;
         return full || timeout;
     }
-
     public byte[] Build()
     {
+        if (_messages.Count == 0)
+        {
+            throw new InvalidOperationException("Cannot build batch from empty message list");
+        }
         var timestamp = (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
         var records = _messages.Select((msg, index) => new LogRecord(

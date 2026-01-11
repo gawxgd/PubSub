@@ -43,14 +43,9 @@ public sealed class TcpPublisher<T>(
             await _cancellationTokenSource.CancelAsync();
 
             _channel.Writer.TryComplete();
-
-            await _channel.Reader.Completion;
-
-            await SafeDisconnectPublisher();
-
             _deadLetterChannel.Writer.TryComplete();
-
-            await _deadLetterChannel.Reader.Completion;
+            
+            await SafeDisconnectPublisher();
 
             _cancellationTokenSource.Dispose();
         }

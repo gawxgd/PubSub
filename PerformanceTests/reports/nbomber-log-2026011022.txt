@@ -1,0 +1,39 @@
+2026-01-10 22:02:50.554 +01:00 [INF] [ThreadId:9] NBomber 6.1.2 started a new session: 2026-01-10_21.02.47_session_b798c772
+2026-01-10 22:02:50.629 +01:00 [INF] [ThreadId:9] NBomber started as single node
+2026-01-10 22:02:50.635 +01:00 [INF] [ThreadId:9] License validation....
+2026-01-10 22:02:50.636 +01:00 [WRN] [ThreadId:9] THIS VERSION IS FREE ONLY FOR PERSONAL USE. You can't use it for an organization.
+2026-01-10 22:02:50.658 +01:00 [INF] [ThreadId:9] Reports folder: C:\src\github\sandrawar\PubSub\PerformanceTests\bin\Debug\net9.0\reports
+2026-01-10 22:02:50.660 +01:00 [INF] [ThreadId:9] Plugins: no plugins were loaded
+2026-01-10 22:02:50.673 +01:00 [INF] [ThreadId:9] Reporting sinks: no reporting sinks were loaded
+2026-01-10 22:02:50.674 +01:00 [INF] [ThreadId:9] Starting init...
+2026-01-10 22:02:50.688 +01:00 [INF] [ThreadId:9] Target scenarios: long_run_long-run-topic-01, long_run_long-run-topic-02, long_run_long-run-topic-03, long_run_long-run-topic-04, long_run_long-run-topic-05, long_run_long-run-topic-06, long_run_long-run-topic-07, long_run_long-run-topic-08, long_run_long-run-topic-09, long_run_long-run-topic-10
+2026-01-10 22:02:50.691 +01:00 [INF] [ThreadId:9] Start init scenario: long_run_long-run-topic-01
+2026-01-10 22:02:54.077 +01:00 [INF] [ThreadId:13] Start init scenario: long_run_long-run-topic-02
+2026-01-10 22:02:57.173 +01:00 [INF] [ThreadId:16] Start init scenario: long_run_long-run-topic-03
+2026-01-10 22:03:00.263 +01:00 [INF] [ThreadId:20] Start init scenario: long_run_long-run-topic-04
+2026-01-10 22:03:03.409 +01:00 [INF] [ThreadId:11] Start init scenario: long_run_long-run-topic-05
+2026-01-10 22:03:06.523 +01:00 [INF] [ThreadId:21] Start init scenario: long_run_long-run-topic-06
+2026-01-10 22:03:09.586 +01:00 [INF] [ThreadId:12] Start init scenario: long_run_long-run-topic-07
+2026-01-10 22:03:12.667 +01:00 [INF] [ThreadId:23] Start init scenario: long_run_long-run-topic-08
+2026-01-10 22:03:15.796 +01:00 [INF] [ThreadId:31] Start init scenario: long_run_long-run-topic-09
+2026-01-10 22:03:18.870 +01:00 [INF] [ThreadId:43] Start init scenario: long_run_long-run-topic-10
+2026-01-10 22:03:21.989 +01:00 [INF] [ThreadId:60] Init finished
+2026-01-10 22:03:22.019 +01:00 [INF] [ThreadId:60] Starting warm up...
+2026-01-10 22:03:22.021 +01:00 [INF] [ThreadId:60] Warm up for scenarios: long_run_long-run-topic-01, long_run_long-run-topic-02, long_run_long-run-topic-03, long_run_long-run-topic-04, long_run_long-run-topic-05, long_run_long-run-topic-06, long_run_long-run-topic-07, long_run_long-run-topic-08, long_run_long-run-topic-09, long_run_long-run-topic-10
+2026-01-10 22:03:22.027 +01:00 [INF] [ThreadId:60] Warm up duration: 00:01:00
+2026-01-10 22:04:23.803 +01:00 [INF] [ThreadId:52] Starting bombing...
+2026-01-10 22:08:05.203 +01:00 [INF] [ThreadId:89] Waiting on scenarios completion...
+2026-01-10 22:08:14.327 +01:00 [INF] [ThreadId:53] Stopping scenarios...
+2026-01-10 22:08:14.330 +01:00 [INF] [ThreadId:53] Start cleaning scenario: long_run_long-run-topic-01
+2026-01-10 22:08:14.438 +01:00 [INF] [ThreadId:240] Start cleaning scenario: long_run_long-run-topic-02
+2026-01-10 22:08:14.615 +01:00 [INF] [ThreadId:218] Start cleaning scenario: long_run_long-run-topic-03
+2026-01-10 22:08:14.757 +01:00 [INF] [ThreadId:114] Start cleaning scenario: long_run_long-run-topic-04
+2026-01-10 22:08:14.971 +01:00 [INF] [ThreadId:237] Start cleaning scenario: long_run_long-run-topic-05
+2026-01-10 22:08:15.046 +01:00 [INF] [ThreadId:51] Start cleaning scenario: long_run_long-run-topic-06
+2026-01-10 22:08:15.250 +01:00 [INF] [ThreadId:184] Start cleaning scenario: long_run_long-run-topic-07
+2026-01-10 22:08:15.431 +01:00 [INF] [ThreadId:184] Start cleaning scenario: long_run_long-run-topic-08
+2026-01-10 22:08:15.565 +01:00 [INF] [ThreadId:256] Start cleaning scenario: long_run_long-run-topic-09
+2026-01-10 22:08:15.692 +01:00 [INF] [ThreadId:202] Start cleaning scenario: long_run_long-run-topic-10
+2026-01-10 22:08:15.756 +01:00 [INF] [ThreadId:164] Calculating final statistics...
+2026-01-10 22:08:16.697 +01:00 [INF] [ThreadId:67] Reports saved in folder: C:\src\github\sandrawar\PubSub\PerformanceTests\reports
+2026-01-10 22:08:16.699 +01:00 [WRN] [ThreadId:67] THIS VERSION IS FREE ONLY FOR PERSONAL USE. You can't use it for an organization.
