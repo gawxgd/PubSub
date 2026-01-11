@@ -10,6 +10,7 @@ namespace MessageBroker.Inbound.Adapter;
 public class StatisticsService(
     IConnectionRepository connectionRepository,
     ICommitLogFactory commitLogFactory,
+    ISubscriberDeliveryMetrics subscriberDeliveryMetrics,
     IOptions<List<CommitLogTopicOptions>> commitLogTopicOptions)
     : IStatisticsService
 {
@@ -59,9 +60,8 @@ public class StatisticsService(
         var totalPublished = topics.Sum(t => t.MessageCount);
         var messagesPublished = (int)Math.Min(totalPublished, int.MaxValue);
         
-        // Messages consumed - we don't track this separately yet, so use published as approximation
-        // TODO: Track consumed messages separately
-        var messagesConsumed = messagesPublished; // Placeholder
+        // Messages consumed = records sent from broker to subscribers (duplicates included)
+        var messagesConsumed = (int)Math.Min(subscriberDeliveryMetrics.GetTotalSentRecords(), int.MaxValue);
         
         return new Statistics
         {
