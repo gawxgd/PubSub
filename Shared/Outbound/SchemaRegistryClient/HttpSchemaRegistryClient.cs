@@ -27,10 +27,7 @@ public sealed class HttpSchemaRegistryClient : ISchemaRegistryClient
     public HttpSchemaRegistryClient(HttpClient httpClient, SchemaRegistryClientOptions options)
     {
         _httpClient = httpClient;
-        if (_httpClient.BaseAddress == null)
-        {
-            _httpClient.BaseAddress = options.BaseAddress;
-        }
+        _httpClient.BaseAddress = options.BaseAddress;
         _httpClient.Timeout = options.Timeout;
         _cache = new InMemorySchemaCache(options.CacheExpiration);
     }
