@@ -21,6 +21,7 @@ public class ProcessMessageUseCase<T>(
 
     private SchemaInfo? _cachedReaderSchema;
     private readonly SemaphoreSlim _schemaLock = new(1, 1);
+    private readonly AvroSchemaGenerator _avroSchemaGenerator = new();
 
     private async Task InitializeSchemaAsync(CancellationToken cancellationToken = default)
     {
@@ -29,7 +30,7 @@ public class ProcessMessageUseCase<T>(
         {
             if (_cachedReaderSchema != null) return;
 
-            var schemaJson = AvroSchemaGenerator.GenerateSchemaJson<T>();
+            var schemaJson = _avroSchemaGenerator.GenerateSchemaJson<T>();
             _cachedReaderSchema = await schemaRegistryClient.RegisterSchemaAsync(topic, schemaJson, cancellationToken);
             Logger.LogInfo($"Initialized reader schema for topic '{topic}' with ID: {_cachedReaderSchema.SchemaId}");
         }

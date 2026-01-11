@@ -29,9 +29,9 @@ namespace BddE2eTests.Features
         
         private static string[] featureTags = ((string[])(null));
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new System.Globalization.CultureInfo("en-US"), "Features", "Multiple Publisher and Subscriber Communication", "    As a system integrator\n    I want to verify that multiple publishers can send" +
-                " messages and multiple subscribers can receive them\n    So that the message brok" +
-                "er correctly routes messages between multiple components", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags);
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new System.Globalization.CultureInfo("en-US"), "Features", "Multiple Publisher and Subscriber Communication", "    As a system integrator\r\n    I want to verify that multiple publishers can sen" +
+                "d messages and multiple subscribers can receive them\r\n    So that the message br" +
+                "oker correctly routes messages between multiple components", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags);
         
 #line 1 "MultiplePublisherSubscriber.feature"
 #line hidden

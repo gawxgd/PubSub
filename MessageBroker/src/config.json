@@ -25,6 +25,12 @@
       "Directory": null
     },
     {
+      "Name": "performance-test",
+      "BaseOffset": 0,
+      "FlushIntervalMs": 100,
+      "Directory": null
+    },
+    {
       "Name": "metrics",
       "BaseOffset": 0,
       "FlushIntervalMs": 250,
@@ -35,6 +41,66 @@
       "BaseOffset": 0,
       "FlushIntervalMs": 500,
       "Directory": "logs/audit"
+    },
+    {
+      "Name": "long-run-topic-01",
+      "BaseOffset": 0,
+      "FlushIntervalMs": 100,
+      "Directory": null
+    },
+    {
+      "Name": "long-run-topic-02",
+      "BaseOffset": 0,
+      "FlushIntervalMs": 100,
+      "Directory": null
+    },
+    {
+      "Name": "long-run-topic-03",
+      "BaseOffset": 0,
+      "FlushIntervalMs": 100,
+      "Directory": null
+    },
+    {
+      "Name": "long-run-topic-04",
+      "BaseOffset": 0,
+      "FlushIntervalMs": 100,
+      "Directory": null
+    },
+    {
+      "Name": "long-run-topic-05",
+      "BaseOffset": 0,
+      "FlushIntervalMs": 100,
+      "Directory": null
+    },
+    {
+      "Name": "long-run-topic-06",
+      "BaseOffset": 0,
+      "FlushIntervalMs": 100,
+      "Directory": null
+    },
+    {
+      "Name": "long-run-topic-07",
+      "BaseOffset": 0,
+      "FlushIntervalMs": 100,
+      "Directory": null
+    },
+    {
+      "Name": "long-run-topic-08",
+      "BaseOffset": 0,
+      "FlushIntervalMs": 100,
+      "Directory": null
+    },
+    {
+      "Name": "long-run-topic-09",
+      "BaseOffset": 0,
+      "FlushIntervalMs": 100,
+      "Directory": null
+    },
+    {
+      "Name": "long-run-topic-10",
+      "BaseOffset": 0,
+      "FlushIntervalMs": 100,
+      "Directory": null
     }
   ]
 }
