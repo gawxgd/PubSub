@@ -24,6 +24,12 @@ public sealed class DemoOptions
     /// Topic for demo TCP Publisher
     /// </summary>
     public string Topic { get; set; } = "DemoTopic";
+
+    /// <summary>
+    /// Topics to publish to. If set (non-empty), demo will publish round-robin across these topics.
+    /// Falls back to <see cref="Topic"/> when not provided.
+    /// </summary>
+    public string[] Topics { get; set; } = new[] { "default", "metrics", "audit" };
     
     /// <summary>
     /// Maximum size of a batch measured in bytes

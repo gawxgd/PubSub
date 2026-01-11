@@ -2,12 +2,25 @@ using MessageBroker.Domain.Entities;
 using MessageBroker.Domain.Enums;
 using MessageBroker.Domain.Port;
 using MessageBroker.Domain.Port.CommitLog;
+using MessageBroker.Infrastructure.Configuration.Options.CommitLog;
+using Microsoft.Extensions.Options;
 
 namespace MessageBroker.Inbound.Adapter;
 
-public class StatisticsService(IConnectionRepository connectionRepository, ICommitLogFactory commitLogFactory) 
+public class StatisticsService(
+    IConnectionRepository connectionRepository,
+    ICommitLogFactory commitLogFactory,
+    IOptions<List<CommitLogTopicOptions>> commitLogTopicOptions)
     : IStatisticsService
 {
+    private readonly string[] _knownTopics =
+        (commitLogTopicOptions.Value ?? new List<CommitLogTopicOptions>())
+        .Select(t => t.Name)
+        .Where(name => !string.IsNullOrWhiteSpace(name))
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+        .ToArray();
+
     public Statistics GetStatistics()
     {
         var connections = connectionRepository.GetAll();
@@ -16,9 +29,8 @@ public class StatisticsService(IConnectionRepository connectionRepository, IComm
         
         // Get statistics for known topics
         var topics = new List<TopicStatistics>();
-        var knownTopics = new[] { "default" }; // TODO: Get from configuration
         
-        foreach (var topic in knownTopics)
+        foreach (var topic in _knownTopics)
         {
             try
             {
@@ -43,8 +55,9 @@ public class StatisticsService(IConnectionRepository connectionRepository, IComm
             }
         }
         
-        // Messages published = high water mark for default topic
-        var messagesPublished = topics.FirstOrDefault(t => t.Name == "default")?.MessageCount ?? 0;
+        // Messages published = sum of message counts across all configured topics
+        var totalPublished = topics.Sum(t => t.MessageCount);
+        var messagesPublished = (int)Math.Min(totalPublished, int.MaxValue);
         
         // Messages consumed - we don't track this separately yet, so use published as approximation
         // TODO: Track consumed messages separately
