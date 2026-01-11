@@ -42,11 +42,8 @@ public sealed class TcpPublisher<T>(
         {
             await _cancellationTokenSource.CancelAsync();
 
-            // Complete channels to unblock any readers/writers
             _channel.Writer.TryComplete();
             _deadLetterChannel.Writer.TryComplete();
-
-            // Don't await channel completion - it can block if readers are still pending
             
             await SafeDisconnectPublisher();
 

@@ -183,7 +183,6 @@ public sealed class TcpSubscriber<T>(
     {
         await _cts.CancelAsync();
 
-        // Complete channels to unblock any readers/writers
         requestChannel.Writer.TryComplete();
         responseChannel.Writer.TryComplete();
 
@@ -195,9 +194,6 @@ public sealed class TcpSubscriber<T>(
         {
             await connection.DisconnectAsync();
         }
-
-        // Don't await channel completion - it can block if readers are still pending
-        // The channels are completed, they will be garbage collected
 
         _cts.Dispose();
     }

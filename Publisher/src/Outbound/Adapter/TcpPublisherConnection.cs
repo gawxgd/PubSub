@@ -71,14 +71,11 @@ public sealed class TcpPublisherConnection(
             
             await _cancellationSource.CancelAsync();
 
-            // Close socket FIRST to unblock any pending I/O operations
             CloseSocketResources();
             
-            // Clear pipe references (don't await completion - can block)
             _pipeWriter = null;
             _pipeReader = null;
 
-            // Don't wait for tasks - they will exit on their own due to cancellation/socket closure
             _processChannelTask = null;
             _receiveResponseTask = null;
             

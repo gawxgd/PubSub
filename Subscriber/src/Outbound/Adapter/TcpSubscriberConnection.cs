@@ -89,15 +89,11 @@ public sealed class TcpSubscriberConnection(
 
             _cts.Cancel();
             
-            // Close socket first - this will unblock any pending I/O operations
             CloseSocketResources();
             
-            // Don't await pipe completion - just set to null
-            // The socket closure already invalidated them
             _pipeReader = null;
             _pipeWriter = null;
 
-            // Don't wait for loops - they will exit on their own due to cancellation/socket closure
             _writeLoopTask = null;
             _readLoopTask = null;
 
@@ -156,7 +152,7 @@ public sealed class TcpSubscriberConnection(
                         continue;
                     }
 
-                    //Logger.LogDebug($"Read {buffer.Length} bytes from broker");
+                    Logger.LogDebug($"Read {buffer.Length} bytes from broker");
 
                     while (TryReadBatchMessage(ref buffer, out var batchBytes))
                     {
