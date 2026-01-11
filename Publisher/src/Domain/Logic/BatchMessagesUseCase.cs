@@ -19,7 +19,6 @@ public sealed class BatchMessagesUseCase(ILogRecordBatchWriter batchWriter)
 
     public bool ShouldFlush(int maxBytes, TimeSpan maxDelay)
     {
-        // Don't flush if there are no messages
         if (_messages.Count == 0)
         {
             return false;
@@ -30,19 +29,15 @@ public sealed class BatchMessagesUseCase(ILogRecordBatchWriter batchWriter)
         var timeout = now - _lastFlush >= maxDelay;
         return full || timeout;
     }
-
     public byte[] Build()
     {
         if (_messages.Count == 0)
         {
             throw new InvalidOperationException("Cannot build batch from empty message list");
         }
-        
-        var messagesCopy = new List<byte[]>(_messages);
-
         var timestamp = (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
-        var records = messagesCopy.Select((msg, index) => new LogRecord(
+        var records = _messages.Select((msg, index) => new LogRecord(
             Offset: (ulong)index,
             Timestamp: timestamp,
             Payload: msg
