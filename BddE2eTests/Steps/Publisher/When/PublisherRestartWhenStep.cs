@@ -1,5 +1,4 @@
 using BddE2eTests.Configuration;
-using BddE2eTests.Configuration.TestEvents;
 using NUnit.Framework;
 using Publisher.Configuration;
 using Reqnroll;
@@ -23,12 +22,12 @@ public class PublisherRestartWhenStep(ScenarioContext scenarioContext)
 
     private async Task DisposeOldPublisherSafelyAsync()
     {
-        if (_context.TryGetPublisher(out var oldPublisher) && oldPublisher is IAsyncDisposable oldDisposable)
+        if (_context.TryGetPublisher(out var oldPublisher))
         {
             try
             {
                 await TestContext.Progress.WriteLineAsync("[When Step] Disposing old publisher...");
-                await oldDisposable.DisposeAsync();
+                await oldPublisher!.DisposeAsync();
             }
             catch (ObjectDisposedException)
             {
@@ -49,14 +48,16 @@ public class PublisherRestartWhenStep(ScenarioContext scenarioContext)
         
         var schemaRegistryClientFactory = schemaRegistryBuilder.BuildFactory();
 
-        var publisherFactory = new PublisherFactory<TestEvent>(schemaRegistryClientFactory);
-        var newPublisher = publisherFactory.CreatePublisher(publisherOptions);
+        var messageType = _context.Publisher.MessageType;
+        var publisherFactoryType = typeof(PublisherFactory<>).MakeGenericType(messageType);
+        var publisherFactory = Activator.CreateInstance(publisherFactoryType, schemaRegistryClientFactory)!;
+        var newPublisher = ((dynamic)publisherFactory).CreatePublisher(publisherOptions);
 
         await TestContext.Progress.WriteLineAsync("[When Step] Connecting to broker...");
-        await newPublisher.CreateConnection();
+        await ((dynamic)newPublisher).CreateConnection();
         await TestContext.Progress.WriteLineAsync("[When Step] Publisher connected!");
 
-        _context.Publisher = newPublisher;
+        _context.Publisher = new PublisherHandle(newPublisher, messageType);
 
         await TestContext.Progress.WriteLineAsync("[When Step] Publisher restarted!");
     }

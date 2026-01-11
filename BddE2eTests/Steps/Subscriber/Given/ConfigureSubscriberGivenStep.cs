@@ -5,7 +5,6 @@ using BddE2eTests.Configuration;
 using BddE2eTests.Configuration.Builder;
 using BddE2eTests.Configuration.Options;
 using BddE2eTests.Configuration.TestEvents;
-using Subscriber.Domain;
 using Subscriber.Outbound.Adapter;
 
 namespace BddE2eTests.Steps.Subscriber.Given;
@@ -29,7 +28,20 @@ public class ConfigureSubscriberGivenStep(ScenarioContext scenarioContext)
     public async Task GivenASubscriberIsConfiguredWithTheFollowingOptions(Table table)
     {
         await TestContext.Progress.WriteLineAsync("[Subscriber Step] Starting subscriber configuration...");
-        var (subscriber, receivedMessages, topic) = await CreateSubscriberFromTableAsync(table);
+        var (subscriber, receivedMessages, topic) = await CreateSubscriberFromTableAsync<TestEvent>(table);
+
+        _context.Subscriber = subscriber;
+        _context.ReceivedMessages = receivedMessages;
+        _context.Topic = topic;
+    }
+    
+    [Given(@"a subscriber of type ""(.*)"" is configured with the following options:")]
+    public async Task GivenASubscriberOfTypeIsConfiguredWithTheFollowingOptions(string eventType, Table table)
+    {
+        await TestContext.Progress.WriteLineAsync(
+            $"[Subscriber Step] Starting subscriber configuration for event type '{eventType}'...");
+        
+        var (subscriber, receivedMessages, topic) = await CreateSubscriberFromTableAsync(eventType, table);
 
         _context.Subscriber = subscriber;
         _context.ReceivedMessages = receivedMessages;
@@ -45,7 +57,7 @@ public class ConfigureSubscriberGivenStep(ScenarioContext scenarioContext)
         foreach (var name in names)
         {
             await TestContext.Progress.WriteLineAsync($"[Subscriber Step] Configuring subscriber '{name}'...");
-            var (subscriber, receivedMessages, topic) = await CreateSubscriberFromTableAsync(table);
+            var (subscriber, receivedMessages, topic) = await CreateSubscriberFromTableAsync<TestEvent>(table);
             _context.SetSubscriber(name, subscriber, receivedMessages);
         }
         
@@ -57,7 +69,7 @@ public class ConfigureSubscriberGivenStep(ScenarioContext scenarioContext)
     public async Task GivenSubscriberIsConfiguredStartingAtOffsetWithTheFollowingOptions(string subscriberName, ulong initialOffset, Table table)
     {
         await TestContext.Progress.WriteLineAsync($"[Subscriber Step] Starting subscriber '{subscriberName}' configuration at offset {initialOffset}...");
-        var (subscriber, receivedMessages, topic) = await CreateSubscriberFromTableAsync(table, initialOffset);
+        var (subscriber, receivedMessages, topic) = await CreateSubscriberFromTableAsync<TestEvent>(table, initialOffset);
 
         _context.SetSubscriber(subscriberName, subscriber, receivedMessages);
         _context.Topic = topic;
@@ -65,7 +77,32 @@ public class ConfigureSubscriberGivenStep(ScenarioContext scenarioContext)
         await TestContext.Progress.WriteLineAsync($"[Subscriber Step] Subscriber '{subscriberName}' configured at offset {initialOffset}!");
     }
 
-    private async Task<(ISubscriber<TestEvent> subscriber, Channel<TestEvent> receivedMessages, string topic)> CreateSubscriberFromTableAsync(Table table, ulong? initialOffset = null)
+    private Task<(SubscriberHandle subscriber, Channel<ITestEvent> receivedMessages, string topic)> CreateSubscriberFromTableAsync(
+        string eventType,
+        Table table,
+        ulong? initialOffset = null)
+    {
+        var resolvedType = TestEventTypeResolver.Resolve(eventType);
+        if (resolvedType == typeof(TestEvent))
+        {
+            return CreateSubscriberFromTableAsync<TestEvent>(table, initialOffset);
+        }
+        if (resolvedType == typeof(TestEventWithAdditionalField))
+        {
+            return CreateSubscriberFromTableAsync<TestEventWithAdditionalField>(table, initialOffset);
+        }
+        if (resolvedType == typeof(TestEventWithAdditionalDefaultField))
+        {
+            return CreateSubscriberFromTableAsync<TestEventWithAdditionalDefaultField>(table, initialOffset);
+        }
+
+        throw new ArgumentException($"Unsupported subscriber event type '{eventType}'", nameof(eventType));
+    }
+    
+    private async Task<(SubscriberHandle subscriber, Channel<ITestEvent> receivedMessages, string topic)> CreateSubscriberFromTableAsync<TEvent>(
+        Table table,
+        ulong? initialOffset = null)
+        where TEvent : class, ITestEvent, new()
     {
         var builder = CreateSubscriberOptionsBuilderFromTable(table);
         var topic = ExtractTopicFromTable(table);
@@ -76,7 +113,7 @@ public class ConfigureSubscriberGivenStep(ScenarioContext scenarioContext)
         }
 
         await TestContext.Progress.WriteLineAsync($"[Subscriber Step] Building options for topic: {topic}");
-        var receivedMessages = Channel.CreateUnbounded<TestEvent>();
+        var receivedMessages = Channel.CreateUnbounded<ITestEvent>();
         var connectionReady = new TaskCompletionSource();
 
         var subscriberOptions = builder
@@ -88,14 +125,14 @@ public class ConfigureSubscriberGivenStep(ScenarioContext scenarioContext)
         var schemaRegistryClient = schemaRegistryBuilder.Build();
 
         await TestContext.Progress.WriteLineAsync("[Subscriber Step] Creating subscriber factory...");
-        var subscriberFactory = new SubscriberFactory<TestEvent>(schemaRegistryClient);
+        var subscriberFactory = new SubscriberFactory<TEvent>(schemaRegistryClient);
 
         await TestContext.Progress.WriteLineAsync("[Subscriber Step] Creating subscriber...");
         var subscriber = subscriberFactory.CreateSubscriber(subscriberOptions,
             async (message) => { await receivedMessages.Writer.WriteAsync(message); });
 
         await TestContext.Progress.WriteLineAsync("[Subscriber Step] Connecting to broker...");
-        if (initialOffset.HasValue && subscriber is TcpSubscriber<TestEvent> tcpSubscriber)
+        if (initialOffset.HasValue && subscriber is TcpSubscriber<TEvent> tcpSubscriber)
         {
             await tcpSubscriber.StartConnectionAsync(initialOffset.Value);
             await TestContext.Progress.WriteLineAsync($"[Subscriber Step] Subscriber connected at offset {initialOffset.Value}!");
@@ -114,7 +151,7 @@ public class ConfigureSubscriberGivenStep(ScenarioContext scenarioContext)
         await connectionReady.Task;
         await TestContext.Progress.WriteLineAsync("[Subscriber Step] Subscriber setup complete!");
 
-        return (subscriber, receivedMessages, topic);
+        return (new SubscriberHandle(subscriber, typeof(TEvent), receivedMessages), receivedMessages, topic);
     }
 
     private SubscriberOptionsBuilder CreateSubscriberOptionsBuilderFromTable(Table table)
@@ -179,10 +216,9 @@ public class ConfigureSubscriberGivenStep(ScenarioContext scenarioContext)
         TestContext.Progress.WriteLine("[Cleanup] Starting subscriber cleanup...");
         try
         {
-            if (_context.TryGetSubscriber(out var subscriber)
-                && subscriber is IAsyncDisposable subscriberDisposable)
+            if (_context.TryGetSubscriber(out var subscriber))
             {
-                await subscriberDisposable.DisposeAsync();
+                await subscriber.DisposeAsync();
             }
 
             if (_context.TryGetReceivedMessages(out var channel))
@@ -192,10 +228,7 @@ public class ConfigureSubscriberGivenStep(ScenarioContext scenarioContext)
 
             foreach (var sub in _context.GetAllSubscribers())
             {
-                if (sub is IAsyncDisposable disposable)
-                {
-                    await disposable.DisposeAsync();
-                }
+                await sub.DisposeAsync();
             }
 
             TestContext.Progress.WriteLine("[Cleanup] Subscriber cleanup complete");

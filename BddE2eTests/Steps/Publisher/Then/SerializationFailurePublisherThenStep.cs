@@ -5,7 +5,7 @@ using Shared.Domain.Exceptions.SchemaRegistryClient;
 namespace BddE2eTests.Steps.Publisher.Then;
 
 [Binding]
-public class PublisherThenStep(ScenarioContext scenarioContext)
+public class SerializationFailurePublisherThenStep(ScenarioContext scenarioContext)
 {
     private readonly ScenarioTestContext _context = new(scenarioContext);
     

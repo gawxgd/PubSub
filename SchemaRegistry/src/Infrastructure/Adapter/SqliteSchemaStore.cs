@@ -25,7 +25,7 @@ public sealed class SqliteSchemaStore : ISchemaStore
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 topic TEXT NOT NULL,
                 version INTEGER NOT NULL,
-                checksum TEXT NOT NULL UNIQUE,
+                checksum TEXT NOT NULL,
                 schema_json TEXT NOT NULL,
                 created_at TEXT NOT NULL
             );
@@ -35,6 +35,9 @@ public sealed class SqliteSchemaStore : ISchemaStore
 
             CREATE INDEX IF NOT EXISTS ix_schemas_topic
                 ON schemas(topic);
+
+            CREATE INDEX IF NOT EXISTS ix_schemas_checksum
+                ON schemas(checksum);
         """;
 
         command.ExecuteNonQuery();

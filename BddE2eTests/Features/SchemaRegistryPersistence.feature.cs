@@ -20,18 +20,19 @@ namespace BddE2eTests.Features
     [System.CodeDom.Compiler.GeneratedCodeAttribute("Reqnroll", "2.0.0.0")]
     [System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     [NUnit.Framework.TestFixtureAttribute()]
-    [NUnit.Framework.DescriptionAttribute("Publishing messages to a non-existent topic")]
+    [NUnit.Framework.DescriptionAttribute("Schema Registry persistence")]
     [NUnit.Framework.FixtureLifeCycleAttribute(NUnit.Framework.LifeCycle.InstancePerTestCase)]
-    public partial class PublishingMessagesToANon_ExistentTopicFeature
+    public partial class SchemaRegistryPersistenceFeature
     {
         
         private global::Reqnroll.ITestRunner testRunner;
         
         private static string[] featureTags = ((string[])(null));
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new System.Globalization.CultureInfo("en-US"), "Features", "Publishing messages to a non-existent topic", null, global::Reqnroll.ProgrammingLanguage.CSharp, featureTags);
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new System.Globalization.CultureInfo("en-US"), "Features", "Schema Registry persistence", "    As a system integrator\n    I want schema registry to persist schemas across r" +
+                "estarts\n    So that publishers/subscribers can continue to work after restarts", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags);
         
-#line 1 "PublishingToNonExistentTopic.feature"
+#line 1 "SchemaRegistryPersistence.feature"
 #line hidden
         
         [NUnit.Framework.OneTimeSetUpAttribute()]
@@ -83,15 +84,13 @@ namespace BddE2eTests.Features
         }
         
         [NUnit.Framework.TestAttribute()]
-        [NUnit.Framework.DescriptionAttribute("Publisher tries to publish a message to a topic which is not set up in the Commit" +
-            " Log")]
-        public async System.Threading.Tasks.Task PublisherTriesToPublishAMessageToATopicWhichIsNotSetUpInTheCommitLog()
+        [NUnit.Framework.DescriptionAttribute("Schema Registry persists schema after restart")]
+        public async System.Threading.Tasks.Task SchemaRegistryPersistsSchemaAfterRestart()
         {
             string[] tagsOfScenario = ((string[])(null));
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Publisher tries to publish a message to a topic which is not set up in the Commit" +
-                    " Log", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 3
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Schema Registry persists schema after restart", null, tagsOfScenario, argumentsOfScenario, featureTags);
+#line 6
     this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -101,32 +100,14 @@ namespace BddE2eTests.Features
             else
             {
                 await this.ScenarioStartAsync();
-                global::Reqnroll.Table table50 = new global::Reqnroll.Table(new string[] {
-                            "Setting",
-                            "Value"});
-                table50.AddRow(new string[] {
-                            "Topic",
-                            "non-existent"});
-                table50.AddRow(new string[] {
-                            "Broker",
-                            "127.0.0.1:9096"});
-                table50.AddRow(new string[] {
-                            "Queue Size",
-                            "1000"});
-                table50.AddRow(new string[] {
-                            "Max Retry Attempts",
-                            "3"});
-                table50.AddRow(new string[] {
-                            "Max Send Attempts",
-                            "3"});
-#line 4
-        await testRunner.GivenAsync("a publisher is configured with the following options:", ((string)(null)), table50, "Given ");
+#line 7
+        await testRunner.GivenAsync("the schema registry contains a schema for topic \"test-topic\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 11
-        await testRunner.WhenAsync("the publisher sends message \"message-content\" to topic \"non-existent\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line 8
+        await testRunner.WhenAsync("schema registry restarts", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 12
-        await testRunner.ThenAsync("the publisher reports that the topic is not available", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line 9
+        await testRunner.ThenAsync("the schema registry still contains the same schema for topic \"test-topic\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
