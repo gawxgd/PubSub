@@ -94,12 +94,21 @@ Console.CancelKeyPress += (sender, eventArgs) =>
     Console.WriteLine("\n\nShutdown signal received...");
 };
 
-IPublisher<DemoMessage>? publisher = null;
 MessagePublisherService<DemoMessage>? publisherService = null;
 SimpleHttpClientFactory? httpClientFactory = null;
 
-var topic = demoOptions.Topic ?? "default";
-Console.WriteLine($"Using topic: {topic}\n");
+var topicsToUse = (demoOptions.Topics ?? Array.Empty<string>())
+    .Where(t => !string.IsNullOrWhiteSpace(t))
+    .Distinct(StringComparer.OrdinalIgnoreCase)
+    .OrderBy(t => t, StringComparer.OrdinalIgnoreCase)
+    .ToArray();
+
+if (topicsToUse.Length == 0)
+{
+    topicsToUse = new[] { demoOptions.Topic ?? "default" };
+}
+
+Console.WriteLine($"Using topics: {string.Join(", ", topicsToUse)}\n");
 
 try
 {
@@ -110,24 +119,24 @@ try
     // Create PublisherFactory
     var publisherFactory = new PublisherFactory<DemoMessage>(schemaRegistryClientFactory);
     
-    // Create PublisherOptions
-    // Use the batch settings calculated above
-    var publisherOptions = new PublisherOptions(
-        MessageBrokerConnectionUri: new Uri($"messageBroker://{brokerOptions.Host}:{brokerOptions.Port}"),
-        SchemaRegistryConnectionUri: schemaRegistryOptions.BaseAddress,
-        SchemaRegistryTimeout: schemaRegistryOptions.Timeout,
-        Topic: demoOptions.Topic ?? "default",
-        MaxPublisherQueueSize: brokerOptions.MaxQueueSize,
-        MaxSendAttempts: 5,
-        MaxRetryAttempts: 5,
-        BatchMaxBytes: batchMaxBytes,
-        BatchMaxDelay: batchMaxDelay);
-    
-    // Create publisher
-    publisher = publisherFactory.CreatePublisher(publisherOptions);
-    
-    // Create publishing service
-    publisherService = new MessagePublisherService<DemoMessage>(publisher!, demoOptions);
+    // Create one publisher per topic (PublisherFactory binds topic into serializer)
+    var publishers = topicsToUse.Select(t =>
+    {
+        var publisherOptions = new PublisherOptions(
+            MessageBrokerConnectionUri: new Uri($"messageBroker://{brokerOptions.Host}:{brokerOptions.Port}"),
+            SchemaRegistryConnectionUri: schemaRegistryOptions.BaseAddress,
+            SchemaRegistryTimeout: schemaRegistryOptions.Timeout,
+            Topic: t,
+            MaxPublisherQueueSize: brokerOptions.MaxQueueSize,
+            MaxSendAttempts: 5,
+            MaxRetryAttempts: 5,
+            BatchMaxBytes: batchMaxBytes,
+            BatchMaxDelay: batchMaxDelay);
+        return (Topic: t, Publisher: publisherFactory.CreatePublisher(publisherOptions));
+    }).ToArray();
+
+    // Create publishing service (round-robin across topics)
+    publisherService = new MessagePublisherService<DemoMessage>(publishers, demoOptions);
     
     // Create SubscriberFactory
     var schemaRegistryClient = schemaRegistryClientFactory.Create();
@@ -204,10 +213,6 @@ finally
     if (publisherService is IAsyncDisposable serviceDisposable)
     {
         await serviceDisposable.DisposeAsync();
-    }
-    if (publisher != null && publisher is IAsyncDisposable publisherDisposable)
-    {
-        await publisherDisposable.DisposeAsync();
     }
     httpClientFactory?.Dispose();
 }
