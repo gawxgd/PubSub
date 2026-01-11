@@ -6,60 +6,39 @@ namespace Publisher.Domain.Logic;
 public sealed class BatchMessagesUseCase(ILogRecordBatchWriter batchWriter)
 {
     private readonly List<byte[]> _messages = new(128);
-    private readonly object _lock = new();
     private int _currentBatchBytes;
     private DateTime _lastFlush = DateTime.UtcNow;
 
-    public int Count
-    {
-        get
-        {
-            lock (_lock)
-            {
-                return _messages.Count;
-            }
-        }
-    }
+    public int Count => _messages.Count;
 
     public void Add(byte[] message)
     {
-        lock (_lock)
-        {
-            _messages.Add(message);
-            _currentBatchBytes += message.Length;
-        }
+        _messages.Add(message);
+        _currentBatchBytes += message.Length;
     }
 
     public bool ShouldFlush(int maxBytes, TimeSpan maxDelay)
     {
-        var now = DateTime.UtcNow;
-        lock (_lock)
+        // Don't flush if there are no messages
+        if (_messages.Count == 0)
         {
-            // Don't flush if there are no messages
-            if (_messages.Count == 0)
-            {
-                return false;
-            }
-            
-            var full = _currentBatchBytes >= maxBytes;
-            var timeout = now - _lastFlush >= maxDelay;
-            return full || timeout;
+            return false;
         }
+        
+        var now = DateTime.UtcNow;
+        var full = _currentBatchBytes >= maxBytes;
+        var timeout = now - _lastFlush >= maxDelay;
+        return full || timeout;
     }
 
     public byte[] Build()
     {
-        List<byte[]> messagesCopy;
-        lock (_lock)
+        if (_messages.Count == 0)
         {
-            if (_messages.Count == 0)
-            {
-                throw new InvalidOperationException("Cannot build batch from empty message list");
-            }
-            
-            // Create a copy to avoid race conditions during iteration
-            messagesCopy = new List<byte[]>(_messages);
+            throw new InvalidOperationException("Cannot build batch from empty message list");
         }
+        
+        var messagesCopy = new List<byte[]>(_messages);
 
         var timestamp = (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
@@ -83,11 +62,8 @@ public sealed class BatchMessagesUseCase(ILogRecordBatchWriter batchWriter)
 
     public void Clear()
     {
-        lock (_lock)
-        {
-            _messages.Clear();
-            _currentBatchBytes = 0;
-            _lastFlush = DateTime.UtcNow;
-        }
+        _messages.Clear();
+        _currentBatchBytes = 0;
+        _lastFlush = DateTime.UtcNow;
     }
 }
