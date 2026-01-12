@@ -23,11 +23,16 @@ public sealed class BinaryCommitLogAppender : ICommitLogAppender
     private readonly ITopicSegmentRegistry _segmentRegistry;
     private readonly AssignOffsetsUseCase _assignOffsetsUseCase = new();
 
-    private readonly Channel<ReadOnlyMemory<byte>> _batchChannel =
-        Channel.CreateBounded<ReadOnlyMemory<byte>>(new BoundedChannelOptions(100) //ToDo get from options
+    private sealed record AppendRequest(ReadOnlyMemory<byte> Payload, TaskCompletionSource<ulong> Completion);
+
+    // Append requests are enqueued; a periodic flush drains the queue and performs disk IO.
+    // ACK is returned only after the queued item is actually written + flushed.
+    private readonly Channel<AppendRequest> _batchChannel =
+        Channel.CreateBounded<AppendRequest>(new BoundedChannelOptions(100) //ToDo get from options
         {
             SingleWriter = false,
-            SingleReader = true,
+            // Both AppendAsync and the periodic flush may drain the channel, but they are serialized by _flushLock.
+            SingleReader = false,
             FullMode = BoundedChannelFullMode.Wait
         });
 
@@ -54,39 +59,39 @@ public sealed class BinaryCommitLogAppender : ICommitLogAppender
 
     public async ValueTask<ulong> AppendAsync(ReadOnlyMemory<byte> payload)
     {
-        await _flushLock.WaitAsync(_cancellationTokenSource.Token);
-        try
-        {
-            while (_batchChannel.Reader.TryRead(out var pendingMessage))
-            {
-                await WriteToSegment(pendingMessage, _cancellationTokenSource.Token);
-            }
+        // Enqueue first (FIFO), then flush the channel (older messages first), then await completion.
+        // ACK is returned only after THIS request is physically written+flushed by a channel drain.
+        var tcs = new TaskCompletionSource<ulong>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var req = new AppendRequest(payload, tcs);
 
-            var batchBaseOffset = _currentOffset;
-            await WriteToSegment(payload, _cancellationTokenSource.Token);
-            _segmentRegistry.UpdateCurrentOffset(_currentOffset);
+        // IMPORTANT: enqueue outside _flushLock to avoid deadlock when the bounded channel is full.
+        // If the channel is full, we must allow the background flusher (or another thread) to drain it.
+        await _batchChannel.Writer.WriteAsync(req, _cancellationTokenSource.Token)
+            .ConfigureAwait(false);
 
-            return batchBaseOffset;
-        }
-        finally
-        {
-            _flushLock.Release();
-        }
+        // Preserve the "existing logic": under the lock, drain all queued messages now.
+        // This ensures our request is flushed after everything that was queued before it,
+        // without waiting for the periodic flush interval.
+        await FlushChannelToLogSegmentAsync(CancellationToken.None).ConfigureAwait(false);
+
+        return await req.Completion.Task.ConfigureAwait(false);
     }
 
     public async ValueTask DisposeAsync()
     {
         try
         {
+            // Stop accepting new work and stop the periodic flush loop.
+            _batchChannel.Writer.TryComplete();
             await _cancellationTokenSource.CancelAsync();
-
             await _backgroundFlushTask;
 
-            await FlushChannelToLogSegmentAsync();
+            // Best-effort final drain without cancellation.
+            await FlushChannelToLogSegmentAsync(CancellationToken.None).ConfigureAwait(false);
 
             if (_activeSegmentWriter is IAsyncDisposable writer)
             {
-                await writer.DisposeAsync();
+                await writer.DisposeAsync().ConfigureAwait(false);
             }
         }
         catch (Exception ex)
@@ -95,22 +100,32 @@ public sealed class BinaryCommitLogAppender : ICommitLogAppender
         }
         finally
         {
-            _batchChannel.Writer.TryComplete();
+            // Release any pending callers if we are disposing while work is still queued.
+            while (_batchChannel.Reader.TryRead(out var pending))
+            {
+                pending.Completion.TrySetException(new ObjectDisposedException(nameof(BinaryCommitLogAppender)));
+            }
             _flushLock.Dispose();
             _cancellationTokenSource.Dispose();
         }
     }
 
-    private async Task FlushChannelToLogSegmentAsync()
+    private async Task FlushChannelToLogSegmentAsync(CancellationToken token)
     {
         await _flushLock.WaitAsync();
         try
         {
-            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token);
-
-            while (_batchChannel.Reader.TryRead(out var message))
+            while (_batchChannel.Reader.TryRead(out var req))
             {
-                await WriteToSegment(message, linkedCts.Token);
+                try
+                {
+                    var baseOffset = await WriteToSegment(req.Payload, token).ConfigureAwait(false);
+                    req.Completion.TrySetResult(baseOffset);
+                }
+                catch (Exception ex)
+                {
+                    req.Completion.TrySetException(ex);
+                }
             }
 
             _segmentRegistry.UpdateCurrentOffset(_currentOffset);
@@ -121,22 +136,24 @@ public sealed class BinaryCommitLogAppender : ICommitLogAppender
         }
     }
 
-    private async Task WriteToSegment(ReadOnlyMemory<byte> message, CancellationToken token)
+    private async Task<ulong> WriteToSegment(ReadOnlyMemory<byte> message, CancellationToken token)
     {
         var batchBaseOffset = _currentOffset;
         var batch = message.ToArray();
 
-        _currentOffset =
-            _assignOffsetsUseCase.AssignOffsets(batchBaseOffset,
-                batch);
+        var nextOffset = _assignOffsetsUseCase.AssignOffsets(batchBaseOffset, batch);
+        _currentOffset = nextOffset;
+        var batchLastOffset = nextOffset - 1;
 
         if (ShouldRollActiveSegment())
         {
-            await RollActiveSegmentAsync(batchBaseOffset);
+            await RollActiveSegmentAsync(batchBaseOffset).ConfigureAwait(false);
         }
 
-        await _activeSegmentWriter.AppendAsync(batch, batchBaseOffset, _currentOffset,
-            token);
+        await _activeSegmentWriter.AppendAsync(batch, batchBaseOffset, batchLastOffset, token)
+            .ConfigureAwait(false);
+
+        return batchBaseOffset;
     }
 
     private bool ShouldRollActiveSegment()
@@ -146,7 +163,7 @@ public sealed class BinaryCommitLogAppender : ICommitLogAppender
 
     private async Task RollActiveSegmentAsync(ulong newSegmentBaseOffset)
     {
-        await _activeSegmentWriter.DisposeAsync();
+        await _activeSegmentWriter.DisposeAsync().ConfigureAwait(false);
         var newSegment = _segmentFactory.CreateLogSegment(_directory, newSegmentBaseOffset);
         _activeSegmentWriter = _segmentFactory.CreateWriter(newSegment);
         _activeSegment = newSegment;
@@ -160,7 +177,7 @@ public sealed class BinaryCommitLogAppender : ICommitLogAppender
             while (!_cancellationTokenSource.Token.IsCancellationRequested)
             {
                 await Task.Delay(_flushInterval, _cancellationTokenSource.Token);
-                await FlushChannelToLogSegmentAsync();
+                await FlushChannelToLogSegmentAsync(_cancellationTokenSource.Token).ConfigureAwait(false);
             }
         }
         catch (Exception ex) when (ex is TaskCanceledException or OperationCanceledException)
