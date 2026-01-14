@@ -29,9 +29,9 @@ namespace BddE2eTests.Features
         
         private static string[] featureTags = ((string[])(null));
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new System.Globalization.CultureInfo("en-US"), "Features", "Commit Log Segment Management", "    As a system operator\r\n    I want the commit log to properly manage log segmen" +
-                "ts\r\n    So that large volumes of messages are handled correctly with segment rol" +
-                "ling", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags);
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new System.Globalization.CultureInfo("en-US"), "Features", "Commit Log Segment Management", "    As a system operator\n    I want the commit log to properly manage log segment" +
+                "s\n    So that large volumes of messages are handled correctly with segment rolli" +
+                "ng", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags);
         
 #line 1 "CommitLogSegments.feature"
 #line hidden
