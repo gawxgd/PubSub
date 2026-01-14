@@ -3,9 +3,7 @@ using System.Threading.Channels;
 using BddE2eTests.Configuration.Builder;
 using BddE2eTests.Configuration.Options;
 using BddE2eTests.Configuration.TestEvents;
-using Publisher.Domain.Port;
 using Reqnroll;
-using Subscriber.Domain;
 
 namespace BddE2eTests.Configuration;
 
@@ -26,22 +24,24 @@ public class ScenarioTestContext(ScenarioContext scenarioContext)
     private const string CommittedOffsetKey = "CommittedOffset";
 
     private static readonly TestOptions TestOptions = TestOptionsLoader.Load();
+    
+    public SchemaRegistryTestOptions SchemaRegistryOptions => TestOptions.SchemaRegistry;
 
-    public IPublisher<TestEvent> Publisher
+    public PublisherHandle Publisher
     {
-        get => scenarioContext.Get<IPublisher<TestEvent>>(PublisherKey);
+        get => scenarioContext.Get<PublisherHandle>(PublisherKey);
         set => scenarioContext.Set(value, PublisherKey);
     }
 
-    public ISubscriber<TestEvent> Subscriber
+    public SubscriberHandle Subscriber
     {
-        get => scenarioContext.Get<ISubscriber<TestEvent>>(SubscriberKey);
+        get => scenarioContext.Get<SubscriberHandle>(SubscriberKey);
         set => scenarioContext.Set(value, SubscriberKey);
     }
 
-    public Channel<TestEvent> ReceivedMessages
+    public Channel<ITestEvent> ReceivedMessages
     {
-        get => scenarioContext.Get<Channel<TestEvent>>(ReceivedMessagesKey);
+        get => scenarioContext.Get<Channel<ITestEvent>>(ReceivedMessagesKey);
         set => scenarioContext.Set(value, ReceivedMessagesKey);
     }
 
@@ -57,17 +57,17 @@ public class ScenarioTestContext(ScenarioContext scenarioContext)
         set => scenarioContext.Set(value, SentMessageKey);
     }
 
-    public bool TryGetPublisher(out IPublisher<TestEvent>? publisher)
+    public bool TryGetPublisher(out PublisherHandle? publisher)
     {
         return scenarioContext.TryGetValue(PublisherKey, out publisher);
     }
 
-    public bool TryGetSubscriber(out ISubscriber<TestEvent>? subscriber)
+    public bool TryGetSubscriber(out SubscriberHandle? subscriber)
     {
         return scenarioContext.TryGetValue(SubscriberKey, out subscriber);
     }
 
-    public bool TryGetReceivedMessages(out Channel<TestEvent>? channel)
+    public bool TryGetReceivedMessages(out Channel<ITestEvent>? channel)
     {
         return scenarioContext.TryGetValue(ReceivedMessagesKey, out channel);
     }
@@ -117,25 +117,25 @@ public class ScenarioTestContext(ScenarioContext scenarioContext)
         set => scenarioContext.Set(value, CommittedOffsetKey);
     }
 
-    private Dictionary<string, IPublisher<TestEvent>> Publishers
+    private Dictionary<string, PublisherHandle> Publishers
     {
         get
         {
-            if (!scenarioContext.TryGetValue(PublishersKey, out Dictionary<string, IPublisher<TestEvent>>? publishers))
+            if (!scenarioContext.TryGetValue(PublishersKey, out Dictionary<string, PublisherHandle>? publishers))
             {
-                publishers = new Dictionary<string, IPublisher<TestEvent>>();
+                publishers = new Dictionary<string, PublisherHandle>();
                 scenarioContext.Set(publishers, PublishersKey);
             }
             return publishers;
         }
     }
 
-    public void SetPublisher(string name, IPublisher<TestEvent> publisher)
+    public void SetPublisher(string name, PublisherHandle publisher)
     {
         Publishers[name] = publisher;
     }
 
-    public IPublisher<TestEvent> GetPublisher(string name)
+    public PublisherHandle GetPublisher(string name)
     {
         if (!Publishers.TryGetValue(name, out var publisher))
         {
@@ -144,44 +144,44 @@ public class ScenarioTestContext(ScenarioContext scenarioContext)
         return publisher;
     }
 
-    public IEnumerable<IPublisher<TestEvent>> GetAllPublishers()
+    public IEnumerable<PublisherHandle> GetAllPublishers()
     {
         return Publishers.Values;
     }
 
-    private Dictionary<string, ISubscriber<TestEvent>> Subscribers
+    private Dictionary<string, SubscriberHandle> Subscribers
     {
         get
         {
-            if (!scenarioContext.TryGetValue(SubscribersKey, out Dictionary<string, ISubscriber<TestEvent>>? subscribers))
+            if (!scenarioContext.TryGetValue(SubscribersKey, out Dictionary<string, SubscriberHandle>? subscribers))
             {
-                subscribers = new Dictionary<string, ISubscriber<TestEvent>>();
+                subscribers = new Dictionary<string, SubscriberHandle>();
                 scenarioContext.Set(subscribers, SubscribersKey);
             }
             return subscribers;
         }
     }
 
-    private Dictionary<string, Channel<TestEvent>> SubscriberReceivedMessages
+    private Dictionary<string, Channel<ITestEvent>> SubscriberReceivedMessages
     {
         get
         {
-            if (!scenarioContext.TryGetValue(SubscriberReceivedMessagesKey, out Dictionary<string, Channel<TestEvent>>? messages))
+            if (!scenarioContext.TryGetValue(SubscriberReceivedMessagesKey, out Dictionary<string, Channel<ITestEvent>>? messages))
             {
-                messages = new Dictionary<string, Channel<TestEvent>>();
+                messages = new Dictionary<string, Channel<ITestEvent>>();
                 scenarioContext.Set(messages, SubscriberReceivedMessagesKey);
             }
             return messages;
         }
     }
 
-    public void SetSubscriber(string name, ISubscriber<TestEvent> subscriber, Channel<TestEvent> receivedMessages)
+    public void SetSubscriber(string name, SubscriberHandle subscriber, Channel<ITestEvent> receivedMessages)
     {
         Subscribers[name] = subscriber;
         SubscriberReceivedMessages[name] = receivedMessages;
     }
 
-    public ISubscriber<TestEvent> GetSubscriber(string name)
+    public SubscriberHandle GetSubscriber(string name)
     {
         if (!Subscribers.TryGetValue(name, out var subscriber))
         {
@@ -190,7 +190,7 @@ public class ScenarioTestContext(ScenarioContext scenarioContext)
         return subscriber;
     }
 
-    public Channel<TestEvent> GetSubscriberReceivedMessages(string name)
+    public Channel<ITestEvent> GetSubscriberReceivedMessages(string name)
     {
         if (!SubscriberReceivedMessages.TryGetValue(name, out var messages))
         {
@@ -199,7 +199,7 @@ public class ScenarioTestContext(ScenarioContext scenarioContext)
         return messages;
     }
 
-    public IEnumerable<ISubscriber<TestEvent>> GetAllSubscribers()
+    public IEnumerable<SubscriberHandle> GetAllSubscribers()
     {
         return Subscribers.Values;
     }

@@ -28,7 +28,52 @@ public class SubscriberReceivesMessagesThenStep(ScenarioContext scenarioContext)
         await ReceiveMessagesAsync(receivedMessages, $"subscriber '{subscriberName}'", table);
     }
 
-    private async Task ReceiveMessagesAsync(Channel<TestEvent> receivedMessages, string subscriberDescription, Table table)
+    [Then(@"the subscriber successfully receives (\d+) messages")]
+    public async Task ThenTheSubscriberSuccessfullyReceivesMessages(int expectedCount)
+    {
+        var receivedMessages = _context.ReceivedMessages;
+        await ReceiveMessageCountAsync(receivedMessages, "default subscriber", expectedCount);
+    }
+
+    [Then(@"the subscriber ""(.*)"" successfully receives (\d+) messages")]
+    public async Task ThenNamedSubscriberSuccessfullyReceivesMessages(string subscriberName, int expectedCount)
+    {
+        var receivedMessages = _context.GetSubscriberReceivedMessages(subscriberName);
+        await ReceiveMessageCountAsync(receivedMessages, $"subscriber '{subscriberName}'", expectedCount);
+    }
+
+    private async Task ReceiveMessageCountAsync(Channel<ITestEvent> receivedMessages, string subscriberDescription, int expectedCount)
+    {
+        await TestContext.Progress.WriteLineAsync(
+            $"[Then Step] Expecting {expectedCount} messages for {subscriberDescription}.. .");
+    
+        var allReceivedMessages = new List<ITestEvent>();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(TimeoutSeconds));
+
+        try
+        {
+            while (allReceivedMessages.Count < expectedCount)
+            {
+                var received = await receivedMessages.Reader.ReadAsync(cts.Token);
+                allReceivedMessages.Add(received);
+                await TestContext.Progress.WriteLineAsync(
+                    $"[Then Step] Received:  '{received.Message}' ({allReceivedMessages.Count}/{expectedCount})");
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            Assert.Fail(
+                $"Timeout after {TimeoutSeconds}s.  Expected {expectedCount} messages, received {allReceivedMessages.Count}");
+        }
+
+        Assert.That(allReceivedMessages, Has.Count.EqualTo(expectedCount),
+            $"Expected {expectedCount} messages but received {allReceivedMessages.Count}");
+        
+        await TestContext.Progress. WriteLineAsync(
+            $"[Then Step] Successfully received all {expectedCount} messages!");
+    }
+
+    private async Task ReceiveMessagesAsync(Channel<ITestEvent> receivedMessages, string subscriberDescription, Table table)
     {
         TestContext.Progress.WriteLine($"[Then Step] Expecting {table.Rows.Count} messages for {subscriberDescription} (order not required)...");
         var expectedMessages = table.Rows.Select(row => row["Message"]).ToHashSet();

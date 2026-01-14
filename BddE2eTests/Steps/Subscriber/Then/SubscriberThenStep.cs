@@ -13,6 +13,7 @@ public class SubscriberThenStep(ScenarioContext scenarioContext)
     private readonly ScenarioTestContext _context = new(scenarioContext);
 
     [Then(@"a subscriber receives message ""(.*)"" from topic ""(.*)""")]
+    [Then(@"the subscriber receives message ""(.*)"" from topic ""(.*)""")]
     public async Task ThenASubscriberReceivesMessageFromTopic(string expectedMessage, string topic)
     {
         var received = await ReadSingleMessage();
@@ -37,7 +38,7 @@ public class SubscriberThenStep(ScenarioContext scenarioContext)
         }
     }
 
-    private async Task<TestEvent> ReadSingleMessage()
+    private async Task<ITestEvent> ReadSingleMessage()
     {
         var receivedMessages = _context.ReceivedMessages;
 
@@ -61,10 +62,9 @@ public class SubscriberThenStep(ScenarioContext scenarioContext)
         TestContext.Progress.WriteLine("[Cleanup] Starting subscriber cleanup...");
         try
         {
-            if (_context.TryGetSubscriber(out var subscriber)
-                && subscriber is IAsyncDisposable subscriberDisposable)
+            if (_context.TryGetSubscriber(out var subscriber))
             {
-                await subscriberDisposable.DisposeAsync();
+                await subscriber!.DisposeAsync();
             }
 
             if (_context.TryGetReceivedMessages(out var channel))

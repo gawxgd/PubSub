@@ -101,65 +101,65 @@ namespace BddE2eTests.Features
             else
             {
                 await this.ScenarioStartAsync();
-                global::Reqnroll.Table table49 = new global::Reqnroll.Table(new string[] {
+                global::Reqnroll.Table table86 = new global::Reqnroll.Table(new string[] {
                             "Setting",
                             "Value"});
-                table49.AddRow(new string[] {
+                table86.AddRow(new string[] {
                             "Topic",
                             "default"});
-                table49.AddRow(new string[] {
+                table86.AddRow(new string[] {
                             "Broker",
                             "127.0.0.1:9096"});
-                table49.AddRow(new string[] {
+                table86.AddRow(new string[] {
                             "Queue Size",
                             "1000"});
-                table49.AddRow(new string[] {
+                table86.AddRow(new string[] {
                             "Max Retry Attempts",
                             "3"});
-                table49.AddRow(new string[] {
+                table86.AddRow(new string[] {
                             "Max Send Attempts",
                             "3"});
 #line 7
-        await testRunner.GivenAsync("a publisher is configured with the following options:", ((string)(null)), table49, "Given ");
+        await testRunner.GivenAsync("a publisher is configured with the following options:", ((string)(null)), table86, "Given ");
 #line hidden
 #line 14
         await testRunner.AndAsync("11 messages have been published to topic \"default\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-                global::Reqnroll.Table table50 = new global::Reqnroll.Table(new string[] {
+                global::Reqnroll.Table table87 = new global::Reqnroll.Table(new string[] {
                             "Setting",
                             "Value"});
-                table50.AddRow(new string[] {
+                table87.AddRow(new string[] {
                             "Topic",
                             "default"});
-                table50.AddRow(new string[] {
+                table87.AddRow(new string[] {
                             "Broker",
                             "127.0.0.1:9098"});
-                table50.AddRow(new string[] {
+                table87.AddRow(new string[] {
                             "Poll Interval",
                             "100"});
-                table50.AddRow(new string[] {
+                table87.AddRow(new string[] {
                             "Max Retry Attempts",
                             "3"});
 #line 15
-        await testRunner.AndAsync("subscriber S1 is configured starting at offset 11 with the following options:", ((string)(null)), table50, "And ");
+        await testRunner.AndAsync("subscriber S1 is configured starting at offset 11 with the following options:", ((string)(null)), table87, "And ");
 #line hidden
-                global::Reqnroll.Table table51 = new global::Reqnroll.Table(new string[] {
+                global::Reqnroll.Table table88 = new global::Reqnroll.Table(new string[] {
                             "Setting",
                             "Value"});
-                table51.AddRow(new string[] {
+                table88.AddRow(new string[] {
                             "Topic",
                             "default"});
-                table51.AddRow(new string[] {
+                table88.AddRow(new string[] {
                             "Broker",
                             "127.0.0.1:9098"});
-                table51.AddRow(new string[] {
+                table88.AddRow(new string[] {
                             "Poll Interval",
                             "100"});
-                table51.AddRow(new string[] {
+                table88.AddRow(new string[] {
                             "Max Retry Attempts",
                             "3"});
 #line 21
-        await testRunner.AndAsync("subscriber S2 is configured starting at offset 5 with the following options:", ((string)(null)), table51, "And ");
+        await testRunner.AndAsync("subscriber S2 is configured starting at offset 5 with the following options:", ((string)(null)), table88, "And ");
 #line hidden
 #line 27
         await testRunner.WhenAsync("the publisher sends message \"m11\" to topic \"default\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
@@ -167,24 +167,24 @@ namespace BddE2eTests.Features
 #line 28
         await testRunner.ThenAsync("subscriber S1 should receive only message \"m11\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-                global::Reqnroll.Table table52 = new global::Reqnroll.Table(new string[] {
+                global::Reqnroll.Table table89 = new global::Reqnroll.Table(new string[] {
                             "Message"});
-                table52.AddRow(new string[] {
+                table89.AddRow(new string[] {
                             "msg5"});
-                table52.AddRow(new string[] {
+                table89.AddRow(new string[] {
                             "msg6"});
-                table52.AddRow(new string[] {
+                table89.AddRow(new string[] {
                             "msg7"});
-                table52.AddRow(new string[] {
+                table89.AddRow(new string[] {
                             "msg8"});
-                table52.AddRow(new string[] {
+                table89.AddRow(new string[] {
                             "msg9"});
-                table52.AddRow(new string[] {
+                table89.AddRow(new string[] {
                             "msg10"});
-                table52.AddRow(new string[] {
+                table89.AddRow(new string[] {
                             "m11"});
 #line 29
-        await testRunner.AndAsync("subscriber S2 should receive messages \"msg5\" to \"m11\":", ((string)(null)), table52, "And ");
+        await testRunner.AndAsync("subscriber S2 should receive messages \"msg5\" to \"m11\":", ((string)(null)), table89, "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
