@@ -70,7 +70,7 @@ function StatisticsDashboard() {
           color="#667eea"
         />
         <StatCard
-          title="Messages Consumed"
+          title="Messages Delivered"
           value={stats.messagesConsumed}
           icon="📥"
           color="#764ba2"

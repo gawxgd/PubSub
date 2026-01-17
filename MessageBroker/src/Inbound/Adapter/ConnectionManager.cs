@@ -7,14 +7,13 @@ using MessageBroker.Domain.Enums;
 using MessageBroker.Domain.Logic.TcpServer.UseCase;
 using MessageBroker.Domain.Port;
 using MessageBroker.Domain.Port.CommitLog;
-using MessageBroker.Domain.Port.CommitLog.RecordBatch;
 
 namespace MessageBroker.Inbound.Adapter;
 
 public class ConnectionManager(
     IConnectionRepository connectionRepository,
     ICommitLogFactory commitLogFactory,
-    ILogRecordBatchWriter batchWriter,
+    ISubscriberDeliveryMetrics subscriberDeliveryMetrics,
     IMessageDeframer messageDeframer,
     SendPublishResponseUseCase sendPublishResponseUseCase)
     : IConnectionManager
@@ -38,7 +37,7 @@ public class ConnectionManager(
             {
                 ConnectionType.Publisher => new ProcessReceivedPublisherMessageUseCase(commitLogFactory,
                     sendPublishResponseUseCase),
-                ConnectionType.Subscriber => new ProcessSubscriberRequestUseCase(commitLogFactory, batchWriter),
+                ConnectionType.Subscriber => new ProcessSubscriberRequestUseCase(commitLogFactory, subscriberDeliveryMetrics),
                 _ => throw new ArgumentOutOfRangeException(nameof(connectionType), connectionType, null),
             };
 

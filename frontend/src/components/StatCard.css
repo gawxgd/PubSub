@@ -41,7 +41,12 @@
 
 @media (prefers-color-scheme: light) {
   .stat-card-title {
-    color: rgba(255, 255, 255, 0.95);
+    /* In light mode the dashboard background is bright, so use dark text for readability */
+    color: rgba(31, 41, 55, 0.9);
+  }
+
+  .stat-card-value {
+    color: #111827;
   }
 }
 

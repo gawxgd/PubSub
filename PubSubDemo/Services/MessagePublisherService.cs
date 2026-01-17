@@ -8,16 +8,23 @@ namespace PubSubDemo.Services;
 /// </summary>
 public sealed class MessagePublisherService<T> : IAsyncDisposable
 {
-    private readonly IPublisher<T> _publisher;
+    private readonly (string Topic, IPublisher<T> Publisher)[] _publishers;
     private readonly DemoOptions _options;
     private readonly CancellationTokenSource _cts;
     private Task? _publishTask;
     private long _messagesSent;
     private long _messagesFailed;
 
-    public MessagePublisherService(IPublisher<T> publisher, DemoOptions options)
+    public MessagePublisherService(
+        IEnumerable<(string Topic, IPublisher<T> Publisher)> publishers,
+        DemoOptions options)
     {
-        _publisher = publisher ?? throw new ArgumentNullException(nameof(publisher));
+        ArgumentNullException.ThrowIfNull(publishers);
+        _publishers = publishers.ToArray();
+        if (_publishers.Length == 0)
+        {
+            throw new ArgumentException("At least one publisher must be provided.", nameof(publishers));
+        }
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _cts = new CancellationTokenSource();
     }
@@ -31,9 +38,12 @@ public sealed class MessagePublisherService<T> : IAsyncDisposable
 
         try
         {
-            // Connect to the broker
-            await _publisher.CreateConnection();
-            Console.WriteLine("Connected to message broker successfully!");
+            // Connect to the broker (one connection per topic publisher)
+            foreach (var (topic, publisher) in _publishers)
+            {
+                await publisher.CreateConnection();
+                Console.WriteLine($"Connected to message broker successfully for topic '{topic}'!");
+            }
 
             // Start publishing messages
             _publishTask = Task.Run(() => PublishMessagesAsync(_cts.Token), cancellationToken);
@@ -82,6 +92,9 @@ public sealed class MessagePublisherService<T> : IAsyncDisposable
         {
             try
             {
+                var publisherIndex = messageNumber % _publishers.Length;
+                var (topic, publisher) = _publishers[publisherIndex];
+
                 // Create a demo message with reasonable content length
                 var content = $"{_options.MessagePrefix} message #{messageNumber}";
                 // Ensure content is not too long (max 500 chars to avoid serialization issues)
@@ -95,14 +108,14 @@ public sealed class MessagePublisherService<T> : IAsyncDisposable
                     Id = ++messageNumber,
                     Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                     Content = content,
-                    Source = "PubSubDemo",
+                    Source = $"PubSubDemo[{topic}]",
                     MessageType = GetRandomMessageType()
                 };
 
                 // Publish to broker (publisher handles serialization)
                 try
                 {
-                    await _publisher.PublishAsync((T)(object)message);
+                    await publisher.PublishAsync((T)(object)message);
                     Interlocked.Increment(ref _messagesSent);
                 }
                 catch (Exception publishEx)
@@ -133,7 +146,7 @@ public sealed class MessagePublisherService<T> : IAsyncDisposable
                 // Occasionally send a batch
                 if (messageNumber % 50 == 0)
                 {
-                    await SendBatchAsync(messageNumber, cancellationToken);
+                    await SendBatchAsync(topic, publisher, messageNumber, cancellationToken);
                 }
             }
             catch (OperationCanceledException)
@@ -157,9 +170,9 @@ public sealed class MessagePublisherService<T> : IAsyncDisposable
         }
     }
 
-    private async Task SendBatchAsync(int startNumber, CancellationToken cancellationToken)
+    private async Task SendBatchAsync(string topic, IPublisher<T> publisher, int startNumber, CancellationToken cancellationToken)
     {
-        Console.WriteLine($"\n\n📦 Sending batch of {_options.BatchSize} messages...");
+        Console.WriteLine($"\n\n📦 Sending batch of {_options.BatchSize} messages to topic '{topic}'...");
 
         for (var i = 0; i < _options.BatchSize; i++)
         {
@@ -177,11 +190,11 @@ public sealed class MessagePublisherService<T> : IAsyncDisposable
                     Id = startNumber + i + 1,
                     Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                     Content = batchContent,
-                    Source = "PubSubDemo-Batch",
+                    Source = $"PubSubDemo-Batch[{topic}]",
                     MessageType = "Batch"
                 };
 
-                await _publisher.PublishAsync((T)(object)message);
+                await publisher.PublishAsync((T)(object)message);
                 Interlocked.Increment(ref _messagesSent);
             }
             catch (Exception ex)
@@ -205,9 +218,12 @@ public sealed class MessagePublisherService<T> : IAsyncDisposable
         await StopAsync();
         _cts.Dispose();
 
-        if (_publisher is IAsyncDisposable disposable)
+        foreach (var (_, publisher) in _publishers)
         {
-            await disposable.DisposeAsync();
+            if (publisher is IAsyncDisposable disposable)
+            {
+                await disposable.DisposeAsync();
+            }
         }
     }
 }
