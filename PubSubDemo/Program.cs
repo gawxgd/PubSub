@@ -153,14 +153,18 @@ try
         SchemaRegistryTimeout: schemaRegistryOptions.Timeout,
         MaxRetryAttempts: 3
     );
-    
-    // Create subscriber
-    var subscriber = subscriberFactory.CreateSubscriber(subscriberOptions, async (message) =>
+
+    // Define the subscriber callback externally
+    static async Task SubscriberMessageHandler(DemoMessage message)
     {
         var timestamp = DateTimeOffset.FromUnixTimeMilliseconds(message.Timestamp).ToString("yyyy-MM-dd HH:mm:ss");
         Console.WriteLine($"Subscriber otrzymał: Id={message.Id}, Timestamp={timestamp}, Content={message.Content}, Type={message.MessageType}");
         await Task.CompletedTask;
-    });
+    }
+
+    // Create subscriber
+    var subscriber = subscriberFactory.CreateSubscriber(subscriberOptions, SubscriberMessageHandler);
+
     
     // IMPORTANT: If you see "Invalid magic number" or "Batch length cannot be zero" errors,
     // it's because Subscriber uses BitConverter instead of BinaryPrimitives to read batch length.
