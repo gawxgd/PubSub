@@ -9,7 +9,12 @@ public static class ServiceRegistration
 {
     public static IServiceCollection AddSchemaRegistryServices(this IServiceCollection services, IConfiguration configuration)
     {
-        services.Configure<SchemaRegistryOptions>(configuration.GetSection("SchemaRegistry"));
+        services
+            .AddOptions<SchemaRegistryOptions>()
+            .Bind(configuration.GetSection("SchemaRegistry"))
+            .ValidateOnStart();
+
+        services.AddSingleton<IValidateOptions<SchemaRegistryOptions>, SchemaRegistryOptionsValidator>();
 
         services.AddSingleton<ISchemaStore>(sp =>
         {

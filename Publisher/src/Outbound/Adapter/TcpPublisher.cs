@@ -2,6 +2,7 @@ using System.Threading.Channels;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
+using MessageBroker.Domain.Entities;
 using MessageBroker.Domain.Port.CommitLog.RecordBatch;
 using Publisher.Configuration.Options;
 using Publisher.Domain.Logic;
@@ -35,6 +36,10 @@ public sealed class TcpPublisher<T>(
         });
 
     private IPublisherConnection? _currentPublisherConnection;
+    
+    public ChannelReader<PublishResponse>? ErrorResponses =>
+        (_currentPublisherConnection as TcpPublisherConnection)
+        ?.ResponseHandler.ErrorResponses;
 
     public async ValueTask DisposeAsync()
     {

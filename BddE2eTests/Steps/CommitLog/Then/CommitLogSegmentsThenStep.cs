@@ -290,7 +290,7 @@ public class CommitLogSegmentsThenStep(ScenarioContext scenarioContext)
     }
 
     private async Task<(int count, List<string> messages)> WaitForMessagesAsync(
-        Channel<TestEvent> receivedMessages, int expectedCount)
+        Channel<ITestEvent> receivedMessages, int expectedCount)
     {
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(TimeoutSeconds));
         var receivedCount = 0;

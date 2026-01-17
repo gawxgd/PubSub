@@ -4,6 +4,7 @@ using NUnit.Framework;
 using Reqnroll;
 using Subscriber.Configuration;
 using Subscriber.Outbound.Adapter;
+using System.Reflection;
 
 namespace BddE2eTests.Steps.Subscriber.When;
 
@@ -11,6 +12,7 @@ namespace BddE2eTests.Steps.Subscriber.When;
 public class SubscriberRestartWhenStep(ScenarioContext scenarioContext)
 {
     private readonly ScenarioTestContext _context = new(scenarioContext);
+    private System.Threading.Channels.Channel<ITestEvent>? _restartReceivedMessages;
 
     [When(@"subscriber C restarts at offset (\d+)")]
     public async Task WhenSubscriberCRestartsAtOffset(ulong initialOffset)
@@ -24,12 +26,12 @@ public class SubscriberRestartWhenStep(ScenarioContext scenarioContext)
 
     private async Task DisposeOldSubscriberSafelyAsync()
     {
-        if (_context.TryGetSubscriber(out var oldSubscriber) && oldSubscriber is IAsyncDisposable oldDisposable)
+        if (_context.TryGetSubscriber(out var oldSubscriber))
         {
             try
             {
                 await TestContext.Progress.WriteLineAsync("[When Step] Disposing old subscriber...");
-                await oldDisposable.DisposeAsync();
+                await oldSubscriber!.DisposeAsync();
             }
             catch (ObjectDisposedException)
             {
@@ -51,28 +53,52 @@ public class SubscriberRestartWhenStep(ScenarioContext scenarioContext)
         var subscriberOptions = builder.WithTopic(topic).Build();
         var schemaRegistryClient = schemaRegistryBuilder.Build();
 
-        var receivedMessages = System.Threading.Channels.Channel.CreateUnbounded<TestEvent>();
+        var receivedMessages = System.Threading.Channels.Channel.CreateUnbounded<ITestEvent>();
+        _restartReceivedMessages = receivedMessages;
+        var messageType = _context.Subscriber.MessageType;
 
-        var subscriberFactory = new SubscriberFactory<TestEvent>(schemaRegistryClient);
-        var newSubscriber = subscriberFactory.CreateSubscriber(subscriberOptions,
-            async (message) => { await receivedMessages.Writer.WriteAsync(message); });
+        var subscriberFactoryType = typeof(SubscriberFactory<>).MakeGenericType(messageType);
+        var subscriberFactory = Activator.CreateInstance(subscriberFactoryType, schemaRegistryClient)!;
+        var handler = CreateHandlerDelegate(messageType);
+        var newSubscriber = ((dynamic)subscriberFactory).CreateSubscriber(subscriberOptions, (dynamic)handler);
 
-        if (newSubscriber is TcpSubscriber<TestEvent> tcpSubscriber)
+        var tcpSubscriberType = typeof(TcpSubscriber<>).MakeGenericType(messageType);
+        if (tcpSubscriberType.IsInstanceOfType(newSubscriber))
         {
-            await tcpSubscriber.StartConnectionAsync(initialOffset);
+            await ((dynamic)newSubscriber).StartConnectionAsync((ulong?)initialOffset);
             await TestContext.Progress.WriteLineAsync(
                 $"[When Step] Started connection with initial offset: {initialOffset}");
         }
         else
         {
-            await newSubscriber.StartConnectionAsync();
+            await ((dynamic)newSubscriber).StartConnectionAsync((ulong?)null);
         }
 
-        _ = Task.Run(async () => await newSubscriber.StartMessageProcessingAsync());
+        _ = Task.Run(async () => await ((dynamic)newSubscriber).StartMessageProcessingAsync());
 
-        _context.Subscriber = newSubscriber;
+        _context.Subscriber = new SubscriberHandle(newSubscriber, messageType, receivedMessages);
         _context.ReceivedMessages = receivedMessages;
 
         await TestContext.Progress.WriteLineAsync("[When Step] Subscriber C restarted!");
+    }
+
+    private Delegate CreateHandlerDelegate(Type messageType)
+    {
+        var method = GetType()
+            .GetMethod(nameof(WriteReceivedAsync), BindingFlags.Instance | BindingFlags.NonPublic)!
+            .MakeGenericMethod(messageType);
+
+        var delegateType = typeof(Func<,>).MakeGenericType(messageType, typeof(Task));
+        return Delegate.CreateDelegate(delegateType, this, method);
+    }
+
+    private Task WriteReceivedAsync<TEvent>(TEvent message) where TEvent : ITestEvent
+    {
+        if (_restartReceivedMessages == null)
+        {
+            throw new InvalidOperationException("Restart received messages channel is not initialized");
+        }
+
+        return _restartReceivedMessages.Writer.WriteAsync(message).AsTask();
     }
 }

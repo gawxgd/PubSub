@@ -1,3 +1,5 @@
+using System.Threading.Channels;
+using MessageBroker.Domain.Entities;
 using Publisher.Domain.Exceptions;
 
 namespace Publisher.Domain.Port;
@@ -11,4 +13,6 @@ public interface IPublisher<in T>
     Task<bool> WaitForAcknowledgmentsAsync(int count, TimeSpan timeout);
     
     long AcknowledgedCount { get; }
+    
+    ChannelReader<PublishResponse> ErrorResponses { get; }
 }
