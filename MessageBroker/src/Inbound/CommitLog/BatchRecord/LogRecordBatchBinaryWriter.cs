@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.Text;
 using Force.Crc32;
 using MessageBroker.Domain.Entities.CommitLog;
@@ -37,11 +38,10 @@ public class LogRecordBatchBinaryWriter(ILogRecordWriter recordIo, ICompressor c
     private byte[] WriteRecords(ICollection<LogRecord> records, ulong baseTimestamp)
     {
         using var recordsStream = new MemoryStream();
-        using var recordWriter = new BinaryWriter(recordsStream, encoding, false);
 
         foreach (var record in records)
         {
-            recordIo.WriteTo(record, recordWriter, baseTimestamp);
+            recordIo.WriteTo(record, recordsStream, baseTimestamp);
         }
 
         return recordsStream.ToArray();
@@ -53,23 +53,36 @@ public class LogRecordBatchBinaryWriter(ILogRecordWriter recordIo, ICompressor c
                CrcSize
                + CompressedFlagSize
                + TimestampSize
-               // + RecordPayloadLengthSize ToDo verify
                + sizeof(byte) * recordBytesLength;
     }
 
     private void WriteHeaders(Stream stream, LogRecordBatch recordBatch, uint batchLength, uint crc,
         uint recordBytesLength, byte[] recordBytes)
     {
-        using var batchRecordWriter = new BinaryWriter(stream, encoding, true);
+        Span<byte> buffer = stackalloc byte[8];
 
-        batchRecordWriter.Write((ulong)recordBatch.BaseOffset); //ToDo delte offset
-        batchRecordWriter.Write((uint)batchLength);
-        batchRecordWriter.Write((ulong)recordBatch.LastOffset);
-        batchRecordWriter.Write((uint)recordBytesLength);
-        batchRecordWriter.Write((byte)recordBatch.MagicNumber);
-        batchRecordWriter.Write((uint)crc);
-        batchRecordWriter.Write((byte)(recordBatch.Compressed ? 1 : 0));
-        batchRecordWriter.Write((ulong)recordBatch.BaseTimestamp);
-        batchRecordWriter.Write(recordBytes);
+        BinaryPrimitives.WriteUInt64BigEndian(buffer, (ulong)recordBatch.BaseOffset);
+        stream.Write(buffer[..8]);
+
+        BinaryPrimitives.WriteUInt32BigEndian(buffer, batchLength);
+        stream.Write(buffer[..4]);
+
+        BinaryPrimitives.WriteUInt64BigEndian(buffer, (ulong)recordBatch.LastOffset);
+        stream.Write(buffer[..8]);
+
+        BinaryPrimitives.WriteUInt32BigEndian(buffer, recordBytesLength);
+        stream.Write(buffer[..4]);
+
+        stream.WriteByte((byte)recordBatch.MagicNumber);
+
+        BinaryPrimitives.WriteUInt32BigEndian(buffer, crc);
+        stream.Write(buffer[..4]);
+
+        stream.WriteByte((byte)(recordBatch.Compressed ? 1 : 0));
+
+        BinaryPrimitives.WriteUInt64BigEndian(buffer, (ulong)recordBatch.BaseTimestamp);
+        stream.Write(buffer[..8]);
+
+        stream.Write(recordBytes);
     }
 }

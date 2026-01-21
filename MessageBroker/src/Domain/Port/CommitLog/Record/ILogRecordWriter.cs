@@ -4,5 +4,5 @@ namespace MessageBroker.Domain.Port.CommitLog.Record;
 
 public interface ILogRecordWriter
 {
-    void WriteTo(LogRecord record, BinaryWriter bw, ulong batchBaseTimestamp);
+    void WriteTo(LogRecord record, Stream stream, ulong batchBaseTimestamp);
 }

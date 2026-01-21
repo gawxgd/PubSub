@@ -9,8 +9,8 @@ public class PublishResponseFormatter
     {
         var formattedMessage = new byte[sizeof(ulong) + sizeof(short)];
 
-        BinaryPrimitives.WriteUInt64LittleEndian(formattedMessage.AsSpan(0, sizeof(ulong)), response.BaseOffset);
-        BinaryPrimitives.WriteInt16LittleEndian(formattedMessage.AsSpan(sizeof(ulong), sizeof(short)), (short)response.ErrorCode);
+        BinaryPrimitives.WriteUInt64BigEndian(formattedMessage.AsSpan(0, sizeof(ulong)), response.BaseOffset);
+        BinaryPrimitives.WriteInt16BigEndian(formattedMessage.AsSpan(sizeof(ulong), sizeof(short)), (short)response.ErrorCode);
 
         return formattedMessage;
     }

@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
@@ -182,10 +183,10 @@ public class TestBase
         {
             try
             {
-                var baseOffset = BitConverter.ToUInt64(logData, position);
-                var batchLength = BitConverter.ToUInt32(logData, position + 8);
-                var lastOffset = BitConverter.ToUInt64(logData, position + 12);
-                var recordBytesLength = BitConverter.ToUInt32(logData, position + 20);
+                var baseOffset = BinaryPrimitives.ReadUInt64BigEndian(logData.AsSpan(position, 8));
+                var batchLength = BinaryPrimitives.ReadUInt32BigEndian(logData.AsSpan(position + 8, 4));
+                var lastOffset = BinaryPrimitives.ReadUInt64BigEndian(logData.AsSpan(position + 12, 8));
+                var recordBytesLength = BinaryPrimitives.ReadUInt32BigEndian(logData.AsSpan(position + 20, 4));
 
                 // Sanity checks
                 if (batchLength == 0 || batchLength > 10_000_000) // Max 10MB per batch

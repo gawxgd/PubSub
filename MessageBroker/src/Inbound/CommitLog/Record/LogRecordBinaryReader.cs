@@ -1,21 +1,28 @@
+using System.Buffers.Binary;
 using MessageBroker.Domain.Entities.CommitLog;
 using MessageBroker.Domain.Port.CommitLog.Record;
-using MessageBroker.Domain.Util;
 
 namespace MessageBroker.Inbound.CommitLog.Record;
 
 public class LogRecordBinaryReader : ILogRecordReader
 {
-    public LogRecord ReadFrom(BinaryReader br, ulong baseTimestamp)
+    public LogRecord ReadFrom(Stream stream, ulong baseTimestamp)
     {
-        var offset = br.ReadUInt64();
-        var totalSize = br.ReadUInt32();
+        Span<byte> buffer = stackalloc byte[8];
 
-        var timestampDelta = br.ReadUInt64();
+        stream.ReadExactly(buffer[..8]);
+        var offset = BinaryPrimitives.ReadUInt64BigEndian(buffer);
+
+        stream.ReadExactly(buffer[..4]);
+        var totalSize = BinaryPrimitives.ReadUInt32BigEndian(buffer);
+
+        stream.ReadExactly(buffer[..8]);
+        var timestampDelta = BinaryPrimitives.ReadUInt64BigEndian(buffer);
         var timestamp = baseTimestamp + timestampDelta;
 
         var payloadLength = totalSize - sizeof(ulong);
-        var payload = br.ReadBytes((int)payloadLength);
+        var payload = new byte[payloadLength];
+        stream.ReadExactly(payload);
 
         return new LogRecord(offset, timestamp, payload);
     }

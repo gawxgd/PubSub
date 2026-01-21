@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Buffers.Binary;
 using System.IO.Pipelines;
 using System.Net.Sockets;
 using System.Threading.Channels;
@@ -380,9 +381,9 @@ public sealed class TcpSubscriberConnection(
         Span<byte> headerSpan = stackalloc byte[minHeaderSize];
         buffer.Slice(0, minHeaderSize).CopyTo(headerSpan);
 
-        var baseOffset = BitConverter.ToUInt64(headerSpan.Slice(0, 8));
-        var batchLength = BitConverter.ToUInt32(headerSpan.Slice(8, 4));
-        var lastOffset = BitConverter.ToUInt64(headerSpan.Slice(12, 8));
+        var baseOffset = BinaryPrimitives.ReadUInt64BigEndian(headerSpan.Slice(0, 8));
+        var batchLength = BinaryPrimitives.ReadUInt32BigEndian(headerSpan.Slice(8, 4));
+        var lastOffset = BinaryPrimitives.ReadUInt64BigEndian(headerSpan.Slice(12, 8));
         // recordBytesLength is at offset 20, but we don't need to read it for size calculation
 
         // Calculate total batch size: header (20 bytes) + RecordBytesLength field (4 bytes) + batchLength

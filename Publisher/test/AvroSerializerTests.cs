@@ -1,4 +1,5 @@
 using System;
+using System.Buffers.Binary;
 using System.IO;
 using System.Threading.Tasks;
 using Avro;
@@ -56,7 +57,7 @@ public sealed class AvroSerializerTests
 
         // assert
         bytes.Length.Should().BeGreaterThan(sizeof(int));
-        BitConverter.ToInt32(bytes, 0).Should().Be(42);
+        BinaryPrimitives.ReadInt32BigEndian(bytes.AsSpan(0, 4)).Should().Be(42);
     }
 
     [Fact]
@@ -103,8 +104,8 @@ public sealed class AvroSerializerTests
         var bytes2 = await serializer.SerializeAsync(message, schema2);
 
         // assert
-        BitConverter.ToInt32(bytes1, 0).Should().Be(1);
-        BitConverter.ToInt32(bytes2, 0).Should().Be(2);
+        BinaryPrimitives.ReadInt32BigEndian(bytes1.AsSpan(0, 4)).Should().Be(1);
+        BinaryPrimitives.ReadInt32BigEndian(bytes2.AsSpan(0, 4)).Should().Be(2);
         bytes1.Should().NotBeEquivalentTo(bytes2);
     }
 

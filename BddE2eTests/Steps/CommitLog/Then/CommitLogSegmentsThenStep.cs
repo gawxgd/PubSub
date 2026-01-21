@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.Threading.Channels;
 using NUnit.Framework;
 using Reqnroll;
@@ -86,9 +87,9 @@ public class CommitLogSegmentsThenStep(ScenarioContext scenarioContext)
         {
             try
             {
-                var baseOffset = BitConverter.ToUInt64(logData, position);
-                var batchLength = BitConverter.ToUInt32(logData, position + 8);
-                var lastOffset = BitConverter.ToUInt64(logData, position + 12);
+                var baseOffset = BinaryPrimitives.ReadUInt64BigEndian(logData.AsSpan(position, 8));
+                var batchLength = BinaryPrimitives.ReadUInt32BigEndian(logData.AsSpan(position + 8, 4));
+                var lastOffset = BinaryPrimitives.ReadUInt64BigEndian(logData.AsSpan(position + 12, 8));
 
                 // Sanity checks
                 if (batchLength == 0 || batchLength > 10_000_000)

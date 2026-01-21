@@ -53,7 +53,7 @@ public class AssignOffsetsUseCase
 
     private void AssignBatchBaseOffset(ulong baseOffset, Span<byte> batchBytes)
     {
-        BinaryPrimitives.WriteUInt64LittleEndian(
+        BinaryPrimitives.WriteUInt64BigEndian(
             batchBytes.Slice(_position, OffsetSize),
             baseOffset
         );
@@ -63,11 +63,11 @@ public class AssignOffsetsUseCase
 
     private void SkipBatchHeaders(Span<byte> batchBytes)
     {
-        var batchLength = BinaryPrimitives.ReadUInt32LittleEndian(batchBytes.Slice(_position, LengthSize));
+        var batchLength = BinaryPrimitives.ReadUInt32BigEndian(batchBytes.Slice(_position, LengthSize));
         _position += LengthSize + OffsetSize;
 
         var recordBytesLength =
-            BinaryPrimitives.ReadUInt32LittleEndian(batchBytes.Slice(_position, LengthSize));
+            BinaryPrimitives.ReadUInt32BigEndian(batchBytes.Slice(_position, LengthSize));
         _position += LengthSize;
 
         _position += (int)(batchLength - recordBytesLength);
@@ -75,7 +75,7 @@ public class AssignOffsetsUseCase
 
     private void AssignBatchLastOffset(ulong lastOffset, Span<byte> batchBytes)
     {
-        BinaryPrimitives.WriteUInt64LittleEndian(
+        BinaryPrimitives.WriteUInt64BigEndian(
             batchBytes.Slice(LastOffsetPosition, OffsetSize),
             lastOffset
         );
@@ -84,7 +84,7 @@ public class AssignOffsetsUseCase
 
     private void AssignRecordOffset(ulong currentOffset, Span<byte> batchBytes)
     {
-        BinaryPrimitives.WriteUInt64LittleEndian(
+        BinaryPrimitives.WriteUInt64BigEndian(
             batchBytes.Slice(_position, OffsetSize),
             currentOffset
         );
@@ -94,17 +94,17 @@ public class AssignOffsetsUseCase
 
     private void SkipRecordHeaders(Span<byte> batchBytes)
     {
-        var recordLength = BinaryPrimitives.ReadUInt32LittleEndian(batchBytes.Slice(_position, LengthSize));
+        var recordLength = BinaryPrimitives.ReadUInt32BigEndian(batchBytes.Slice(_position, LengthSize));
         _position += LengthSize;
         _position += (int)recordLength;
     }
 
     private void VerifyCrc(Span<byte> batchBytes)
     {
-        var storedCrc = BinaryPrimitives.ReadUInt32LittleEndian(batchBytes.Slice(CrcPosition, LengthSize));
+        var storedCrc = BinaryPrimitives.ReadUInt32BigEndian(batchBytes.Slice(CrcPosition, LengthSize));
 
         var recordBytesLength =
-            BinaryPrimitives.ReadUInt32LittleEndian(batchBytes.Slice(RecordBytesLengthPosition, LengthSize));
+            BinaryPrimitives.ReadUInt32BigEndian(batchBytes.Slice(RecordBytesLengthPosition, LengthSize));
 
         var recordBytes = batchBytes.Slice(RecordBytesStartPosition, (int)recordBytesLength);
 
@@ -120,13 +120,13 @@ public class AssignOffsetsUseCase
     private void RecalculateAndUpdateCrc(Span<byte> batchBytes)
     {
         var recordBytesLength =
-            BinaryPrimitives.ReadUInt32LittleEndian(batchBytes.Slice(RecordBytesLengthPosition, LengthSize));
+            BinaryPrimitives.ReadUInt32BigEndian(batchBytes.Slice(RecordBytesLengthPosition, LengthSize));
 
         var recordBytes = batchBytes.Slice(RecordBytesStartPosition, (int)recordBytesLength);
 
         var newCrc = Crc32.HashToUInt32(recordBytes);
 
-        BinaryPrimitives.WriteUInt32LittleEndian(
+        BinaryPrimitives.WriteUInt32BigEndian(
             batchBytes.Slice(CrcPosition, LengthSize),
             newCrc
         );

@@ -29,7 +29,6 @@ public static class TestHostHelper
                 ["Server:Address"] = address,
                 ["Server:MaxRequestSizeInByte"] = "512",
                 ["Server:InlineCompletions"] = "false",
-                ["Server:SocketPolling"] = "false",
                 ["Server:Backlog"] = "100",
 
                 // Commit Log options

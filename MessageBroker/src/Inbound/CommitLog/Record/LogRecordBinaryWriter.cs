@@ -1,20 +1,27 @@
+using System.Buffers.Binary;
 using MessageBroker.Domain.Entities.CommitLog;
 using MessageBroker.Domain.Port.CommitLog.Record;
-using MessageBroker.Domain.Util;
 
 namespace MessageBroker.Inbound.CommitLog.Record;
 
 public class LogRecordBinaryWriter : ILogRecordWriter
 {
-    public void WriteTo(LogRecord record, BinaryWriter bw, ulong batchBaseTimestamp)
+    public void WriteTo(LogRecord record, Stream stream, ulong batchBaseTimestamp)
     {
-        bw.Write((ulong)record.Offset); // ulong
+        Span<byte> buffer = stackalloc byte[8];
+
+        BinaryPrimitives.WriteUInt64BigEndian(buffer, (ulong)record.Offset);
+        stream.Write(buffer[..8]);
 
         var timestampDelta = record.Timestamp - batchBaseTimestamp;
         var totalSize = record.Payload.Length + sizeof(ulong);
 
-        bw.Write((uint)totalSize); // uint
-        bw.Write((ulong)timestampDelta); // ulong
-        bw.Write(record.Payload.Span);
+        BinaryPrimitives.WriteUInt32BigEndian(buffer, (uint)totalSize);
+        stream.Write(buffer[..4]);
+
+        BinaryPrimitives.WriteUInt64BigEndian(buffer, timestampDelta);
+        stream.Write(buffer[..8]);
+
+        stream.Write(record.Payload.Span);
     }
 }

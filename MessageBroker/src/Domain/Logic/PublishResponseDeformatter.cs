@@ -21,8 +21,8 @@ public class PublishResponseDeformatter
         }
 
         var span = message.Span;
-        var baseOffset = BinaryPrimitives.ReadUInt64LittleEndian(span.Slice(0, sizeof(ulong)));
-        var errorCode = (ErrorCode)BinaryPrimitives.ReadInt16LittleEndian(span.Slice(sizeof(ulong), sizeof(short)));
+        var baseOffset = BinaryPrimitives.ReadUInt64BigEndian(span.Slice(0, sizeof(ulong)));
+        var errorCode = (ErrorCode)BinaryPrimitives.ReadInt16BigEndian(span.Slice(sizeof(ulong), sizeof(short)));
 
         return new PublishResponse(baseOffset, errorCode);
     }

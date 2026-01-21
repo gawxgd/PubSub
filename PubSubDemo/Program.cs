@@ -182,7 +182,7 @@ try
     // it's because Subscriber uses BitConverter instead of BinaryPrimitives to read batch length.
     // This causes incorrect batch length reading and wrong data offset.
     // Fix needed in: Subscriber/src/Outbound/Adapter/TcpSubscriberConnection.cs line 159
-    // Change: BitConverter.ToUInt32 -> BinaryPrimitives.ReadUInt32LittleEndian
+    // Change: BitConverter.ToUInt32 -> BinaryPrimitives.ReadUInt32BigEndian
     // Also fix lines 158 and 160 for baseOffset and lastOffset
     
     // Start everything

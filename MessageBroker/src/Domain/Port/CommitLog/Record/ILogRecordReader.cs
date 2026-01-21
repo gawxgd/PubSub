@@ -4,5 +4,5 @@ namespace MessageBroker.Domain.Port.CommitLog.Record;
 
 public interface ILogRecordReader
 {
-    LogRecord ReadFrom(BinaryReader br, ulong baseTimestamp);
+    LogRecord ReadFrom(Stream stream, ulong baseTimestamp);
 }

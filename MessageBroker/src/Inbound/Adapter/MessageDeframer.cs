@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Buffers.Binary;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
@@ -24,7 +25,7 @@ public class MessageDeframer : IMessageDeframer
 
         Span<byte> lengthSpan = stackalloc byte[LengthFieldSize];
         buffer.Slice(0, LengthFieldSize).CopyTo(lengthSpan);
-        var messageLength = BitConverter.ToInt32(lengthSpan);
+        var messageLength = BinaryPrimitives.ReadInt32BigEndian(lengthSpan);
 
         if (buffer.Length < LengthFieldSize + messageLength)
         {

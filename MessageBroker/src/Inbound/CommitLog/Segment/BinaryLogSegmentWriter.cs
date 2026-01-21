@@ -119,7 +119,7 @@ public sealed class BinaryLogSegmentWriter
         //     _lastTimeIndexTimestamp = baseTs;
         // }
 
-        _segment = _segment with { NextOffset = batchBaseOffset + batchLastOffset };
+        _segment = _segment with { NextOffset = batchLastOffset + 1 };
     }
 
     public async ValueTask DisposeAsync()
