@@ -98,7 +98,6 @@ function StatisticsDashboard() {
                 <h3>{topic.name}</h3>
                 <div className="topic-stats">
                   <span>Messages: {topic.messageCount || 0}</span>
-                  <span>Offset: {topic.lastOffset || 0}</span>
                 </div>
               </div>
             ))}
