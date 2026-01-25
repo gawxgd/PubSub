@@ -9,9 +9,11 @@
         - linux/amd64
     ports:
       - "9096:9096"  # Expose the TCP server port
+      - "9098:9098"  # Expose the TCP subscriber port
       - "5001:5001" # for ASP.NET Core (SignalR)
     environment:
-      - MessageBrokerEnv_Server__Port=9096
+      - MessageBrokerEnv_Server__PublisherPort=9096
+      - MessageBrokerEnv_Server__SubscriberPort=9098
       - MessageBrokerEnv_Server__Address=0.0.0.0  # Listen on all interfaces in container
       # - MessageBrokerEnv_Logger__BaseUrl=http://logger:8080
     networks:
@@ -55,6 +57,7 @@
     environment:
       - PUBSUB_Broker__Host=messagebroker
       - PUBSUB_Broker__Port=9096
+      - PUBSUB_Broker__SubscriberPort=9098
       - PUBSUB_SchemaRegistry__BaseAddress=http://schemaregistry:8080
       - PUBSUB_Demo__MessageInterval=1000
       - PUBSUB_Demo__Topic=default
