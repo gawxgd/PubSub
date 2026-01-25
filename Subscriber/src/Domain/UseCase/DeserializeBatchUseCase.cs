@@ -20,8 +20,7 @@ public class DeserializeBatchUseCase<T>(
     
     public async Task<IReadOnlyList<T>> ExecuteAsync(byte[] batchData, SchemaInfo readersSchema)
     {
-        using var stream = new MemoryStream(batchData);
-        var batch = batchReader.ReadBatch(stream);
+        var batch = batchReader.ReadBatch(batchData);
 
         var results = new List<T>();
         

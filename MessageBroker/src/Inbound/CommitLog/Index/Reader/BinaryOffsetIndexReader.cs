@@ -6,20 +6,10 @@ namespace MessageBroker.Inbound.CommitLog.Index.Reader;
 
 public sealed class BinaryOffsetIndexReader : IOffsetIndexReader
 {
-    public OffsetIndexEntry ReadFrom(Stream stream)
+    public OffsetIndexEntry ReadFrom(ReadOnlySpan<byte> data)
     {
-        var entrySize = OffsetIndexEntry.Size;
-        Span<byte> buffer = stackalloc byte[entrySize];
-        var bytesRead = stream.Read(buffer);
-
-        if (bytesRead != entrySize)
-        {
-            throw new InvalidDataException(
-                $"Failed to read complete offset index entry. Expected {entrySize} bytes, got {bytesRead}");
-        }
-
-        var relativeOffset = BinaryPrimitives.ReadUInt64BigEndian(buffer[..8]);
-        var filePosition = BinaryPrimitives.ReadUInt64BigEndian(buffer.Slice(8, 8));
+        var relativeOffset = BinaryPrimitives.ReadUInt64BigEndian(data[..8]);
+        var filePosition = BinaryPrimitives.ReadUInt64BigEndian(data.Slice(8, 8));
 
         return new OffsetIndexEntry(relativeOffset, filePosition);
     }

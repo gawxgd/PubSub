@@ -15,32 +15,38 @@ public class LogRecordBatchBinaryReader(ILogRecordReader logRecordReader, ICompr
     private const int BaseOffsetSize = sizeof(ulong);
     private const int BatchLengthSize = sizeof(uint);
     private const int LastOffsetSize = sizeof(ulong);
+    private const int RecordBytesLengthSize = sizeof(uint);
+    private const int MagicByteSize = sizeof(byte);
+    private const int CrcSize = sizeof(uint);
+    private const int CompressedFlagSize = sizeof(byte);
+    private const int BaseTimestampSize = sizeof(ulong);
     private const int HeaderSize = BaseOffsetSize + BatchLengthSize + LastOffsetSize;
 
-    public LogRecordBatch ReadBatch(Stream stream)
+    public LogRecordBatch ReadBatch(ReadOnlySpan<byte> data)
     {
-        Span<byte> buffer = stackalloc byte[8];
+        var position = 0;
 
-        stream.ReadExactly(buffer[..8]);
-        var baseOffset = BinaryPrimitives.ReadUInt64BigEndian(buffer);
+        var baseOffset = BinaryPrimitives.ReadUInt64BigEndian(data[position..]);
+        position += BaseOffsetSize;
 
-        stream.ReadExactly(buffer[..4]);
-        var batchLength = BinaryPrimitives.ReadUInt32BigEndian(buffer);
+        var batchLength = BinaryPrimitives.ReadUInt32BigEndian(data[position..]);
+        position += BatchLengthSize;
         if (batchLength is 0 or > Int32.MaxValue)
         {
             throw new InvalidDataException("Batch length cannot be zero, or bigger than Int64.MaxValue.");
         }
 
-        stream.ReadExactly(buffer[..8]);
-        var lastOffset = BinaryPrimitives.ReadUInt64BigEndian(buffer);
+        var lastOffset = BinaryPrimitives.ReadUInt64BigEndian(data[position..]);
+        position += LastOffsetSize;
 
-        stream.ReadExactly(buffer[..4]);
-        var recordBytesLength = BinaryPrimitives.ReadUInt32BigEndian(buffer);
+        var recordBytesLength = BinaryPrimitives.ReadUInt32BigEndian(data[position..]);
+        position += RecordBytesLengthSize;
 
-        var batchStartPosition = stream.Position;
+        var batchStartPosition = position;
 
-        var magicByte = stream.ReadByte();
-        if (magicByte == -1) throw new InvalidDataException("Unexpected end of stream reading magic number");
+        var magicByte = data[position];
+        position += MagicByteSize;
+        if (magicByte == 0) throw new InvalidDataException("Unexpected end of data reading magic number");
         var magic = (CommitLogMagicNumbers)magicByte;
         if (magic != CommitLogMagicNumbers.LogRecordBatchMagicNumber)
         {
@@ -48,15 +54,15 @@ public class LogRecordBatchBinaryReader(ILogRecordReader logRecordReader, ICompr
                 $"Invalid magic number: expected {CommitLogMagicNumbers.LogRecordBatchMagicNumber}, got {magic}");
         }
 
-        stream.ReadExactly(buffer[..4]);
-        var storedCrc = BinaryPrimitives.ReadUInt32BigEndian(buffer);
+        var storedCrc = BinaryPrimitives.ReadUInt32BigEndian(data[position..]);
+        position += CrcSize;
 
-        var compressedByte = stream.ReadByte();
-        if (compressedByte == -1) throw new InvalidDataException("Unexpected end of stream reading compressed flag");
+        var compressedByte = data[position];
+        position += CompressedFlagSize;
         var compressed = compressedByte != 0;
 
-        stream.ReadExactly(buffer[..8]);
-        var baseTimestamp = BinaryPrimitives.ReadUInt64BigEndian(buffer);
+        var baseTimestamp = BinaryPrimitives.ReadUInt64BigEndian(data[position..]);
+        position += BaseTimestampSize;
 
         if (recordBytesLength > int.MaxValue)
         {
@@ -64,10 +70,10 @@ public class LogRecordBatchBinaryReader(ILogRecordReader logRecordReader, ICompr
                 $"Record bytes length {recordBytesLength} exceeds maximum allowed size");
         }
 
-        var recordBytes = new byte[recordBytesLength];
-        stream.ReadExactly(recordBytes);
+        var recordBytes = data.Slice(position, (int)recordBytesLength).ToArray();
+        position += (int)recordBytesLength;
 
-        var actualBytesRead = (ulong)(stream.Position - batchStartPosition);
+        var actualBytesRead = (ulong)(position - batchStartPosition);
         if (actualBytesRead != batchLength)
         {
             throw new InvalidDataException(
@@ -90,40 +96,31 @@ public class LogRecordBatchBinaryReader(ILogRecordReader logRecordReader, ICompr
         return new LogRecordBatch(magic, baseOffset, records, compressed);
     }
 
-    public (byte[] batchBytes, ulong batchOffset, ulong lastOffset) ReadBatchBytesAndAdvance(Stream stream)
+    public (byte[] batchBytes, ulong batchOffset, ulong lastOffset, int bytesConsumed) ReadBatchBytesAndAdvance(ReadOnlySpan<byte> data)
     {
-        var batchStartPosition = stream.Position;
-        Span<byte> buffer = stackalloc byte[8];
+        var position = 0;
 
-        stream.ReadExactly(buffer[..8]);
-        var baseOffset = BinaryPrimitives.ReadUInt64BigEndian(buffer);
+        var baseOffset = BinaryPrimitives.ReadUInt64BigEndian(data[position..]);
+        position += BaseOffsetSize;
 
-        stream.ReadExactly(buffer[..4]);
-        var batchLength = BinaryPrimitives.ReadUInt32BigEndian(buffer);
+        var batchLength = BinaryPrimitives.ReadUInt32BigEndian(data[position..]);
+        position += BatchLengthSize;
         if (batchLength is 0 or > Int32.MaxValue)
         {
             throw new InvalidDataException("Batch length cannot be zero, or bigger than Int32.MaxValue.");
         }
 
-        stream.ReadExactly(buffer[..8]);
-        var lastOffset = BinaryPrimitives.ReadUInt64BigEndian(buffer);
+        var lastOffset = BinaryPrimitives.ReadUInt64BigEndian(data[position..]);
+        position += LastOffsetSize;
 
-        stream.ReadExactly(buffer[..4]);
-        var recordBytesLength = BinaryPrimitives.ReadUInt32BigEndian(buffer);
+        var recordBytesLength = BinaryPrimitives.ReadUInt32BigEndian(data[position..]);
+        position += RecordBytesLengthSize;
 
-        var totalBatchSize = HeaderSize + sizeof(uint) + (int)batchLength;
+        var totalBatchSize = HeaderSize + RecordBytesLengthSize + (int)batchLength;
 
-        stream.Seek((long)batchStartPosition, SeekOrigin.Begin);
+        var fullBatchBytes = data[..totalBatchSize].ToArray();
 
-        var fullBatchBytes = new byte[totalBatchSize];
-        var bytesRead = stream.Read(fullBatchBytes, 0, totalBatchSize);
-        if (bytesRead != totalBatchSize)
-        {
-            throw new InvalidDataException(
-                $"Expected {totalBatchSize} bytes but only read {bytesRead}");
-        }
-
-        return (fullBatchBytes, baseOffset, lastOffset);
+        return (fullBatchBytes, baseOffset, lastOffset, totalBatchSize);
     }
 
     private List<LogRecord> ReadRecords(byte[] recordBytes, ulong baseTimestamp)

@@ -42,8 +42,7 @@ public class ProcessMessageUseCase<T>(
 
     public async Task<ulong> ExecuteAsync(byte[] batchBytes)
     {
-        using var stream = new MemoryStream(batchBytes);
-        var batch = batchReader.ReadBatch(stream);
+        var batch = batchReader.ReadBatch(batchBytes);
 
         Logger.LogDebug(
             $"Processing batch at baseOffset {batch.BaseOffset}, lastOffset {batch.LastOffset}, {batch.Records.Count} records");
@@ -67,8 +66,7 @@ public class ProcessMessageUseCase<T>(
 
     public (ulong baseOffset, ulong lastOffset) GetBatchOffsets(byte[] batchBytes)
     {
-        using var stream = new MemoryStream(batchBytes);
-        var batch = batchReader.ReadBatch(stream);
+        var batch = batchReader.ReadBatch(batchBytes);
         return (batch.BaseOffset, batch.LastOffset);
     }
 }

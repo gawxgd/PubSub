@@ -4,5 +4,5 @@ namespace MessageBroker.Domain.Port.CommitLog.Index.Reader;
 
 public interface ITimeIndexReader
 {
-    TimeIndexEntry ReadFrom(Stream stream);
+   public TimeIndexEntry ReadFrom(ReadOnlySpan<byte> data);
 }

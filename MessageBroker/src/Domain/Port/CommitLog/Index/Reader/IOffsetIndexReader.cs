@@ -4,5 +4,5 @@ namespace MessageBroker.Domain.Port.CommitLog.Index.Reader;
 
 public interface IOffsetIndexReader
 {
-    OffsetIndexEntry ReadFrom(Stream stream);
+   public OffsetIndexEntry ReadFrom(ReadOnlySpan<byte> data);
 }

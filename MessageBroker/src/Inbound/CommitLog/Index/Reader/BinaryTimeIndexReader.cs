@@ -6,21 +6,11 @@ namespace MessageBroker.Inbound.CommitLog.Index.Reader;
 
 public sealed class BinaryTimeIndexReader : ITimeIndexReader
 {
-    public TimeIndexEntry ReadFrom(Stream stream)
+    public TimeIndexEntry ReadFrom(ReadOnlySpan<byte> data)
     {
-        var entrySize = TimeIndexEntry.Size;
-        Span<byte> buffer = stackalloc byte[entrySize];
-        var bytesRead = stream.Read(buffer);
+        var timestamp = BinaryPrimitives.ReadUInt64BigEndian(data[..8]);
+        var filePosition = BinaryPrimitives.ReadUInt64BigEndian(data.Slice(8, 8));
 
-        if (bytesRead != entrySize)
-        {
-            throw new InvalidDataException(
-                $"Failed to read complete time index entry. Expected {entrySize} bytes, got {bytesRead}");
-        }
-
-        var timestamp = BinaryPrimitives.ReadUInt64BigEndian(buffer[..8]);
-        var relativeOffset = BinaryPrimitives.ReadUInt64BigEndian(buffer.Slice(8, 8));
-
-        return new TimeIndexEntry(timestamp, relativeOffset);
+        return new TimeIndexEntry(timestamp, filePosition);
     }
 }
