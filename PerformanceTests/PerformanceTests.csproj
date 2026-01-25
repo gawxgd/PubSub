@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -19,6 +19,15 @@
     <ProjectReference Include="..\Subscriber\Subscriber.csproj" />
     <ProjectReference Include="..\Shared\Shared.csproj" />
     <ProjectReference Include="..\LoggerLib\LoggerLib.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Exclude ProgramKafka.cs and ProgramMaxThroughput.cs from default build - Program.cs is now PubSub version -->
+    <!-- To use Kafka version: rename Program.cs to ProgramPubSub.cs and ProgramKafka.cs to Program.cs -->
+    <!-- To use MaxThroughput test: rename Program.cs to ProgramPubSub.cs and ProgramMaxThroughput.cs to Program.cs -->
+    <Compile Remove="ProgramKafka.cs" />
+    <Compile Remove="ProgramMaxThroughput.cs" />
+    <Compile Remove="ProgramPubSub.cs" />
   </ItemGroup>
 
 </Project>

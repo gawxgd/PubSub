@@ -1,0 +1,16 @@
+2026-01-17 13:10:05.476 +01:00 [INF] [ThreadId:2] NBomber 6.1.2 started a new session: 2026-01-17_12.10.42_session_4cb6562a
+2026-01-17 13:10:05.513 +01:00 [INF] [ThreadId:2] NBomber started as single node
+2026-01-17 13:10:05.515 +01:00 [INF] [ThreadId:2] License validation....
+2026-01-17 13:10:05.516 +01:00 [WRN] [ThreadId:2] THIS VERSION IS FREE ONLY FOR PERSONAL USE. You can't use it for an organization.
+2026-01-17 13:10:05.526 +01:00 [INF] [ThreadId:2] Reports folder: C:\src\github\sandrawar\PubSub\PerformanceTests\bin\Debug\net9.0\./reports
+2026-01-17 13:10:05.527 +01:00 [INF] [ThreadId:2] Plugins: no plugins were loaded
+2026-01-17 13:10:05.528 +01:00 [INF] [ThreadId:2] Reporting sinks: no reporting sinks were loaded
+2026-01-17 13:10:05.529 +01:00 [INF] [ThreadId:2] Starting init...
+2026-01-17 13:10:05.536 +01:00 [INF] [ThreadId:2] Target scenarios: pub_kafka-e2e-topic-01, sub_kafka-e2e-topic-01
+2026-01-17 13:10:05.538 +01:00 [INF] [ThreadId:2] Start init scenario: pub_kafka-e2e-topic-01
+2026-01-17 13:10:05.801 +01:00 [INF] [ThreadId:6] Start init scenario: sub_kafka-e2e-topic-01
+2026-01-17 13:10:05.815 +01:00 [INF] [ThreadId:6] Init finished
+2026-01-17 13:10:05.836 +01:00 [INF] [ThreadId:6] Starting warm up...
+2026-01-17 13:10:05.837 +01:00 [INF] [ThreadId:6] Warm up for scenarios: pub_kafka-e2e-topic-01, sub_kafka-e2e-topic-01
+2026-01-17 13:10:05.841 +01:00 [INF] [ThreadId:6] Warm up duration: 00:00:10
+2026-01-17 13:10:16.903 +01:00 [INF] [ThreadId:20] Starting bombing...

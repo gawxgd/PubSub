@@ -1,0 +1,6 @@
+2026-01-18 07:13:10.947 +01:00 [INF] [ThreadId:105] Waiting on scenarios completion...
+2026-01-18 07:13:52.633 +01:00 [WRN] [ThreadId:93] Stopping test early: stop command activated by CLI
+2026-01-18 07:13:54.621 +01:00 [INF] [ThreadId:117] Calculating final statistics...
+2026-01-18 07:13:54.623 +01:00 [INF] [ThreadId:93] Start cleaning scenario: pub_kafka-e2e-topic-01
+2026-01-18 07:13:55.377 +01:00 [INF] [ThreadId:129] Reports saved in folder: C:\src\github\sandrawar\PubSub\PerformanceTests\reports
+2026-01-18 07:13:55.379 +01:00 [WRN] [ThreadId:129] THIS VERSION IS FREE ONLY FOR PERSONAL USE. You can't use it for an organization.

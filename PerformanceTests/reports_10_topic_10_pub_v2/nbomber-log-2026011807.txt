@@ -1,0 +1,33 @@
+2026-01-18 07:18:06.766 +01:00 [INF] [ThreadId:2] NBomber 6.1.2 started a new session: 2026-01-18_06.18.66_session_6d2c48e4
+2026-01-18 07:18:06.853 +01:00 [INF] [ThreadId:2] NBomber started as single node
+2026-01-18 07:18:06.858 +01:00 [INF] [ThreadId:2] License validation....
+2026-01-18 07:18:06.860 +01:00 [WRN] [ThreadId:2] THIS VERSION IS FREE ONLY FOR PERSONAL USE. You can't use it for an organization.
+2026-01-18 07:18:06.885 +01:00 [INF] [ThreadId:2] Reports folder: C:\src\github\sandrawar\PubSub\PerformanceTests\bin\Debug\net9.0\./reports
+2026-01-18 07:18:06.887 +01:00 [INF] [ThreadId:2] Plugins: no plugins were loaded
+2026-01-18 07:18:06.897 +01:00 [INF] [ThreadId:2] Reporting sinks: no reporting sinks were loaded
+2026-01-18 07:18:06.898 +01:00 [INF] [ThreadId:2] Starting init...
+2026-01-18 07:18:06.913 +01:00 [INF] [ThreadId:2] Target scenarios: pub_long-run-topic-01, sub_long-run-topic-01, pub_long-run-topic-02, sub_long-run-topic-02, pub_long-run-topic-03, sub_long-run-topic-03, pub_long-run-topic-04, sub_long-run-topic-04, pub_long-run-topic-05, sub_long-run-topic-05, pub_long-run-topic-06, sub_long-run-topic-06, pub_long-run-topic-07, sub_long-run-topic-07, pub_long-run-topic-08, sub_long-run-topic-08, pub_long-run-topic-09, sub_long-run-topic-09, pub_long-run-topic-10, sub_long-run-topic-10
+2026-01-18 07:18:06.916 +01:00 [INF] [ThreadId:2] Start init scenario: pub_long-run-topic-01
+2026-01-18 07:18:07.483 +01:00 [INF] [ThreadId:14] Start init scenario: sub_long-run-topic-01
+2026-01-18 07:18:07.537 +01:00 [INF] [ThreadId:14] Start init scenario: pub_long-run-topic-02
+2026-01-18 07:18:07.564 +01:00 [INF] [ThreadId:5] Start init scenario: sub_long-run-topic-02
+2026-01-18 07:18:07.587 +01:00 [INF] [ThreadId:7] Start init scenario: pub_long-run-topic-03
+2026-01-18 07:18:07.607 +01:00 [INF] [ThreadId:7] Start init scenario: sub_long-run-topic-03
+2026-01-18 07:18:07.633 +01:00 [INF] [ThreadId:14] Start init scenario: pub_long-run-topic-04
+2026-01-18 07:18:07.653 +01:00 [INF] [ThreadId:15] Start init scenario: sub_long-run-topic-04
+2026-01-18 07:18:07.675 +01:00 [INF] [ThreadId:14] Start init scenario: pub_long-run-topic-05
+2026-01-18 07:18:07.695 +01:00 [INF] [ThreadId:11] Start init scenario: sub_long-run-topic-05
+2026-01-18 07:18:07.723 +01:00 [INF] [ThreadId:7] Start init scenario: pub_long-run-topic-06
+2026-01-18 07:18:07.748 +01:00 [INF] [ThreadId:14] Start init scenario: sub_long-run-topic-06
+2026-01-18 07:18:07.773 +01:00 [INF] [ThreadId:11] Start init scenario: pub_long-run-topic-07
+2026-01-18 07:18:07.806 +01:00 [INF] [ThreadId:12] Start init scenario: sub_long-run-topic-07
+2026-01-18 07:18:07.854 +01:00 [INF] [ThreadId:11] Start init scenario: pub_long-run-topic-08
+2026-01-18 07:18:07.885 +01:00 [INF] [ThreadId:11] Start init scenario: sub_long-run-topic-08
+2026-01-18 07:18:07.931 +01:00 [INF] [ThreadId:10] Start init scenario: pub_long-run-topic-09
+2026-01-18 07:18:07.967 +01:00 [INF] [ThreadId:12] Start init scenario: sub_long-run-topic-09
+2026-01-18 07:18:08.005 +01:00 [INF] [ThreadId:7] Start init scenario: pub_long-run-topic-10
+2026-01-18 07:18:08.049 +01:00 [INF] [ThreadId:7] Start init scenario: sub_long-run-topic-10
+2026-01-18 07:18:08.101 +01:00 [INF] [ThreadId:21] Init finished
+2026-01-18 07:18:08.137 +01:00 [INF] [ThreadId:21] Starting warm up...
+2026-01-18 07:18:08.145 +01:00 [INF] [ThreadId:21] Warm up for scenarios: pub_long-run-topic-01, sub_long-run-topic-01, pub_long-run-topic-02, sub_long-run-topic-02, pub_long-run-topic-03, sub_long-run-topic-03, pub_long-run-topic-04, sub_long-run-topic-04, pub_long-run-topic-05, sub_long-run-topic-05, pub_long-run-topic-06, sub_long-run-topic-06, pub_long-run-topic-07, sub_long-run-topic-07, pub_long-run-topic-08, sub_long-run-topic-08, pub_long-run-topic-09, sub_long-run-topic-09, pub_long-run-topic-10, sub_long-run-topic-10
+2026-01-18 07:18:08.154 +01:00 [INF] [ThreadId:21] Warm up duration: 00:10:00

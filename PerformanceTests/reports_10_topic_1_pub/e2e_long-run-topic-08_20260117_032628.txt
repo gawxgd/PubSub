@@ -1,0 +1,6 @@
+E2E Latency: long-run-topic-08
+Samples: 200,000
+P50: 91.23ms
+P75: 370.65ms
+P95: 960179.18ms
+P99: 1229277.55ms

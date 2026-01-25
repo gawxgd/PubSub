@@ -1,0 +1,25 @@
+2026-01-17 16:47:40.877 +01:00 [INF] [ThreadId:41] Waiting on scenarios completion...
+2026-01-17 16:47:41.875 +01:00 [WRN] [ThreadId:22] Stopping test early: stop command activated by CLI
+2026-01-17 16:47:43.884 +01:00 [INF] [ThreadId:22] Calculating final statistics...
+2026-01-17 16:47:43.889 +01:00 [INF] [ThreadId:37] Start cleaning scenario: pub_kafka-e2e-topic-01
+2026-01-17 16:47:43.974 +01:00 [INF] [ThreadId:37] Start cleaning scenario: sub_kafka-e2e-topic-01
+2026-01-17 16:47:44.350 +01:00 [INF] [ThreadId:4] Start cleaning scenario: pub_kafka-e2e-topic-02
+2026-01-17 16:47:44.403 +01:00 [INF] [ThreadId:4] Start cleaning scenario: sub_kafka-e2e-topic-02
+2026-01-17 16:47:44.568 +01:00 [INF] [ThreadId:13] Start cleaning scenario: pub_kafka-e2e-topic-03
+2026-01-17 16:47:44.625 +01:00 [INF] [ThreadId:13] Start cleaning scenario: sub_kafka-e2e-topic-03
+2026-01-17 16:47:44.841 +01:00 [INF] [ThreadId:17] Start cleaning scenario: pub_kafka-e2e-topic-04
+2026-01-17 16:47:44.938 +01:00 [INF] [ThreadId:17] Start cleaning scenario: sub_kafka-e2e-topic-04
+2026-01-17 16:47:45.121 +01:00 [INF] [ThreadId:12] Start cleaning scenario: pub_kafka-e2e-topic-05
+2026-01-17 16:47:45.155 +01:00 [INF] [ThreadId:12] Start cleaning scenario: sub_kafka-e2e-topic-05
+2026-01-17 16:47:45.410 +01:00 [INF] [ThreadId:19] Start cleaning scenario: pub_kafka-e2e-topic-06
+2026-01-17 16:47:45.466 +01:00 [INF] [ThreadId:19] Start cleaning scenario: sub_kafka-e2e-topic-06
+2026-01-17 16:47:45.622 +01:00 [INF] [ThreadId:23] Start cleaning scenario: pub_kafka-e2e-topic-07
+2026-01-17 16:47:45.677 +01:00 [INF] [ThreadId:23] Start cleaning scenario: sub_kafka-e2e-topic-07
+2026-01-17 16:47:45.876 +01:00 [INF] [ThreadId:27] Start cleaning scenario: pub_kafka-e2e-topic-08
+2026-01-17 16:47:45.896 +01:00 [INF] [ThreadId:27] Start cleaning scenario: sub_kafka-e2e-topic-08
+2026-01-17 16:47:46.094 +01:00 [INF] [ThreadId:6] Start cleaning scenario: pub_kafka-e2e-topic-09
+2026-01-17 16:47:46.117 +01:00 [INF] [ThreadId:6] Start cleaning scenario: sub_kafka-e2e-topic-09
+2026-01-17 16:47:46.369 +01:00 [INF] [ThreadId:31] Start cleaning scenario: pub_kafka-e2e-topic-10
+2026-01-17 16:47:46.432 +01:00 [INF] [ThreadId:31] Start cleaning scenario: sub_kafka-e2e-topic-10
+2026-01-17 16:47:46.985 +01:00 [INF] [ThreadId:22] Reports saved in folder: C:\src\github\sandrawar\PubSub\PerformanceTests\reports
+2026-01-17 16:47:46.986 +01:00 [WRN] [ThreadId:22] THIS VERSION IS FREE ONLY FOR PERSONAL USE. You can't use it for an organization.

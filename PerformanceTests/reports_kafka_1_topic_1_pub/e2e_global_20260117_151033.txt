@@ -1,0 +1,5 @@
+E2E Latency: GLOBAL
+Samples: 200,000
+P50: 16.90ms
+P95: 34.18ms
+P99: 51.09ms

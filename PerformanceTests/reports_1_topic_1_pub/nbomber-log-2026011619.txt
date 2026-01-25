@@ -1,0 +1,16 @@
+2026-01-16 19:05:27.905 +01:00 [INF] [ThreadId:2] NBomber 6.1.2 started a new session: 2026-01-16_18.05.85_session_961115a2
+2026-01-16 19:05:27.941 +01:00 [INF] [ThreadId:2] NBomber started as single node
+2026-01-16 19:05:27.943 +01:00 [INF] [ThreadId:2] License validation....
+2026-01-16 19:05:27.944 +01:00 [WRN] [ThreadId:2] THIS VERSION IS FREE ONLY FOR PERSONAL USE. You can't use it for an organization.
+2026-01-16 19:05:27.956 +01:00 [INF] [ThreadId:2] Reports folder: C:\src\github\sandrawar\PubSub\PerformanceTests\bin\Debug\net9.0\./reports
+2026-01-16 19:05:27.956 +01:00 [INF] [ThreadId:2] Plugins: no plugins were loaded
+2026-01-16 19:05:27.967 +01:00 [INF] [ThreadId:2] Reporting sinks: no reporting sinks were loaded
+2026-01-16 19:05:27.967 +01:00 [INF] [ThreadId:2] Starting init...
+2026-01-16 19:05:27.974 +01:00 [INF] [ThreadId:2] Target scenarios: pub_long-run-topic-01, sub_long-run-topic-01
+2026-01-16 19:05:27.975 +01:00 [INF] [ThreadId:2] Start init scenario: pub_long-run-topic-01
+2026-01-16 19:05:28.245 +01:00 [INF] [ThreadId:7] Start init scenario: sub_long-run-topic-01
+2026-01-16 19:05:28.271 +01:00 [INF] [ThreadId:10] Init finished
+2026-01-16 19:05:28.293 +01:00 [INF] [ThreadId:10] Starting warm up...
+2026-01-16 19:05:28.294 +01:00 [INF] [ThreadId:10] Warm up for scenarios: pub_long-run-topic-01, sub_long-run-topic-01
+2026-01-16 19:05:28.297 +01:00 [INF] [ThreadId:10] Warm up duration: 00:00:10
+2026-01-16 19:05:39.333 +01:00 [INF] [ThreadId:419] Starting bombing...
