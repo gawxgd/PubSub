@@ -21,7 +21,7 @@ namespace PerformanceTests.Scenarios;
 
 public static class MultiTopicLongRunScenario
 {
-    // --- per-run state (resetowane na starcie Create) ---
+    // --- per-run state  ---
     private static readonly ConcurrentDictionary<string, TopicState> StateByTopic = new();
 
     private static readonly ConcurrentDictionary<string, List<IPublisher<TestMessage>>> PublishersByTopic = new();
@@ -38,22 +38,17 @@ public static class MultiTopicLongRunScenario
         public DateTime RunStartedUtc;
 
         public long PublishedOk;
-
-        // ile wiadomości callback zobaczył (niezależnie od E2E)
         public long ReceivedTotal;
-
-        // ile wiadomości weszło do E2E (po filtrach)
         public long ReceivedE2E;
 
-        public long SkippedStale;   // stare wiadomości (backlog)
-        public long ClockSkewed;    // e2eMs < 0 (publisher “w przyszłości”)
+        public long SkippedStale;   
+        public long ClockSkewed;   
 
-        public ReservoirSampler E2E; // sampling E2E, żeby nie zjeść RAM
+        public ReservoirSampler E2E; 
 
         public TopicState(int maxSamples) => E2E = new ReservoirSampler(maxSamples);
     }
 
-    /// <summary>Prosty reservoir sampling: trzyma max N próbek, a resztę próbuje losowo podmieniać.</summary>
     private sealed class ReservoirSampler
     {
         private readonly int _max;
@@ -200,7 +195,6 @@ public static class MultiTopicLongRunScenario
         var ratePerTopic = Math.Max(1, totalRate / Math.Max(1, numTopics));
         var scenarios = new List<ScenarioProps>();
 
-        // tolerancja na „stare” wiadomości (backlog / retencja)
         var staleTolerance = TimeSpan.FromHours(24);
 
         for (int topicIndex = 1; topicIndex <= numTopics; topicIndex++)
@@ -285,7 +279,7 @@ public static class MultiTopicLongRunScenario
             scenarios.Add(publishScenario);
 
             // =========================
-            // SUBSCRIBER SCENARIO (sonda)
+            // SUBSCRIBER SCENARIO 
             // =========================
             var subscribeScenario = Scenario.Create($"sub_{topicName}", async ctx =>
             {
@@ -337,14 +331,8 @@ public static class MultiTopicLongRunScenario
                     var subscriber = subscriberFactory.CreateSubscriber(subOptions, message =>
                     {
                         var receivedAt = DateTime.UtcNow;
-
-                        // callback ZAWSZE widzi wiadomość
                         Interlocked.Increment(ref st.ReceivedTotal);
-
-                        // message.Timestamp to ticks UTC (jak w publisherze)
                         var publishedAt = new DateTime(message.Timestamp, DateTimeKind.Utc);
-
-                        // filtr starych wiadomości (backlog)
                         if (publishedAt < st.RunStartedUtc - staleTolerance)
                         {
                             Interlocked.Increment(ref st.SkippedStale);
@@ -375,10 +363,7 @@ public static class MultiTopicLongRunScenario
 
                         if (e2eMs < 0)
                         {
-                            // rozjechane zegary / zły format Timestamp
                             Interlocked.Increment(ref st.ClockSkewed);
-
-                            // na czas diagnostyki: nie wyrzucaj próbki, tylko przytnij
                             e2eMs = 0;
                         }
 
@@ -430,7 +415,6 @@ public static class MultiTopicLongRunScenario
                 if (SubscriberProcessingTasksByTopic.TryRemove(topicName, out var tasks))
                     await Task.WhenAny(Task.WhenAll(tasks), Task.Delay(2000));
 
-                // zapis percentyli (z próbek)
                 var samples = st.E2E.Snapshot();
                 samples.Sort();
 
@@ -536,7 +520,6 @@ public static class MultiTopicLongRunScenario
         catch { /* ignore */ }
     }
 
-    // opcjonalnie: globalny zapis (na podstawie próbek per-topic)
     public static void SaveGlobalE2EToFile()
     {
         Console.WriteLine($"[GLOBAL] topics={StateByTopic.Count}");
