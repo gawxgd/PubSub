@@ -221,7 +221,7 @@ public static class KafkaMultiTopicLongRunScenario
                 var message = new TestMessage
                 {
                     Id = (int)seq,
-                    Timestamp = publishedAtUtc.Ticks, // Ticks UTC jak u Ciebie
+                    Timestamp = publishedAtUtc.Ticks, 
                     Content = $"Kafka E2E {topicName} #{seq}",
                     Source = topicName,
                     SequenceNumber = seq
@@ -243,12 +243,9 @@ public static class KafkaMultiTopicLongRunScenario
                     BootstrapServers = bootstrapServers,
                     Acks = Acks.Leader,
                     EnableIdempotence = false,
+                    LingerMs = 5,      
+                    BatchSize = 16384, 
 
-                    // batching: tradeoff throughput/latency
-                    LingerMs = 5,      // linger.ms -> batching 
-                    BatchSize = 16384, // batch.size default ~16KB 
-
-                    // safety defaults
                     MessageTimeoutMs = 120000,
                 };
 
@@ -311,14 +308,13 @@ public static class KafkaMultiTopicLongRunScenario
 
                 for (int i = 0; i < consumersPerTopic; i++)
                 {
-                    // Fan-out: unikalna grupa -> każdy consumer dostaje ALL messages [web:223]
                     var groupId = $"e2e-{topicName}-{i}-{Guid.NewGuid():N}";
 
                     var consumerConfig = new ConsumerConfig
                     {
                         BootstrapServers = bootstrapServers,
                         GroupId = groupId,
-                        AutoOffsetReset = AutoOffsetReset.Latest, // działa “od teraz” dla nowej grupy [web:223]
+                        AutoOffsetReset = AutoOffsetReset.Latest, 
                         EnableAutoCommit = true,
                         FetchWaitMaxMs = 25
                     };
