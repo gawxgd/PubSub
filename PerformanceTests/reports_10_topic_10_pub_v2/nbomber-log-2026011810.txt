@@ -1,7 +1,0 @@
-2026-01-18 10:12:38.624 +01:00 [INF] [ThreadId:24] Waiting on scenarios completion...
-2026-01-18 10:12:39.749 +01:00 [WRN] [ThreadId:23] Stopping test early: stop command activated by CLI
-2026-01-18 10:12:40.871 +01:00 [INF] [ThreadId:23] Calculating final statistics...
-2026-01-18 10:12:41.342 +01:00 [INF] [ThreadId:23] Start cleaning scenario: pub_long-run-topic-01
-2026-01-18 10:12:41.395 +01:00 [INF] [ThreadId:23] Start cleaning scenario: sub_long-run-topic-01
-2026-01-18 10:12:44.418 +01:00 [INF] [ThreadId:23] Reports saved in folder: C:\src\github\sandrawar\PubSub\PerformanceTests\reports
-2026-01-18 10:12:44.430 +01:00 [WRN] [ThreadId:23] THIS VERSION IS FREE ONLY FOR PERSONAL USE. You can't use it for an organization.
