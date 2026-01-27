@@ -96,10 +96,10 @@ public class BinaryCommitLogAppenderTests : IDisposable
     {
         // Arrange
         var appender = CreateAppender();
-        var payload = new byte[] { 1, 2, 3 };
+        var batchBytes = CreateBatchBytes(new byte[] { 1, 2, 3 });
 
         // Act
-        await appender.AppendAsync(payload);
+        await appender.AppendAsync(batchBytes);
 
         // Assert
         // Verify it doesn't throw - payload is queued
@@ -111,9 +111,10 @@ public class BinaryCommitLogAppenderTests : IDisposable
         // Arrange
         var appender = CreateAppender(flushInterval: TimeSpan.FromMilliseconds(50));
         var payload = new byte[] { 1, 2, 3 };
+        var batchBytes = CreateBatchBytes(payload);
 
         // Act
-        await appender.AppendAsync(payload);
+        await appender.AppendAsync(batchBytes);
         await Task.Delay(150); // Wait for background flush
 
         // Assert - Read back and verify
@@ -133,20 +134,24 @@ public class BinaryCommitLogAppenderTests : IDisposable
         var appender = CreateAppender(flushInterval: TimeSpan.FromMilliseconds(100));
 
         // Act
-        await appender.AppendAsync(new byte[] { 1 });
-        await appender.AppendAsync(new byte[] { 2 });
-        await appender.AppendAsync(new byte[] { 3 });
+        await appender.AppendAsync(CreateBatchBytes(new byte[] { 1 }));
+        await appender.AppendAsync(CreateBatchBytes(new byte[] { 2 }));
+        await appender.AppendAsync(CreateBatchBytes(new byte[] { 3 }));
         await Task.Delay(150); // Wait for background flush
 
-        // Assert - Read back and verify all three payloads were batched together
+        // Assert - Read back and verify all three batches were written
         var activeSegment = _segmentRegistry.GetActiveSegment();
         await using var reader = _segmentFactory.CreateReader(activeSegment);
-        var readBatch = reader.ReadBatch(0);
+        var readBatch1 = reader.ReadBatch(0);
+        var readBatch2 = reader.ReadBatch(1);
+        var readBatch3 = reader.ReadBatch(2);
 
-        // Create expected batch using timestamps from read batch for full comparison
-        var expectedBatch =
-            CreateExpectedBatchFromRead(readBatch!, new byte[] { 1 }, new byte[] { 2 }, new byte[] { 3 });
-        AssertBatchesEqual(expectedBatch, readBatch, "batched payloads should match expected");
+        readBatch1.Should().NotBeNull();
+        readBatch2.Should().NotBeNull();
+        readBatch3.Should().NotBeNull();
+        readBatch1!.Records.First().Payload.ToArray().Should().BeEquivalentTo(new byte[] { 1 });
+        readBatch2!.Records.First().Payload.ToArray().Should().BeEquivalentTo(new byte[] { 2 });
+        readBatch3!.Records.First().Payload.ToArray().Should().BeEquivalentTo(new byte[] { 3 });
     }
 
     [Fact]
@@ -158,9 +163,9 @@ public class BinaryCommitLogAppenderTests : IDisposable
         Random.Shared.NextBytes(largePayload);
 
         // Act
-        await appender.AppendAsync(largePayload);
+        await appender.AppendAsync(CreateBatchBytes(largePayload));
         await Task.Delay(150);
-        await appender.AppendAsync(new byte[] { 1 }); // This should trigger a roll
+        await appender.AppendAsync(CreateBatchBytes(new byte[] { 1 })); // This should trigger a roll
         await Task.Delay(150);
 
         // Assert - Verify data was written and rolled
@@ -175,20 +180,24 @@ public class BinaryCommitLogAppenderTests : IDisposable
         var appender = CreateAppender(flushInterval: TimeSpan.FromMilliseconds(50));
 
         // Act
-        await appender.AppendAsync(new byte[] { 1 });
-        await appender.AppendAsync(new byte[] { 2 });
-        await appender.AppendAsync(new byte[] { 3 });
+        await appender.AppendAsync(CreateBatchBytes(new byte[] { 1 }));
+        await appender.AppendAsync(CreateBatchBytes(new byte[] { 2 }));
+        await appender.AppendAsync(CreateBatchBytes(new byte[] { 3 }));
         await Task.Delay(150);
 
         // Assert - Read back and verify sequential offsets
         var activeSegment = _segmentRegistry.GetActiveSegment();
         await using var reader = _segmentFactory.CreateReader(activeSegment);
-        var readBatch = reader.ReadBatch(0);
+        var readBatch1 = reader.ReadBatch(0);
+        var readBatch2 = reader.ReadBatch(1);
+        var readBatch3 = reader.ReadBatch(2);
 
-        // Create expected batch using timestamps from read batch for full comparison
-        var expectedBatch =
-            CreateExpectedBatchFromRead(readBatch!, new byte[] { 1 }, new byte[] { 2 }, new byte[] { 3 });
-        AssertBatchesEqual(expectedBatch, readBatch, "sequential offsets should match expected");
+        readBatch1.Should().NotBeNull();
+        readBatch2.Should().NotBeNull();
+        readBatch3.Should().NotBeNull();
+        readBatch1!.BaseOffset.Should().Be(0UL);
+        readBatch2!.BaseOffset.Should().Be(1UL);
+        readBatch3!.BaseOffset.Should().Be(2UL);
     }
 
     [Fact]
@@ -201,7 +210,7 @@ public class BinaryCommitLogAppenderTests : IDisposable
         var tasks = new List<Task>();
         for (int i = 0; i < 15; i++)
         {
-            tasks.Add(appender.AppendAsync(new byte[] { (byte)i }).AsTask());
+            tasks.Add(appender.AppendAsync(CreateBatchBytes(new byte[] { (byte)i })).AsTask());
         }
 
         // Assert - Should not throw or deadlock
@@ -217,7 +226,7 @@ public class BinaryCommitLogAppenderTests : IDisposable
         var appender = CreateAppender(flushInterval: TimeSpan.FromMilliseconds(50));
 
         // Act
-        await appender.AppendAsync(new byte[] { 1 });
+        await appender.AppendAsync(CreateBatchBytes(new byte[] { 1 }));
         await Task.Delay(150);
 
         // Assert - Read back and verify timestamp
@@ -241,7 +250,7 @@ public class BinaryCommitLogAppenderTests : IDisposable
         var originalPayload = new byte[] { 1, 2, 3, 4, 5 };
 
         // Act
-        await appender.AppendAsync(originalPayload);
+        await appender.AppendAsync(CreateBatchBytes(originalPayload));
         await Task.Delay(150);
 
         // Assert - Read back and verify payload
@@ -301,6 +310,38 @@ public class BinaryCommitLogAppenderTests : IDisposable
             flushInterval ?? TimeSpan.FromMilliseconds(100),
             _segmentRegistry
         );
+    }
+
+    private byte[] CreateBatchBytes(params byte[][] payloads)
+    {
+        // Create a LogRecordBatch with the given payloads
+        var records = new List<LogRecord>();
+        var currentTime = (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        
+        for (int i = 0; i < payloads.Length; i++)
+        {
+            records.Add(new LogRecord(
+                0, // Offset will be assigned by AssignOffsetsUseCase
+                currentTime + (ulong)i,
+                payloads[i]
+            ));
+        }
+
+        var batch = new LogRecordBatch(
+            CommitLogMagicNumbers.LogRecordBatchMagicNumber,
+            0, // Base offset will be assigned
+            records,
+            false // Not compressed
+        );
+
+        // Serialize the batch
+        using var ms = new MemoryStream();
+        var recordWriter = new LogRecordBinaryWriter();
+        var compressor = new NoopCompressor();
+        var encoding = System.Text.Encoding.UTF8;
+        var batchWriter = new LogRecordBatchBinaryWriter(recordWriter, compressor, encoding);
+        batchWriter.WriteTo(batch, ms);
+        return ms.ToArray();
     }
 
     private LogRecordBatch CreateExpectedBatchFromRead(LogRecordBatch readBatch, params byte[][] payloads)

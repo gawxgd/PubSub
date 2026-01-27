@@ -12,6 +12,7 @@ using MessageBroker.Infrastructure.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using Xunit;
+using static MessageBroker.IntegrationTests.IntegrationTestHelpers;
 
 namespace MessageBroker.IntegrationTests;
 
@@ -53,7 +54,7 @@ public class CommitLogCorruptionIntegrationTests : IDisposable
 
         for (int i = 0; i < 10; i++)
         {
-            await app.AppendAsync(BitConverter.GetBytes(i));
+            await app.AppendAsync(CreateBatchBytes(BitConverter.GetBytes(i)));
         }
 
         await Task.Delay(200);
@@ -61,20 +62,23 @@ public class CommitLogCorruptionIntegrationTests : IDisposable
         var topicDir = Path.Combine(_dir, "corr");
         var log = Directory.GetFiles(topicDir, "*.log").OrderBy(f => f).First();
 
+        // Corrupt the record data area (which will cause CRC mismatch)
+        // Batch structure: baseOffset(8) + batchLength(4) + lastOffset(8) + recordBytesLength(4) + magic(1) + crc(4) + compressed(1) + baseTimestamp(8) + recordBytes...
+        // So record bytes start at position: 8 + 4 + 8 + 4 + 1 + 4 + 1 + 8 = 38
         using (var fs = new FileStream(log, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite))
         {
-            if (fs.Length > 100)
+            if (fs.Length > 50)
             {
-                fs.Seek(100, SeekOrigin.Begin);
+                fs.Seek(50, SeekOrigin.Begin); // Corrupt somewhere in the record data
                 var b = (byte)fs.ReadByte();
                 fs.Seek(-1, SeekOrigin.Current);
-                fs.WriteByte((byte)(b ^ 0xFF));
+                fs.WriteByte((byte)(b ^ 0xFF)); // Flip all bits
             }
         }
 
         var reader = factory.GetReader("corr");
         Action act = () => reader.ReadRecordBatch(0);
-        act.Should().Throw<Exception>();
+        act.Should().Throw<InvalidDataException>("corrupted data should cause CRC mismatch");
     }
 
     public void Dispose()
