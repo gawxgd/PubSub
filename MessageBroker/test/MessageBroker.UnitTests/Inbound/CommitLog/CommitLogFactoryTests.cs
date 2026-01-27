@@ -53,7 +53,7 @@ public class CommitLogFactoryTests : IDisposable
 
         // Assert
         appender.Should().NotBeNull();
-        _segmentFactory.Received(1).CreateLogSegment(Arg.Any<string>(), Arg.Any<ulong>());
+        _topicSegmentRegistryFactory.Received(1).GetOrCreate("test-topic", Arg.Any<string>(), Arg.Any<ulong>());
     }
 
     [Fact]
@@ -93,7 +93,7 @@ public class CommitLogFactoryTests : IDisposable
 
         // Assert
         appender1.Should().BeSameAs(appender2);
-        _segmentFactory.Received(1).CreateLogSegment(Arg.Any<string>(), Arg.Any<ulong>());
+        _topicSegmentRegistryFactory.Received(1).GetOrCreate("test-topic", Arg.Any<string>(), Arg.Any<ulong>());
     }
 
     // [Fact]
@@ -124,7 +124,7 @@ public class CommitLogFactoryTests : IDisposable
 
         // Assert
         appender.Should().NotBeNull();
-        _segmentFactory.Received().CreateLogSegment(customDirectory, Arg.Any<ulong>());
+        _topicSegmentRegistryFactory.Received().GetOrCreate("test-topic", customDirectory, Arg.Any<ulong>());
     }
 
     [Fact]
@@ -138,7 +138,8 @@ public class CommitLogFactoryTests : IDisposable
 
         // Assert
         appender.Should().NotBeNull();
-        _segmentFactory.Received().CreateLogSegment(
+        _topicSegmentRegistryFactory.Received().GetOrCreate(
+            "test-topic",
             Arg.Is<string>(d => d.Contains(_testDirectory) && d.Contains("test-topic")),
             Arg.Any<ulong>());
     }
@@ -155,7 +156,7 @@ public class CommitLogFactoryTests : IDisposable
 
         // Assert
         appender.Should().NotBeNull();
-        _segmentFactory.Received().CreateLogSegment(Arg.Any<string>(), expectedOffset);
+        _topicSegmentRegistryFactory.Received().GetOrCreate("test-topic", Arg.Any<string>(), expectedOffset);
     }
 
     [Fact]

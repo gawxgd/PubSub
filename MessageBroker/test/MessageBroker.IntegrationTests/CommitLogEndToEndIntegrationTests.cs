@@ -12,6 +12,7 @@ using MessageBroker.Infrastructure.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using Xunit;
+using static MessageBroker.IntegrationTests.IntegrationTestHelpers;
 
 namespace MessageBroker.IntegrationTests;
 
@@ -52,7 +53,8 @@ public class CommitLogEndToEndIntegrationTests : IDisposable
         var appender = factory.GetAppender("default");
 
         var payload = "Hello World"u8.ToArray();
-        await appender.AppendAsync(payload);
+        var batchBytes = CreateBatchBytes(payload);
+        await appender.AppendAsync(batchBytes);
         await Task.Delay(100);
 
         var reader = factory.GetReader("default");
