@@ -1,5 +1,0 @@
-E2E Latency: kafka-e2e-topic-05
-Samples: 200 000
-P50: 17,84ms
-P95: 26,80ms
-P99: 45,45ms
