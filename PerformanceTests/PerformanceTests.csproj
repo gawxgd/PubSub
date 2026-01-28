@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NBomber" Version="6.1.2" />
+    <PackageReference Include="Confluent.Kafka" Version="2.5.3" />
+    <PackageReference Include="Confluent.SchemaRegistry.Serdes.Avro" Version="2.5.3" />
+    <PackageReference Include="Confluent.SchemaRegistry.Serdes.Json" Version="2.5.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Publisher\Publisher.csproj" />
+    <ProjectReference Include="..\Subscriber\Subscriber.csproj" />
+    <ProjectReference Include="..\Shared\Shared.csproj" />
+    <ProjectReference Include="..\LoggerLib\LoggerLib.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Exclude ProgramKafka.cs and ProgramMaxThroughput.cs from default build - Program.cs is now PubSub version -->
+    <!-- To use Kafka version: rename Program.cs to ProgramPubSub.cs and ProgramKafka.cs to Program.cs -->
+    <!-- To use MaxThroughput test: rename Program.cs to ProgramPubSub.cs and ProgramMaxThroughput.cs to Program.cs -->
+    <Compile Remove="ProgramKafka.cs" />
+    <Compile Remove="ProgramMaxThroughput.cs" />
+    <Compile Remove="ProgramPubSub.cs" />
+  </ItemGroup>
+
+</Project>

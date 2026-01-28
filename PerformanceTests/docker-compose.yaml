@@ -1,0 +1,51 @@
+services:
+  kafka:
+    image: apache/kafka:latest
+    container_name: kafka-nbomber
+    ports:
+      - "9092:9092"
+    environment:
+      # Single broker configuration (non-distributed, like PubSub)
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://127.0.0.1:9092
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@127.0.0.1:9093
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      
+      # Performance settings - matching PubSub configuration
+      # Default partitions per topic: 1 (non-distributed, like PubSub)
+      KAFKA_NUM_PARTITIONS: 1
+      
+      # Log settings - matching PubSub commit log configuration
+      KAFKA_LOG_SEGMENT_BYTES: 104857600  # 100MB (matching MaxSegmentBytes)
+      KAFKA_LOG_INDEX_INTERVAL_BYTES: 8192  # Matching IndexIntervalBytes
+      #KAFKA_LOG_FLUSH_INTERVAL_MESSAGES: 1  # Flush immediately (like PubSub FlushIntervalMs: 50)
+      #KAFKA_LOG_FLUSH_INTERVAL_MS: 50  # Reduced from 50ms to 10ms for lower latency at high throughput
+      
+      # Note: Producer settings are configured in code, not via environment variables
+      # KAFKA_PRODUCER_* variables don't affect Confluent.Kafka client configuration
+      
+      # Socket settings - matching PubSub
+      KAFKA_SOCKET_SEND_BUFFER_BYTES: 131072  # Matching MaxRequestSizeBytes
+      KAFKA_SOCKET_RECEIVE_BUFFER_BYTES: 131072
+      KAFKA_SOCKET_REQUEST_MAX_BYTES: 131072  # Matching MaxRequestSizeBytes
+      
+      # Producer/Consumer settings
+      KAFKA_COMPRESSION_TYPE: uncompressed  # No compression (like PubSub)
+      
+      # Replication (single broker = no replication needed)
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      
+      # Performance tuning - matching PubSub ThreadPool configuration for fair comparison
+      # PubSub uses ThreadPool.SetMinThreads(500, 500) for high peaks (120k msg/s)
+      # Kafka has separate thread pools: network threads (connections) and IO threads (disk I/O)
+      # For fair comparison: Kafka threads should be proportional to PubSub ThreadPool
+      # Calculation: 500 ThreadPool threads in PubSub ≈ 32 network + 32 IO threads in Kafka
+      # (Kafka threads are more specialized, so fewer needed than general ThreadPool threads)
+      KAFKA_NUM_NETWORK_THREADS: 32  # Proportional to PubSub ThreadPool (500) - handles network connections
+      KAFKA_NUM_IO_THREADS: 32  # Proportional to PubSub ThreadPool (500) - handles disk I/O operations
+      KAFKA_BACKGROUND_THREADS: 10  # Background threads for log cleanup, etc. (unchanged)
