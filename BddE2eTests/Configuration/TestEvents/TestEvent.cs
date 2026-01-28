@@ -1,6 +1,9 @@
+using Shared.Domain.Avro;
+
 namespace BddE2eTests.Configuration.TestEvents;
 
-public class TestEvent
+[AvroRecordName("TestEvent", Namespace = "BddE2eTests.TestEvents")]
+public class TestEvent : ITestEvent
 {
     public string Message { get; set; } = string.Empty;
     public string Topic { get; set; } = string.Empty;

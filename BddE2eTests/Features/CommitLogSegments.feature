@@ -29,3 +29,15 @@ Feature: Commit Log Segment Management
         Then subscriber S1 receives messages from offset 5 to 19
         And reading crosses segment file boundaries seamlessly
 
+    Scenario: Subscriber seeks to specific offset in an old segment
+        When the publisher sends 500 messages with 100-byte payloads to topic "default"
+        Then multiple segment files exist for topic "default"
+        Given subscriber S1 is configured starting at offset 150 with the following options:
+            | Setting            | Value          |
+            | Topic              | default        |
+            | Broker             | 127.0.0.1:9098 |
+            | Poll Interval      | 100            |
+            | Max Retry Attempts | 3              |
+        Then subscriber S1 receives messages from offset 150 to 499
+        And reading crosses segment file boundaries seamlessly
+

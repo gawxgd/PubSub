@@ -12,6 +12,7 @@ using MessageBroker.Infrastructure.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using Xunit;
+using static MessageBroker.IntegrationTests.IntegrationTestHelpers;
 
 namespace MessageBroker.IntegrationTests;
 
@@ -54,7 +55,7 @@ public class CommitLogSegmentRollingIntegrationTests : IDisposable
 
         for (int i = 0; i < 1000; i++)
         {
-            await app.AppendAsync(new byte[100]);
+            await app.AppendAsync(CreateBatchBytes(new byte[100]));
         }
 
         await Task.Delay(500);
@@ -64,10 +65,19 @@ public class CommitLogSegmentRollingIntegrationTests : IDisposable
         logs.Count.Should().BeGreaterThan(1);
 
         var reader = factory.GetReader("roll");
-        var recs = reader.ReadRecordBatch(0)!.Records.ToList();
-        recs.Should().HaveCount(1000);
-        recs.Select(r => r.Offset).Should().OnlyHaveUniqueItems();
-        recs.Select(r => r.Offset).Should().BeInAscendingOrder();
+        // Read all batches since each AppendAsync creates one batch
+        var allOffsets = new List<ulong>();
+        for (ulong offset = 0; offset < 1000; offset++)
+        {
+            var batch = reader.ReadRecordBatch(offset);
+            if (batch != null)
+            {
+                allOffsets.Add(batch.BaseOffset);
+            }
+        }
+        allOffsets.Should().HaveCount(1000);
+        allOffsets.Should().OnlyHaveUniqueItems();
+        allOffsets.Should().BeInAscendingOrder();
     }
 
     public void Dispose()

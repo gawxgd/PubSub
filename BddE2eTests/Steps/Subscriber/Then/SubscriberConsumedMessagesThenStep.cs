@@ -43,7 +43,7 @@ public class SubscriberConsumedMessagesThenStep(ScenarioContext scenarioContext)
             $"Committed offset set to {expectedLastOffset} for restart.");
     }
 
-    private async Task<(int count, List<string> messages)> WaitForMessagesAsync(Channel<TestEvent> receivedMessages, int expectedCount)
+    private async Task<(int count, List<string> messages)> WaitForMessagesAsync(Channel<ITestEvent> receivedMessages, int expectedCount)
     {
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(TimeoutSeconds));
         var receivedCount = 0;

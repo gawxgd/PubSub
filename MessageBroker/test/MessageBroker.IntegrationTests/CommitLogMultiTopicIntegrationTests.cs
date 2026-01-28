@@ -13,6 +13,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using Xunit;
+using static MessageBroker.IntegrationTests.IntegrationTestHelpers;
 
 namespace MessageBroker.IntegrationTests;
 
@@ -60,34 +61,35 @@ public class CommitLogMultiTopicIntegrationTests : IDisposable
         var appA = factory.GetAppender("topicA");
         var appB = factory.GetAppender("topicB");
 
-        await appA.AppendAsync("A1"u8.ToArray());
-        await appB.AppendAsync("B1"u8.ToArray());
-        await appA.AppendAsync("A2"u8.ToArray());
-        await appB.AppendAsync("B2"u8.ToArray());
+        var A1 = "A1"u8.ToArray();
+        var A2 = "A2"u8.ToArray();
+        var B1 = "B1"u8.ToArray();
+        var B2 = "B2"u8.ToArray();
+
+        await appA.AppendAsync(CreateBatchBytes(A1));
+        await appB.AppendAsync(CreateBatchBytes(B1));
+        await appA.AppendAsync(CreateBatchBytes(A2));
+        await appB.AppendAsync(CreateBatchBytes(B2));
 
         await Task.Delay(200);
 
         var readerA = factory.GetReader("topicA");
         var readerB = factory.GetReader("topicB");
 
-        var recordsA = readerA.ReadRecordBatch(0)!.Records;
-        var recordsB = readerB.ReadRecordBatch(0)!.Records;
+        var batchA0 = readerA.ReadRecordBatch(0)!;
+        var batchA1 = readerA.ReadRecordBatch(1)!;
+        var batchB0 = readerB.ReadRecordBatch(0)!;
+        var batchB1 = readerB.ReadRecordBatch(1)!;
 
-        recordsA.Should().NotBeEmpty();
-        recordsB.Should().NotBeEmpty();
+        batchA0.Should().NotBeNull();
+        batchA1.Should().NotBeNull();
+        batchB0.Should().NotBeNull();
+        batchB1.Should().NotBeNull();
 
-        var payloadsA = recordsA.Select(r => r.Payload.ToArray()).ToList();
-        var payloadsB = recordsB.Select(r => r.Payload.ToArray()).ToList();
-
-        var A1 = "A1"u8.ToArray();
-        var A2 = "A2"u8.ToArray();
-        var B1 = "B1"u8.ToArray();
-        var B2 = "B2"u8.ToArray();
-
-        payloadsA.Should().ContainSingle(a => a.SequenceEqual(A1));
-        payloadsA.Should().ContainSingle(a => a.SequenceEqual(A2));
-        payloadsB.Should().ContainSingle(b => b.SequenceEqual(B1));
-        payloadsB.Should().ContainSingle(b => b.SequenceEqual(B2));
+        batchA0.Records.First().Payload.ToArray().Should().BeEquivalentTo(A1);
+        batchA1.Records.First().Payload.ToArray().Should().BeEquivalentTo(A2);
+        batchB0.Records.First().Payload.ToArray().Should().BeEquivalentTo(B1);
+        batchB1.Records.First().Payload.ToArray().Should().BeEquivalentTo(B2);
     }
 
     [Fact]
@@ -99,8 +101,8 @@ public class CommitLogMultiTopicIntegrationTests : IDisposable
 
         for (int i = 0; i < 5; i++)
         {
-            await appA.AppendAsync(new byte[] { (byte)(i + 1) });
-            await appB.AppendAsync(new byte[] { (byte)(i + 11) });
+            await appA.AppendAsync(CreateBatchBytes(new byte[] { (byte)(i + 1) }));
+            await appB.AppendAsync(CreateBatchBytes(new byte[] { (byte)(i + 11) }));
         }
 
         await Task.Delay(200);
@@ -108,13 +110,13 @@ public class CommitLogMultiTopicIntegrationTests : IDisposable
         var readerA = factory.GetReader("topicA");
         var readerB = factory.GetReader("topicB");
 
-        var offsetsA = readerA.ReadRecordBatch(0)!.Records.Select(r => r.Offset).ToList();
-        var offsetsB = readerB.ReadRecordBatch(0)!.Records.Select(r => r.Offset).ToList();
+        var batchA0 = readerA.ReadRecordBatch(0)!;
+        var batchB0 = readerB.ReadRecordBatch(0)!;
 
-        offsetsA.Should().NotBeEmpty();
-        offsetsB.Should().NotBeEmpty();
-        offsetsA.Min().Should().Be(0);
-        offsetsB.Min().Should().Be(0);
+        batchA0.Should().NotBeNull();
+        batchB0.Should().NotBeNull();
+        batchA0.BaseOffset.Should().Be(0);
+        batchB0.BaseOffset.Should().Be(0);
     }
 
     public void Dispose()
