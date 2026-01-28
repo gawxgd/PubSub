@@ -261,11 +261,11 @@ public static class MultiTopicLongRunScenario
             })
             .WithWarmUpDuration(TimeSpan.FromSeconds(60))
             .WithLoadSimulations(
-                //Simulation.Inject(rate: ratePerTopic, interval: TimeSpan.FromSeconds(1), during: TimeSpan.FromSeconds(durationSeconds))
-                Simulation.Inject(rate: 500, interval: TimeSpan.FromSeconds(1), during: TimeSpan.FromMinutes(15)),
-                Simulation.Inject(rate: 1000, interval: TimeSpan.FromSeconds(1), during: TimeSpan.FromMinutes(60)),
-                Simulation.Inject(rate: 1500, interval: TimeSpan.FromSeconds(1), during: TimeSpan.FromMinutes(15)),
-                Simulation.Inject(rate: 800, interval: TimeSpan.FromSeconds(1), during: TimeSpan.FromMinutes(60))
+                Simulation.Inject(rate: ratePerTopic, interval: TimeSpan.FromSeconds(1), during: TimeSpan.FromSeconds(durationSeconds))
+                //Simulation.Inject(rate: 500, interval: TimeSpan.FromSeconds(1), during: TimeSpan.FromMinutes(15)),
+                //Simulation.Inject(rate: 1000, interval: TimeSpan.FromSeconds(1), during: TimeSpan.FromMinutes(60)),
+                //Simulation.Inject(rate: 1500, interval: TimeSpan.FromSeconds(1), during: TimeSpan.FromMinutes(15)),
+                //Simulation.Inject(rate: 800, interval: TimeSpan.FromSeconds(1), during: TimeSpan.FromMinutes(60))
             )
             .WithClean(async _ =>
             {
