@@ -8,6 +8,6 @@ namespace SchemaRegistry.Domain.Port
         Task<SchemaEntity?> GetByChecksumAsync(string checksum);
         Task<SchemaEntity?> GetLatestForTopicAsync(string topic);
         Task<IEnumerable<SchemaEntity>> GetAllForTopicAsync(string topic);
-        Task<SchemaEntity> SaveAsync(SchemaEntity entity); // returns saved entity with Id & Version filled
+        Task<SchemaEntity> SaveAsync(SchemaEntity entity);
     }
 }

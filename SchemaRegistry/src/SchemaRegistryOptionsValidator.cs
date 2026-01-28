@@ -13,8 +13,7 @@ public sealed class SchemaRegistryOptionsValidator(
     public ValidateOptionsResult Validate(string? name, SchemaRegistryOptions options)
     {
         var raw = configuration.GetValue<string>(CompatibilityModeKey);
-
-        // Missing key is acceptable - SchemaRegistryOptions default applies (Full).
+        
         if (string.IsNullOrWhiteSpace(raw))
         {
             return ValidateOptionsResult.Success;

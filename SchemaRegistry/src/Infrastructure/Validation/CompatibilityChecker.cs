@@ -5,9 +5,6 @@ namespace SchemaRegistry.Infrastructure.Validation;
 
 /// <summary>
 /// An Avro scheme compatibility checker using the Chr.Avro library for easier manipulation on schema objects
-/// TODO: handle type promotion int->long ...
-/// TODO: handle name aliases - both forward and backward compatibility should allow changing names
-/// TODO: consider accepting unions with types given in a different order 
 /// </summary>
 public class CompatibilityChecker : ICompatibilityChecker
 {
@@ -24,7 +21,7 @@ public class CompatibilityChecker : ICompatibilityChecker
             if (oldFields.TryGetValue(field.Name, out var oldCounterpart))
             {
                 if (!SchemaEquals(field.Type, oldCounterpart.Type))
-                    return false; // the field type has been changed - illegal TODO: is it?
+                    return false; // the field type has been changed - illegal
                 
                 continue; // the field hasn't been touched
             }
@@ -50,7 +47,7 @@ public class CompatibilityChecker : ICompatibilityChecker
             if (newFields.TryGetValue(field.Name, out var newCounterpart))
             {
                 if (!SchemaEquals(field.Type, newCounterpart.Type))
-                    return false; // the field type has been changed - illegal TODO: is it?
+                    return false; // the field type has been changed - illegal
                 
                 continue; // the field hasn't been touched
             }

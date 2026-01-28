@@ -4,8 +4,6 @@ using SchemaRegistry.Domain.Port;
 
 namespace SchemaRegistry.Infrastructure.Adapter;
 
-// TODO: implement storing schemas in a data base
-
 public class FileSchemaStore : ISchemaStore
 {
     private readonly string _folder;

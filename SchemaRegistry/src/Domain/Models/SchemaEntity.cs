@@ -10,7 +10,7 @@ public class SchemaEntity
 
     public string SchemaJson { get; set; }
     
-    public string Checksum { get; set; } = null!; // TODO: how does this work?
+    public string Checksum { get; set; } = null!;
     
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 } 

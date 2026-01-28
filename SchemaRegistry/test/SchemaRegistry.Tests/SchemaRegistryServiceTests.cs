@@ -38,9 +38,6 @@ namespace SchemaRegistry.Tests
             ResetMocks();
         }
 
-        /// <summary>
-        /// Przywraca czysty stan mocków i serwisu.
-        /// </summary>
         private void ResetMocks()
         {
             _store = new Mock<ISchemaStore>(MockBehavior.Strict);

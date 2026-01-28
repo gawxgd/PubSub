@@ -11,10 +11,6 @@ namespace SchemaRegistry.Tests
     /// Tests for CompatibilityChecker:
     /// ✅ Backward / Forward / Full compatibility
     /// ✅ SchemaEquals for all Avro schema types
-    /// 
-    /// TODO: handle type promotion (e.g. int→long)
-    /// TODO: handle field name aliases
-    /// TODO: handle UnionSchema with reordered members
     /// </summary>
     public class CompatibilityCheckerTests
     {

@@ -8,6 +8,6 @@ namespace SchemaRegistry.Domain.Port
         Task<SchemaEntity?> GetSchemaByIdAsync(int id);
         Task<SchemaEntity?> GetLatestSchemaAsync(string topic);
         
-        Task<IEnumerable<SchemaEntity>> GetVersionsAsync(string topic); // TODO: do we need this?
+        Task<IEnumerable<SchemaEntity>> GetVersionsAsync(string topic);
     }
 }
