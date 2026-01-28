@@ -3,8 +3,9 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Chr.Avro.Abstract;
 using FluentAssertions;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Moq;
+using SchemaRegistry;
 using SchemaRegistry.Domain.Enums;
 using SchemaRegistry.Domain.Exceptions;
 using SchemaRegistry.Domain.Models;
@@ -18,7 +19,6 @@ namespace SchemaRegistry.Tests
     {
         private Mock<ISchemaStore> _store = null!;
         private Mock<ISchemaCompatibilityService> _compatibility = null!;
-        private IConfiguration _cfg = null!;
         private SchemaRegistryService _service = null!;
 
         private const string Topic = "users";
@@ -46,17 +46,12 @@ namespace SchemaRegistry.Tests
             _store = new Mock<ISchemaStore>(MockBehavior.Strict);
             _compatibility = new Mock<ISchemaCompatibilityService>(MockBehavior.Strict);
 
-            var inMemorySettings = new Dictionary<string, string?>
-            {
-                { "SchemaRegistry:CompatibilityMode", "BACKWARD" }
-            };
-            _cfg = new ConfigurationBuilder().AddInMemoryCollection(inMemorySettings).Build();
-
             _compatibility
                 .Setup(c => c.IsCompatible(It.IsAny<string>(), It.IsAny<string>(), CompatibilityMode.Backward))
                 .Returns(false);
 
-            _service = new SchemaRegistryService(_store.Object, _compatibility.Object, _cfg);
+            var options = Options.Create(new SchemaRegistryOptions { CompatibilityMode = CompatibilityMode.Backward });
+            _service = new SchemaRegistryService(_store.Object, _compatibility.Object, options);
         }
 
         // ============================================================
@@ -215,12 +210,9 @@ namespace SchemaRegistry.Tests
             var compatMock = new Mock<ISchemaCompatibilityService>();
             compatMock.Setup(c => c.IsCompatible(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CompatibilityMode>()))
                 .Returns(true);
-
-            var cfg = new ConfigurationBuilder()
-                .AddInMemoryCollection(new Dictionary<string, string?> { ["SchemaRegistry:CompatibilityMode"] = "BACKWARD" })
-                .Build();
-
-            var service = new SchemaRegistryService(_store.Object, compatMock.Object, cfg);
+            
+            var options = Options.Create(new SchemaRegistryOptions { CompatibilityMode = CompatibilityMode.Backward });
+            var service = new SchemaRegistryService(_store.Object, compatMock.Object, options);
 
             _store.Setup(s => s.SaveAsync(It.IsAny<SchemaEntity>()))
                 .ReturnsAsync((SchemaEntity e) => { e.Id = 100; return e; });
@@ -257,20 +249,17 @@ namespace SchemaRegistry.Tests
         // ============================================================
 
         [Theory]
-        [InlineData("BACKWARD", CompatibilityMode.Backward)]
-        [InlineData("FORWARD", CompatibilityMode.Forward)]
-        [InlineData("FULL", CompatibilityMode.Full)]
-        [InlineData("NONE", CompatibilityMode.None)]
-        public async Task RegisterSchemaAsync_ShouldUseProperCompatibilityMode(string modeString, CompatibilityMode expectedMode)
+        [InlineData(CompatibilityMode.Backward)]
+        [InlineData(CompatibilityMode.Forward)]
+        [InlineData(CompatibilityMode.Full)]
+        [InlineData(CompatibilityMode.None)]
+        public async Task RegisterSchemaAsync_ShouldUseProperCompatibilityMode(CompatibilityMode expectedMode)
         {
             // Arrange
             ResetMocks();
-
-            var cfg = new ConfigurationBuilder()
-                .AddInMemoryCollection(new Dictionary<string, string?> { ["SchemaRegistry:CompatibilityMode"] = modeString })
-                .Build();
-
-            var service = new SchemaRegistryService(_store.Object, _compatibility.Object, cfg);
+            
+            var options = Options.Create(new SchemaRegistryOptions { CompatibilityMode = expectedMode });
+            var service = new SchemaRegistryService(_store.Object, _compatibility.Object, options);
 
             var newSchema = """{ "type": "record", "name": "User", "fields": [ { "name": "id", "type": "string" } ] }""";
             var oldSchema = newSchema;

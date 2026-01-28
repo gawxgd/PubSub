@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.Options;
 using SchemaRegistry.Domain.Enums;
 using SchemaRegistry.Domain.Exceptions;
 using SchemaRegistry.Domain.Models;
@@ -11,10 +12,10 @@ namespace SchemaRegistry.Infrastructure.Adapter;
 public class SchemaRegistryService(
     ISchemaStore store,
     ISchemaCompatibilityService compatibility,
-    IConfiguration cfg
+    IOptions<SchemaRegistryOptions> options
 ) : ISchemaRegistryService
 {
-    private readonly CompatibilityMode _compatMode = ParseCompatibilityMode(cfg);
+    private readonly CompatibilityMode _compatMode = options.Value.CompatibilityMode;
 
     public async Task<int> RegisterSchemaAsync(string topic, string schemaJson)
     {
@@ -80,12 +81,6 @@ public class SchemaRegistryService(
     public Task<IEnumerable<SchemaEntity>> GetVersionsAsync(string subject)
     {
         return store.GetAllForTopicAsync(subject);
-    }
-    
-    private static CompatibilityMode ParseCompatibilityMode(IConfiguration cfg)
-    {
-        var modeString = cfg.GetValue<string>("SchemaRegistry:CompatibilityMode") ?? nameof(CompatibilityMode.Full);
-        return Enum.TryParse<CompatibilityMode>(modeString, true, out var mode) ? mode : CompatibilityMode.Full;
     }
     
     private static string ComputeChecksum(string text)

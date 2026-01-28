@@ -39,7 +39,7 @@ public class CompatibilityChecker : ICompatibilityChecker
 
     /// <remarks>
     /// Acceptable changes if a new schema is to be forward compatible:
-    /// Deleting fields that have a default value, adding fields, changing field names but keeping the old name as an alias
+    /// Deleting fields that have a default value, adding fields
     /// </remarks>
     public bool IsForwardCompatible(RecordSchema newSchema, RecordSchema oldSchema)
     {
