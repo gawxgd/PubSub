@@ -1,3 +1,4 @@
+using System.Threading.Channels;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
@@ -18,17 +19,23 @@ public sealed class PublishResponseHandler
     private long _targetAckCount;
     
     public long AcknowledgedCount => Interlocked.Read(ref _acknowledgedCount);
+    
+    private readonly Channel<PublishResponse> _errorResponses =
+        Channel.CreateBounded<PublishResponse>(
+            new BoundedChannelOptions(100)
+            {
+                FullMode = BoundedChannelFullMode.DropOldest,
+                SingleReader = false,
+                SingleWriter = true
+            });
+    public ChannelReader<PublishResponse> ErrorResponses => _errorResponses.Reader;
 
     public void Handle(PublishResponse response)
     {
         if (response.ErrorCode != ErrorCode.None)
         {
             Logger.LogError($"Broker returned error: errorCode={response.ErrorCode}, baseOffset={response.BaseOffset}");
-
-            if (response.ErrorCode == ErrorCode.TopicNotFound || response.ErrorCode == ErrorCode.InvalidTopic)
-            {
-                throw new PublisherException($"Broker error: {response.ErrorCode}");
-            }
+            _errorResponses.Writer.TryWrite(response);
         }
         else
         {

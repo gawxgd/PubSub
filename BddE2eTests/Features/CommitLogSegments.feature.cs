@@ -197,6 +197,60 @@ namespace BddE2eTests.Features
             }
             await this.ScenarioCleanupAsync();
         }
+        
+        [NUnit.Framework.TestAttribute()]
+        [NUnit.Framework.DescriptionAttribute("Subscriber seeks to specific offset in an old segment")]
+        public async System.Threading.Tasks.Task SubscriberSeeksToSpecificOffsetInAnOldSegment()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Subscriber seeks to specific offset in an old segment", null, tagsOfScenario, argumentsOfScenario, featureTags);
+#line 32
+    this.ScenarioInitialize(scenarioInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                testRunner.SkipScenario();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 6
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 33
+        await testRunner.WhenAsync("the publisher sends 500 messages with 100-byte payloads to topic \"default\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 34
+        await testRunner.ThenAsync("multiple segment files exist for topic \"default\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+                global::Reqnroll.Table table3 = new global::Reqnroll.Table(new string[] {
+                            "Setting",
+                            "Value"});
+                table3.AddRow(new string[] {
+                            "Topic",
+                            "default"});
+                table3.AddRow(new string[] {
+                            "Broker",
+                            "127.0.0.1:9098"});
+                table3.AddRow(new string[] {
+                            "Poll Interval",
+                            "100"});
+                table3.AddRow(new string[] {
+                            "Max Retry Attempts",
+                            "3"});
+#line 35
+        await testRunner.GivenAsync("subscriber S1 is configured starting at offset 150 with the following options:", ((string)(null)), table3, "Given ");
+#line hidden
+#line 41
+        await testRunner.ThenAsync("subscriber S1 receives messages from offset 150 to 499", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 42
+        await testRunner.AndAsync("reading crosses segment file boundaries seamlessly", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
     }
 }
 #pragma warning restore
