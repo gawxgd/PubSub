@@ -12,6 +12,7 @@ using MessageBroker.Infrastructure.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using Xunit;
+using static MessageBroker.IntegrationTests.IntegrationTestHelpers;
 
 namespace MessageBroker.IntegrationTests;
 
@@ -53,17 +54,19 @@ public class CommitLogPayloadEqualityIntegrationTests : IDisposable
         var empty = Array.Empty<byte>();
         var small = new byte[] { 1, 2, 3, 4 };
 
-        await app.AppendAsync(empty);
-        await app.AppendAsync(small);
+        await app.AppendAsync(CreateBatchBytes(empty));
+        await app.AppendAsync(CreateBatchBytes(small));
         await Task.Delay(100);
 
         var reader = factory.GetReader("payload");
-        var records = reader.ReadRecordBatch(0)!.Records.ToList();
-        records.Should().HaveCountGreaterThanOrEqualTo(2);
-        records[0].Payload.ToArray().Should().BeEquivalentTo(empty);
-        records[1].Payload.ToArray().Should().BeEquivalentTo(small);
-        records[0].Offset.Should().Be(0);
-        records[1].Offset.Should().Be(1);
+        var batch0 = reader.ReadRecordBatch(0)!;
+        var batch1 = reader.ReadRecordBatch(1)!;
+        batch0.Should().NotBeNull();
+        batch1.Should().NotBeNull();
+        batch0.Records.First().Payload.ToArray().Should().BeEquivalentTo(empty);
+        batch1.Records.First().Payload.ToArray().Should().BeEquivalentTo(small);
+        batch0.BaseOffset.Should().Be(0);
+        batch1.BaseOffset.Should().Be(1);
     }
 
     [Fact]
@@ -86,24 +89,32 @@ public class CommitLogPayloadEqualityIntegrationTests : IDisposable
         var p4 = Large(200_000);
         var p5 = Large(2);
 
-        await app.AppendAsync(p1);
-        await app.AppendAsync(p2);
-        await app.AppendAsync(p3);
-        await app.AppendAsync(p4);
-        await app.AppendAsync(p5);
+        await app.AppendAsync(CreateBatchBytes(p1));
+        await app.AppendAsync(CreateBatchBytes(p2));
+        await app.AppendAsync(CreateBatchBytes(p3));
+        await app.AppendAsync(CreateBatchBytes(p4));
+        await app.AppendAsync(CreateBatchBytes(p5));
 
         await Task.Delay(300);
 
         var reader = factory.GetReader("payload");
-        var recs = reader.ReadRecordBatch(0)!.Records.ToList();
+        var batch0 = reader.ReadRecordBatch(0)!;
+        var batch1 = reader.ReadRecordBatch(1)!;
+        var batch2 = reader.ReadRecordBatch(2)!;
+        var batch3 = reader.ReadRecordBatch(3)!;
+        var batch4 = reader.ReadRecordBatch(4)!;
 
-        recs.Should().HaveCountGreaterThanOrEqualTo(5);
-        recs[0].Payload.ToArray().Should().BeEquivalentTo(p1);
-        recs[1].Payload.ToArray().Should().BeEquivalentTo(p2);
-        recs[2].Payload.ToArray().Should().BeEquivalentTo(p3);
-        recs[3].Payload.ToArray().Should().BeEquivalentTo(p4);
-        recs[4].Payload.ToArray().Should().BeEquivalentTo(p5);
-        recs.Select(r => r.Offset).Should().ContainInOrder(0UL, 1UL, 2UL, 3UL, 4UL);
+        batch0.Records.First().Payload.ToArray().Should().BeEquivalentTo(p1);
+        batch1.Records.First().Payload.ToArray().Should().BeEquivalentTo(p2);
+        batch2.Records.First().Payload.ToArray().Should().BeEquivalentTo(p3);
+        batch3.Records.First().Payload.ToArray().Should().BeEquivalentTo(p4);
+        batch4.Records.First().Payload.ToArray().Should().BeEquivalentTo(p5);
+        
+        batch0.BaseOffset.Should().Be(0);
+        batch1.BaseOffset.Should().Be(1);
+        batch2.BaseOffset.Should().Be(2);
+        batch3.BaseOffset.Should().Be(3);
+        batch4.BaseOffset.Should().Be(4);
     }
 
     public void Dispose()

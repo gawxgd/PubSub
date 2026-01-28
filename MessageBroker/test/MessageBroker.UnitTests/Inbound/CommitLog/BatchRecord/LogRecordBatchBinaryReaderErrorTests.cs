@@ -48,8 +48,10 @@ public class LogRecordBatchBinaryReaderErrorTests
         var stream = new MemoryStream();
         writer.WriteTo(batch, stream);
 
-        // Corrupt the magic number (byte 16, after 8-byte baseOffset + 8-byte batchLength)
-        stream.Position = 16;
+        // Corrupt the magic number
+        // Structure: baseOffset(8) + batchLength(4) + lastOffset(8) + recordBytesLength(4) + magic(1)...
+        // Magic is at position 24
+        stream.Position = 24;
         stream.WriteByte(0xFF); // Invalid magic number
 
         // Act
@@ -116,46 +118,35 @@ public class LogRecordBatchBinaryReaderErrorTests
     public void ReadBatch_Should_Throw_On_CRC_Mismatch()
     {
         // Arrange
+        var writer = new LogRecordBatchBinaryWriter(_recordWriter, _compressor, _encoding);
         var reader = new LogRecordBatchBinaryReader(_recordReader, _compressor, _encoding);
+
+        var records = new List<LogRecord>
+        {
+            new LogRecord(1, 1000, new byte[] { 1, 2, 3, 4, 5 })
+        };
+        var batch = new LogRecordBatch(
+            CommitLogMagicNumbers.LogRecordBatchMagicNumber,
+            0,
+            records,
+            false
+        );
+
         var stream = new MemoryStream();
+        writer.WriteTo(batch, stream);
 
-        // First, write the batch body to calculate its actual size
-        var bodyStream = new MemoryStream();
-        using (var bodyWriter = new BinaryWriter(bodyStream, _encoding, true))
+        // Corrupt a byte in the record data area (after all headers)
+        // Structure: baseOffset(8) + batchLength(4) + lastOffset(8) + recordBytesLength(4) + 
+        //            magic(1) + crc(4) + compressed(1) + baseTimestamp(8) = 38 bytes
+        // Record data starts at position 38
+        if (stream.Length > 40)
         {
-            bodyWriter.Write((byte)CommitLogMagicNumbers.LogRecordBatchMagicNumber);
-            bodyWriter.WriteVarUInt(12345u); // WRONG CRC - intentionally bad
-            bodyWriter.WriteVarUInt(0u); // flags (not compressed)
-            bodyWriter.WriteVarULong(1000ul); // baseTimestamp
-        
-            // Write a simple record
-            var payload = new byte[] { 1, 2, 3 };
-            using var recordMs = new MemoryStream();
-            using var recordBw = new BinaryWriter(recordMs, _encoding);
-            recordBw.Write(1ul); // offset
-            recordBw.WriteVarULong(0ul); // timestamp delta
-            recordBw.WriteVarUInt((uint)payload.Length);
-            recordBw.Write(payload);
-            var recordBytes = recordMs.ToArray();
-        
-            bodyWriter.WriteVarUInt((uint)recordBytes.Length);
-            bodyWriter.Write(recordBytes);
+            stream.Position = 40;
+            stream.WriteByte(0xFF);
         }
-    
-        var bodyBytes = bodyStream.ToArray();
-        var batchLength = (ulong)bodyBytes.Length;
-
-        // Now write the complete batch with correct length
-        using (var bw = new BinaryWriter(stream, _encoding, true))
-        {
-            bw.Write(0ul); // baseOffset
-            bw.Write(batchLength); // Correct batchLength
-            bw.Write(bodyBytes); // Write the body
-        }
-
-        stream.Position = 0;
 
         // Act
+        stream.Position = 0;
         var act = () => reader.ReadBatch(stream);
 
         // Assert
@@ -225,9 +216,9 @@ public class LogRecordBatchBinaryReaderErrorTests
         var stream = new MemoryStream();
         writer.WriteTo(batch, stream);
 
-        // Corrupt a byte in the middle of the record data area
-        var midpoint = stream.Length / 2;
-        stream.Position = midpoint;
+        // Corrupt a byte in the record data area (at the end, safely within record data)
+        // This ensures we don't corrupt headers and only corrupt the actual record payload
+        stream.Position = stream.Length - 2;
         stream.WriteByte(0xFF);
 
         // Act
