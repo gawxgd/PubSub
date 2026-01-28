@@ -40,6 +40,7 @@ public static class ServiceRegistration
 
         // Connection management
         services.AddSingleton<IConnectionRepository, InMemoryConnectionRepository>();
+        services.AddSingleton<ISubscriberDeliveryMetrics, SubscriberDeliveryMetrics>();
         services.AddSingleton<IConnectionManager, ConnectionManager>();
         // Statistics
         services.AddSingleton<MessageBroker.Domain.Port.IStatisticsService, MessageBroker.Inbound.Adapter.StatisticsService>();

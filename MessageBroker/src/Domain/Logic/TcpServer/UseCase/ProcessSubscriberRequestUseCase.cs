@@ -1,4 +1,4 @@
-﻿using System.Net.Sockets;
+using System.Net.Sockets;
 using LoggerLib.Domain.Enums;
 using LoggerLib.Domain.Port;
 using LoggerLib.Outbound.Adapter;
@@ -6,13 +6,12 @@ using MessageBroker.Domain.Entities;
 using MessageBroker.Domain.Logic;
 using MessageBroker.Domain.Port;
 using MessageBroker.Domain.Port.CommitLog;
-using MessageBroker.Domain.Port.CommitLog.RecordBatch;
 
 namespace MessageBroker.Domain.Logic.TcpServer.UseCase;
 
 public class ProcessSubscriberRequestUseCase(
     ICommitLogFactory commitLogFactory,
-    ILogRecordBatchWriter batchWriter) : IMessageProcessorUseCase
+    ISubscriberDeliveryMetrics subscriberDeliveryMetrics) : IMessageProcessorUseCase
 {
     private static readonly IAutoLogger Logger =
         AutoLoggerFactory.CreateLogger<ProcessSubscriberRequestUseCase>(LogSource.MessageBroker);
@@ -49,7 +48,8 @@ public class ProcessSubscriberRequestUseCase(
                 Logger.LogDebug(
                     $"Read batch with offset {batchOffset} and last offset {lastOffset} (requested: {offset})");
 
-                await socket.SendAsync(batchBytes, SocketFlags.None, cancellationToken);
+                await SendAllAsync(socket, batchBytes, cancellationToken);
+                subscriberDeliveryMetrics.RecordBatchSent(topic, batchOffset, lastOffset);
 
                 Logger.LogDebug(
                     $"Send batch with offset {batchOffset} and last offset {lastOffset}");
@@ -73,6 +73,22 @@ public class ProcessSubscriberRequestUseCase(
         }
 
         Logger.LogInfo("Messages from commit log sent to subscriber");
+    }
+
+    private static async Task SendAllAsync(Socket socket, ReadOnlyMemory<byte> data, CancellationToken cancellationToken)
+    {
+        var totalSent = 0;
+
+        while (totalSent < data.Length)
+        {
+            var sent = await socket.SendAsync(data.Slice(totalSent), SocketFlags.None, cancellationToken);
+            if (sent <= 0)
+            {
+                throw new SocketException((int)SocketError.ConnectionReset);
+            }
+
+            totalSent += sent;
+        }
     }
 
     private (string topic, ulong offset)? ParseMessage(ReadOnlyMemory<byte> message)

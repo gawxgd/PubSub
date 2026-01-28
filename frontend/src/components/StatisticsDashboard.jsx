@@ -70,7 +70,7 @@ function StatisticsDashboard() {
           color="#667eea"
         />
         <StatCard
-          title="Messages Consumed"
+          title="Messages Delivered"
           value={stats.messagesConsumed}
           icon="📥"
           color="#764ba2"
@@ -98,7 +98,6 @@ function StatisticsDashboard() {
                 <h3>{topic.name}</h3>
                 <div className="topic-stats">
                   <span>Messages: {topic.messageCount || 0}</span>
-                  <span>Offset: {topic.lastOffset || 0}</span>
                 </div>
               </div>
             ))}
