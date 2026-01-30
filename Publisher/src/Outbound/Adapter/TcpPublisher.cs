@@ -132,7 +132,6 @@ public sealed class TcpPublisher<T>(
         return false;
     }
 
-
     public long AcknowledgedCount
     {
         get

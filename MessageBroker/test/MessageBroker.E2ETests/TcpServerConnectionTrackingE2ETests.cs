@@ -26,7 +26,6 @@ public class TcpServerConnectionTrackingE2ETests
         using var client = new TcpClient();
         await client.ConnectAsync(HostAddress, port);
 
-        // Wait for connection to be registered
         await WaitUntilAsync(() => repository.GetAll().Count >= 1, TimeSpan.FromSeconds(3));
 
         // Assert
@@ -56,7 +55,6 @@ public class TcpServerConnectionTrackingE2ETests
             repository.GetAll().Should().HaveCount(1);
         }
 
-        // Wait for cleanup
         await WaitUntilAsync(() => repository.GetAll().Count == 0, TimeSpan.FromSeconds(5));
 
         // Assert
@@ -84,19 +82,16 @@ public class TcpServerConnectionTrackingE2ETests
             clients.Add(client);
         }
 
-        // Wait for all connections to be registered
         await WaitUntilAsync(() => repository.GetAll().Count >= 5, TimeSpan.FromSeconds(3));
 
         // Assert
         repository.GetAll().Should().HaveCount(5);
 
-        // Cleanup
         foreach (var client in clients)
         {
             client.Dispose();
         }
 
-        // Wait for all connections to be removed
         await WaitUntilAsync(() => repository.GetAll().Count == 0, TimeSpan.FromSeconds(5));
 
         repository.GetAll().Should().BeEmpty();
@@ -123,7 +118,6 @@ public class TcpServerConnectionTrackingE2ETests
             clients.Add(client);
         }
 
-        // Wait for all connections to be registered
         await WaitUntilAsync(() => repository.GetAll().Count >= 3, TimeSpan.FromSeconds(3));
 
         // Assert
@@ -132,7 +126,6 @@ public class TcpServerConnectionTrackingE2ETests
         ids.Should().OnlyHaveUniqueItems();
         ids.Should().BeInAscendingOrder();
 
-        // Cleanup
         foreach (var client in clients)
         {
             client.Dispose();
@@ -159,7 +152,6 @@ public class TcpServerConnectionTrackingE2ETests
             clients.Add(client);
         }
 
-        // Wait for all connections to be registered
         await WaitUntilAsync(() => repository.GetAll().Count >= 3, TimeSpan.FromSeconds(3));
         repository.GetAll().Should().HaveCount(3);
 
@@ -169,7 +161,6 @@ public class TcpServerConnectionTrackingE2ETests
         // Assert
         repository.GetAll().Should().BeEmpty("All connections should be disconnected on shutdown");
 
-        // Cleanup
         foreach (var client in clients)
         {
             client.Dispose();
@@ -190,7 +181,6 @@ public class TcpServerConnectionTrackingE2ETests
         using var client = new TcpClient();
         await client.ConnectAsync(HostAddress, port);
 
-        // Wait for connection to be registered
         await WaitUntilAsync(() => repository.GetAll().Count >= 1, TimeSpan.FromSeconds(3));
 
         var stream = client.GetStream();
@@ -205,7 +195,6 @@ public class TcpServerConnectionTrackingE2ETests
         // Assert
         response.Should().Be(message);
 
-        // Verify connection is still tracked
         var connections = repository.GetAll();
         connections.Should().HaveCount(1);
         connections.First().ClientEndpoint.Should().Contain("127.0.0.1");
@@ -228,15 +217,12 @@ public class TcpServerConnectionTrackingE2ETests
         {
             await client.ConnectAsync(HostAddress, port);
 
-            // Wait for connection to be registered
             await WaitUntilAsync(() => repository.GetAll().Count >= 1, TimeSpan.FromSeconds(3));
             repository.GetAll().Should().HaveCount(1);
 
-            // Abrupt close
             client.Client.Close();
         }
 
-        // Wait for cleanup
         await WaitUntilAsync(() => repository.GetAll().Count == 0, TimeSpan.FromSeconds(5));
 
         // Assert
@@ -245,9 +231,6 @@ public class TcpServerConnectionTrackingE2ETests
         await host.StopAsync();
     }
 
-    /// <summary>
-    ///     Helper method to poll a condition until it's true or timeout occurs
-    /// </summary>
     private static async Task WaitUntilAsync(Func<bool> condition, TimeSpan timeout)
     {
         var endTime = DateTime.UtcNow + timeout;
@@ -261,7 +244,6 @@ public class TcpServerConnectionTrackingE2ETests
             await Task.Delay(50);
         }
 
-        // Final check before throwing
         if (!condition())
         {
             throw new TimeoutException($"Condition was not met within {timeout.TotalSeconds} seconds");

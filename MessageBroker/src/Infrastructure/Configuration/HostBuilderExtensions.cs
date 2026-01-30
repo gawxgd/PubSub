@@ -5,7 +5,6 @@ using MessageBroker.Infrastructure.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 
-
 namespace MessageBroker.Infrastructure.Configuration;
 
 public static class HostBuilderExtensions
@@ -40,7 +39,7 @@ public static class HostBuilderExtensions
             })
             .ConfigureWebHostDefaults(webBuilder =>
             {
-                //ToDo change
+
                 var configBuilder = new ConfigurationBuilder()
                     .SetBasePath(AppContext.BaseDirectory)
                     .AddJsonFile(ConfigFileName, true, true)

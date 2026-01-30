@@ -39,7 +39,7 @@ public class CommitLogIndexIntegrityIntegrationTests : IDisposable
         services.Configure<CommitLogOptions>(o =>
         {
             o.Directory = _dir;
-            o.MaxSegmentBytes = 10_000; // small to increase chance of multiple index entries
+            o.MaxSegmentBytes = 10_000;
             o.IndexIntervalBytes = 64;
             o.TimeIndexIntervalMs = 10;
             o.ReaderLogBufferSize = 64 * 1024;
@@ -67,7 +67,6 @@ public class CommitLogIndexIntegrityIntegrationTests : IDisposable
         }
         await Task.Delay(200);
 
-        // Find segment files
         var segFiles = Directory.GetFiles(Path.Combine(_dir, "ix"), "*.log");
         segFiles.Should().NotBeEmpty();
 
@@ -124,7 +123,7 @@ public class CommitLogIndexIntegrityIntegrationTests : IDisposable
             var entries = ReadAllTimeIndexEntries(timeIndexStream).ToList();
             entries.Should().NotBeEmpty();
             entries.Select(e => e.Timestamp).Should().BeInAscendingOrder();
-            // entries.All(e => e.FilePosition >= 0).Should().BeTrue(); ToDo do meaningfull check
+
         }
     }
 
@@ -153,7 +152,4 @@ public class CommitLogIndexIntegrityIntegrationTests : IDisposable
         try { if (Directory.Exists(_dir)) Directory.Delete(_dir, true); } catch { }
     }
 }
-
-
-
 

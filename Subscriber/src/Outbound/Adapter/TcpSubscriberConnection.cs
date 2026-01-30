@@ -368,34 +368,26 @@ public sealed class TcpSubscriberConnection(
 
     private bool TryReadBatchMessage(ref ReadOnlySequence<byte> buffer, out byte[] batchBytes)
     {
-        //ToDO FIXX DO NOT DELET THIS COMMENT
+
         batchBytes = Array.Empty<byte>();
 
-        // Need at least 24 bytes: 8 for baseOffset + 4 for batchLength + 8 for lastOffset + 4 for recordBytesLength
         const int minHeaderSize = 24;
         if (buffer.Length < minHeaderSize)
             return false;
 
-        // Read header to get batchLength and recordBytesLength
         Span<byte> headerSpan = stackalloc byte[minHeaderSize];
         buffer.Slice(0, minHeaderSize).CopyTo(headerSpan);
 
         var baseOffset = BitConverter.ToUInt64(headerSpan.Slice(0, 8));
         var batchLength = BitConverter.ToUInt32(headerSpan.Slice(8, 4));
         var lastOffset = BitConverter.ToUInt64(headerSpan.Slice(12, 8));
-        // recordBytesLength is at offset 20, but we don't need to read it for size calculation
 
-        // Calculate total batch size: header (20 bytes) + RecordBytesLength field (4 bytes) + batchLength
-        // batchLength already includes: MagicNumber + CRC + CompressedFlag + Timestamp + RecordBytes
-        // But RecordBytesLength field (4 bytes) is NOT included in batchLength
-        const int headerSize = 20; // BaseOffset + BatchLength + LastOffset
+        const int headerSize = 20;
         var totalBatchSize = headerSize + sizeof(uint) + (int)batchLength;
 
-        // Check if we have the full batch
         if (buffer.Length < totalBatchSize)
             return false;
 
-        // Extract full batch bytes
         batchBytes = buffer.Slice(0, totalBatchSize).ToArray();
         buffer = buffer.Slice(totalBatchSize);
 

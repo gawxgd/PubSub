@@ -48,11 +48,8 @@ public class LogRecordBatchBinaryReaderErrorTests
         var stream = new MemoryStream();
         writer.WriteTo(batch, stream);
 
-        // Corrupt the magic number
-        // Structure: baseOffset(8) + batchLength(4) + lastOffset(8) + recordBytesLength(4) + magic(1)...
-        // Magic is at position 24
         stream.Position = 24;
-        stream.WriteByte(0xFF); // Invalid magic number
+        stream.WriteByte(0xFF);
 
         // Act
         stream.Position = 0;
@@ -70,7 +67,6 @@ public class LogRecordBatchBinaryReaderErrorTests
         var reader = new LogRecordBatchBinaryReader(_recordReader, _compressor, _encoding);
         var stream = new MemoryStream();
 
-        // Write partial header (only 10 bytes instead of full header)
         stream.Write(new byte[10]);
         stream.Position = 0;
 
@@ -102,7 +98,6 @@ public class LogRecordBatchBinaryReaderErrorTests
         var stream = new MemoryStream();
         writer.WriteTo(batch, stream);
 
-        // Truncate the stream by cutting off last 2 bytes
         var truncatedData = stream.ToArray().Take((int)stream.Length - 2).ToArray();
         stream = new MemoryStream(truncatedData);
 
@@ -135,10 +130,6 @@ public class LogRecordBatchBinaryReaderErrorTests
         var stream = new MemoryStream();
         writer.WriteTo(batch, stream);
 
-        // Corrupt a byte in the record data area (after all headers)
-        // Structure: baseOffset(8) + batchLength(4) + lastOffset(8) + recordBytesLength(4) + 
-        //            magic(1) + crc(4) + compressed(1) + baseTimestamp(8) = 38 bytes
-        // Record data starts at position 38
         if (stream.Length > 40)
         {
             stream.Position = 40;
@@ -163,13 +154,13 @@ public class LogRecordBatchBinaryReaderErrorTests
 
         using (var bw = new BinaryWriter(stream, _encoding, true))
         {
-            // Write a header with invalid data
+
             bw.Write((byte)CommitLogMagicNumbers.LogRecordBatchMagicNumber);
-            bw.Write(0u); // CRC (will be wrong)
-            bw.Write(0ul); // baseOffset
-            bw.Write((byte)0); // flags (no compression)
-            bw.Write(1000ul); // baseTimestamp
-            bw.WriteVarUInt(0u); // recordBytesLength - INVALID (0 bytes but claiming records)
+            bw.Write(0u);
+            bw.Write(0ul);
+            bw.Write((byte)0);
+            bw.Write(1000ul);
+            bw.WriteVarUInt(0u);
         }
 
         stream.Position = 0;
@@ -216,8 +207,6 @@ public class LogRecordBatchBinaryReaderErrorTests
         var stream = new MemoryStream();
         writer.WriteTo(batch, stream);
 
-        // Corrupt a byte in the record data area (at the end, safely within record data)
-        // This ensures we don't corrupt headers and only corrupt the actual record payload
         stream.Position = stream.Length - 2;
         stream.WriteByte(0xFF);
 
@@ -239,13 +228,13 @@ public class LogRecordBatchBinaryReaderErrorTests
 
         using (var bw = new BinaryWriter(stream, _encoding, true))
         {
-            // Manually construct a batch with invalid payload length
+
             bw.Write((byte)CommitLogMagicNumbers.LogRecordBatchMagicNumber);
-            bw.Write(0u); // CRC placeholder
-            bw.Write(0ul); // baseOffset
-            bw.Write((byte)0); // flags
-            bw.Write(1000ul); // baseTimestamp
-            bw.WriteVarUInt(1000000u); // Claim 1MB of record data but don't provide it
+            bw.Write(0u);
+            bw.Write(0ul);
+            bw.Write((byte)0);
+            bw.Write(1000ul);
+            bw.WriteVarUInt(1000000u);
         }
 
         stream.Position = 0;
@@ -254,7 +243,7 @@ public class LogRecordBatchBinaryReaderErrorTests
         var act = () => reader.ReadBatch(stream);
 
         // Assert
-        act.Should().Throw<Exception>(); // Will throw due to unable to read that much data
+        act.Should().Throw<Exception>();
     }
 
     [Fact]
@@ -280,7 +269,6 @@ public class LogRecordBatchBinaryReaderErrorTests
         var stream = new MemoryStream();
         writer.WriteTo(batch, stream);
 
-        // Corrupt multiple bytes in payload
         stream.Position = stream.Length - 5;
         stream.Write(new byte[] { 0xFF, 0xFF, 0xFF });
 
@@ -296,8 +284,6 @@ public class LogRecordBatchBinaryReaderErrorTests
     [Fact]
     public void ReadBatch_Should_Throw_On_Invalid_Compression_Flag()
     {
-        // This test ensures that if compression is indicated but compressor fails,
-        // the error is propagated correctly
 
         // Arrange
         var writer = new LogRecordBatchBinaryWriter(_recordWriter, _compressor, _encoding);
@@ -311,15 +297,14 @@ public class LogRecordBatchBinaryReaderErrorTests
             CommitLogMagicNumbers.LogRecordBatchMagicNumber,
             0,
             records,
-            true // compressed
+            true
         );
 
         var stream = new MemoryStream();
         writer.WriteTo(batch, stream);
 
-        // Corrupt the compressed data portion
         var data = stream.ToArray();
-        // Find and corrupt the payload after headers
+
         for (int i = 30; i < Math.Min(data.Length, 40); i++)
         {
             data[i] = 0xFF;
@@ -336,7 +321,4 @@ public class LogRecordBatchBinaryReaderErrorTests
             .WithMessage("*CRC mismatch*");
     }
 }
-
-
-
 

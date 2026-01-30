@@ -2,9 +2,6 @@ using System.Net.Http;
 
 namespace PubSubDemo.Infrastructure;
 
-/// <summary>
-/// Simple implementation of IHttpClientFactory for demo purposes.
-/// </summary>
 public sealed class SimpleHttpClientFactory : IHttpClientFactory, IDisposable
 {
     private readonly HttpClient _httpClient;

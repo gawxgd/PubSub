@@ -80,7 +80,7 @@ public sealed class PublishResponseHandler
                 return await tcs.Task;
             }
             
-            return false; // Timeout
+            return false;
         }
         catch (OperationCanceledException)
         {

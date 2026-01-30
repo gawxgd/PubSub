@@ -33,7 +33,7 @@ public sealed class TopicSegmentRegistry(
 
     public LogSegment? GetSegmentContainingOffset(ulong offset)
     {
-        //ToDo rewrite this
+
         _lock.EnterReadLock();
         try
         {
@@ -92,7 +92,6 @@ public sealed class TopicSegmentRegistry(
             _lock.ExitReadLock();
         }
     }
-
 
     public void UpdateActiveSegment(LogSegment newSegment)
     {

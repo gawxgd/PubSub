@@ -48,7 +48,7 @@ public sealed class BinaryLogSegmentReader : ILogSegmentReader
             segment.LogPath,
             FileMode.Open,
             FileAccess.Read,
-            FileShare.ReadWrite, // Allow concurrent writes
+            FileShare.ReadWrite,
             bufferSize: (int)logBufferSize,
             FileOptions.SequentialScan);
 
@@ -183,7 +183,7 @@ public sealed class BinaryLogSegmentReader : ILogSegmentReader
 
     public IEnumerable<LogRecordBatch> ReadRange(ulong startOffset, ulong endOffset)
     {
-        // ToDo will it be needed
+
         if (startOffset >= endOffset)
         {
             yield break;
@@ -207,7 +207,6 @@ public sealed class BinaryLogSegmentReader : ILogSegmentReader
                     yield break;
                 }
 
-
                 if (batch.LastOffset <= startOffset)
                 {
                     continue;
@@ -229,7 +228,7 @@ public sealed class BinaryLogSegmentReader : ILogSegmentReader
 
     public IEnumerable<LogRecordBatch> ReadFromTimestamp(ulong timestamp)
     {
-        //ToDo fix timestamp handling right now it saves offset not position in file
+
         _readLock.Wait();
         try
         {
@@ -305,7 +304,6 @@ public sealed class BinaryLogSegmentReader : ILogSegmentReader
         return bestEntry.FilePosition;
     }
 
-
     private OffsetIndexEntry ReadIndexEntry(int entryIndex)
     {
         _index!.Seek(entryIndex * OffsetIndexEntry.Size, SeekOrigin.Begin);
@@ -344,7 +342,7 @@ public sealed class BinaryLogSegmentReader : ILogSegmentReader
                 }
                 catch (InvalidDataException)
                 {
-                    // Corrupted batch, stop here
+
                     break;
                 }
             }

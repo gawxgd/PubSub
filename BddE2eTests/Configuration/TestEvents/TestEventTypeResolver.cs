@@ -9,7 +9,6 @@ public static class TestEventTypeResolver
             throw new ArgumentException("Type name must be provided", nameof(typeName));
         }
 
-        // We keep it explicit so BDD strings are stable and obvious.
         return typeName.Trim() switch
         {
             nameof(TestEvent) => typeof(TestEvent),

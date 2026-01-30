@@ -69,14 +69,6 @@ public class CommitLogSegmentsThenStep(ScenarioContext scenarioContext)
             $"[CommitLog Then] Verified: commit log contains continuous offsets from {startOffset} to {endOffset}");
     }
 
-    /// <summary>
-    /// Extracts all offsets from a log file by parsing batch headers.
-    /// Batch format (little-endian):
-    /// - BaseOffset: 8 bytes (ulong) at position 0
-    /// - BatchLength: 4 bytes (uint) at position 8
-    /// - LastOffset: 8 bytes (ulong) at position 12
-    /// Total batch size = 24 + BatchLength
-    /// </summary>
     private static List<ulong> ExtractOffsetsFromLogFile(byte[] logData)
     {
         var offsets = new List<ulong>();
@@ -90,17 +82,14 @@ public class CommitLogSegmentsThenStep(ScenarioContext scenarioContext)
                 var batchLength = BitConverter.ToUInt32(logData, position + 8);
                 var lastOffset = BitConverter.ToUInt64(logData, position + 12);
 
-                // Sanity checks
                 if (batchLength == 0 || batchLength > 10_000_000)
                     break;
 
-                // Add all offsets in this batch range
                 for (var offset = baseOffset; offset <= lastOffset; offset++)
                 {
                     offsets.Add(offset);
                 }
 
-                // Move to next batch
                 position += 24 + (int)batchLength;
             }
             catch
@@ -159,7 +148,6 @@ public class CommitLogSegmentsThenStep(ScenarioContext scenarioContext)
         Assert.That(receivedCount, Is.EqualTo(expectedCount),
             $"Expected {expectedCount} messages but received {receivedCount}");
 
-        // Verify messages are in correct order (msg0, msg1, msg2, ...)
         for (var i = 0; i < expectedCount; i++)
         {
             var expectedPrefix = $"msg{i}:";
@@ -167,7 +155,6 @@ public class CommitLogSegmentsThenStep(ScenarioContext scenarioContext)
                 $"Message at position {i} should start with '{expectedPrefix}' but was '{messages[i].Substring(0, Math.Min(20, messages[i].Length))}...'");
         }
 
-        // Store the received order for offset verification
         StoreReceivedOffsets(Enumerable.Range(0, expectedCount).Select(i => (ulong)i).ToList());
 
         await TestContext.Progress.WriteLineAsync(
@@ -215,7 +202,6 @@ public class CommitLogSegmentsThenStep(ScenarioContext scenarioContext)
         Assert.That(receivedCount, Is.EqualTo(expectedCount),
             $"Expected {expectedCount} messages (offsets {startOffset}-{endOffset}) but received {receivedCount}");
 
-        // Verify messages match the expected offset range
         for (var i = 0; i < expectedCount; i++)
         {
             var expectedMsgIndex = startOffset + i;
@@ -225,7 +211,6 @@ public class CommitLogSegmentsThenStep(ScenarioContext scenarioContext)
                 $"but was '{messages[i].Substring(0, Math.Min(20, messages[i].Length))}...'");
         }
 
-        // Store the received offsets
         StoreReceivedOffsets(Enumerable.Range(startOffset, expectedCount).Select(i => (ulong)i).ToList());
 
         await TestContext.Progress.WriteLineAsync(
@@ -248,7 +233,6 @@ public class CommitLogSegmentsThenStep(ScenarioContext scenarioContext)
         Assert.That(logFiles.Length, Is.GreaterThan(1),
             "Expected multiple segment files to verify cross-segment reading");
 
-        // Verify we have messages across segments by checking the offset ranges of each segment
         await TestContext.Progress.WriteLineAsync(
             $"[CommitLog Then] Data spans {logFiles.Length} segment files:");
 
@@ -264,14 +248,12 @@ public class CommitLogSegmentsThenStep(ScenarioContext scenarioContext)
             }
         }
 
-        // Verify that received offsets span multiple segments
         var receivedOffsets = GetReceivedOffsets();
         if (receivedOffsets != null && receivedOffsets.Count > 0)
         {
             var minReceivedOffset = receivedOffsets.Min();
             var maxReceivedOffset = receivedOffsets.Max();
 
-            // Check if the received range crosses at least one segment boundary
             var segmentsCrossed = allOffsetsSpanned
                 .Count(s => s.baseOffset > minReceivedOffset && s.baseOffset <= maxReceivedOffset);
 

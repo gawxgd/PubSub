@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.SignalR.Client;
 
-var url = "http://localhost:5001/loggerhub"; // adjust if needed
+var url = "http://localhost:5001/loggerhub";
 var connection = new HubConnectionBuilder()
     .WithUrl(url)
     .WithAutomaticReconnect()

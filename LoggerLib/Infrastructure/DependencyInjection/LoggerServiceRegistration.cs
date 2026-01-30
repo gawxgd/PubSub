@@ -9,9 +9,7 @@ namespace LoggerLib.Infrastructure.DependencyInjection;
 
 public static class LoggerServiceRegistration
 {
-    /// <summary>
-    ///     Adds SignalR logger services to the DI container
-    /// </summary>
+
     public static IServiceCollection AddSignalRLogger(this IServiceCollection services)
     {
         services.AddSignalR();

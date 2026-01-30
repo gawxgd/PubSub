@@ -81,7 +81,7 @@ public class SubscriberPriorityThenStep(ScenarioContext scenarioContext)
 
     private static int GetPriorityDefaultFromReaderSchema(Type readerType)
     {
-        // We treat the subscriber's T as readersSchema and read the default from that schema.
+
         var schemaJson = GenerateSchemaJsonFor(readerType);
         using var doc = JsonDocument.Parse(schemaJson);
 

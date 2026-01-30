@@ -112,7 +112,6 @@ public class LogRecordBatchBinaryReaderTests
         var stream = new MemoryStream();
         writer.WriteTo(batch, stream);
 
-        // Corrupt the data (change a byte in the payload area)
         stream.Position = stream.Length - 1;
         stream.WriteByte(99);
 
@@ -140,7 +139,7 @@ public class LogRecordBatchBinaryReaderTests
             CommitLogMagicNumbers.LogRecordBatchMagicNumber,
             0,
             records,
-            true // compressed
+            true
         );
         
         var stream = new MemoryStream();
@@ -184,9 +183,4 @@ public class LogRecordBatchBinaryReaderTests
         readBatch.BaseOffset.Should().Be(42);
     }
 }
-
-
-
-
-
 

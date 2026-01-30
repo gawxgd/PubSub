@@ -24,11 +24,6 @@ public class Program
         var logger = new ConsoleLogger();
         AutoLoggerFactory.Initialize(logger);
 
-        //ThreadPool.GetMinThreads(out int minWorker, out int minIOC);
-        //Console.WriteLine($"Current ThreadPool: minWorker={minWorker}, minIOC={minIOC}");
-
-        //ThreadPool.SetMinThreads(500, 500);
-
         var brokerHost = Environment.GetEnvironmentVariable("BROKER_HOST") ?? "127.0.0.1";
         var brokerPort = int.Parse(Environment.GetEnvironmentVariable("BROKER_PORT") ?? "9096");
 

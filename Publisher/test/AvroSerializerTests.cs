@@ -12,21 +12,15 @@ using Xunit;
 
 namespace Publisher.Test;
 
-/// <summary>
-/// Unit tests for AvroSerializer.
-/// Verifies that serializer produces payload in format:
-/// [schemaId:int][avroBinaryPayload]
-/// </summary>
 public sealed class AvroSerializerTests
 {
-    // ---------- Test model ----------
+
     private sealed record TestMessage
     {
         public string Id { get; init; }
         public int Amount { get; init; }
     }
 
-    // ---------- Avro schema ----------
     private const string TestSchemaJson = """
     {
       "type": "record",
@@ -42,7 +36,6 @@ public sealed class AvroSerializerTests
     private static SchemaInfo CreateSchemaInfo(int schemaId)
         => new SchemaInfo(schemaId, TestSchemaJson, 0);
 
-    // ---------- Tests ----------
     [Fact]
     public async Task SerializeAsync_Should_Prefix_Payload_With_SchemaId()
     {
@@ -70,10 +63,8 @@ public sealed class AvroSerializerTests
         // act
         var bytes = await serializer.SerializeAsync(message, schemaInfo);
 
-        // strip schemaId prefix
         var avroPayload = bytes.AsSpan(sizeof(int)).ToArray();
 
-        // deserialize using Avro
         var schema = (RecordSchema)Schema.Parse(TestSchemaJson);
         
         using var stream = new MemoryStream(avroPayload);
@@ -122,7 +113,6 @@ public sealed class AvroSerializerTests
         await act.Should().ThrowAsync<ArgumentNullException>();
     }
 
-    // ---------- Helpers ----------
     private static IAvroSerializer CreateSerializer()
     {
         return new AvroSerializer();

@@ -2,9 +2,6 @@ using System.Net.Http;
 
 namespace PerformanceTests.Infrastructure;
 
-/// <summary>
-/// Simple HTTP client factory for performance tests.
-/// </summary>
 public sealed class SimpleHttpClientFactory : IHttpClientFactory, IDisposable
 {
     private readonly HttpClient _httpClient;

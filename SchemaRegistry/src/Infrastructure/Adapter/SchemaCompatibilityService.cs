@@ -15,9 +15,6 @@ public class SchemaCompatibilityService : ISchemaCompatibilityService
         _checker = checker;
     }
 
-    /// <summary>
-    /// Interpret compatibility of two Avro schemas based on configuration in _compatMode
-    /// </summary>
     public bool IsCompatible(string oldSchemaJson, string newSchemaJson, CompatibilityMode mode)
     {
         if (mode == CompatibilityMode.None) return true;

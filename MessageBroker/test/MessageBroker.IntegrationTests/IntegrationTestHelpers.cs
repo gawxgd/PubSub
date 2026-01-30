@@ -10,24 +10,19 @@ using MessageBroker.Inbound.CommitLog.Record;
 
 namespace MessageBroker.IntegrationTests;
 
-/// <summary>
-/// Shared helper methods for integration tests
-/// </summary>
 public static class IntegrationTestHelpers
 {
-    /// <summary>
-    /// Creates a properly formatted batch from raw payload bytes
-    /// </summary>
+
     public static byte[] CreateBatchBytes(params byte[][] payloads)
     {
-        // Create a LogRecordBatch with the given payloads
+
         var records = new List<LogRecord>();
         var currentTime = (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         
         for (int i = 0; i < payloads.Length; i++)
         {
             records.Add(new LogRecord(
-                0, // Offset will be assigned by AssignOffsetsUseCase
+                0,
                 currentTime + (ulong)i,
                 payloads[i]
             ));
@@ -35,12 +30,11 @@ public static class IntegrationTestHelpers
 
         var batch = new LogRecordBatch(
             CommitLogMagicNumbers.LogRecordBatchMagicNumber,
-            0, // Base offset will be assigned
+            0,
             records,
-            false // Not compressed
+            false
         );
 
-        // Serialize the batch
         using var ms = new MemoryStream();
         var recordWriter = new LogRecordBinaryWriter();
         var compressor = new NoopCompressor();

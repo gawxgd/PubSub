@@ -2,7 +2,7 @@ namespace MessageBroker.Domain.Entities.CommitLog;
 
 public sealed record LogRecordBatch(
     CommitLogMagicNumbers MagicNumber,
-    ulong BaseOffset, //ToDo delete from writing
+    ulong BaseOffset,
     ICollection<LogRecord> Records,
     bool Compressed)
 {

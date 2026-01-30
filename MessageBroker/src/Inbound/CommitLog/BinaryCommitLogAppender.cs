@@ -24,7 +24,7 @@ public sealed class BinaryCommitLogAppender : ICommitLogAppender
     private readonly AssignOffsetsUseCase _assignOffsetsUseCase = new();
 
     private readonly Channel<ReadOnlyMemory<byte>> _batchChannel =
-        Channel.CreateBounded<ReadOnlyMemory<byte>>(new BoundedChannelOptions(100) //ToDo get from options
+        Channel.CreateBounded<ReadOnlyMemory<byte>>(new BoundedChannelOptions(100)
         {
             SingleWriter = false,
             SingleReader = true,

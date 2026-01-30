@@ -28,23 +28,20 @@ namespace MessageBroker.Infrastructure.DependencyInjection;
 
 public static class ServiceRegistration
 {
-    /// <summary>
-    ///     Register all tcp services
-    /// </summary>
+
     public static void AddTcpServices(this IServiceCollection services)
     {
-        // Message framing
+
         services.AddSingleton<IMessageFramer, MessageFramer>();
         services.AddSingleton<IMessageDeframer, MessageDeframer>();
         services.AddSingleton<SendPublishResponseUseCase>();
 
-        // Connection management
         services.AddSingleton<IConnectionRepository, InMemoryConnectionRepository>();
         services.AddSingleton<ISubscriberDeliveryMetrics, SubscriberDeliveryMetrics>();
         services.AddSingleton<IConnectionManager, ConnectionManager>();
-        // Statistics
+
         services.AddSingleton<MessageBroker.Domain.Port.IStatisticsService, MessageBroker.Inbound.Adapter.StatisticsService>();
-        // TCP server
+
         services.AddSingleton<CreateSocketUseCase>();
         services.AddHostedService<SubscriberTcpServer>();
         services.AddHostedService<PublisherTcpServer>();
@@ -67,9 +64,6 @@ public static class ServiceRegistration
         services.AddSingleton<ITimeIndexReader, BinaryTimeIndexReader>();
     }
 
-    /// <summary>
-    ///     Register all options / configuration objects
-    /// </summary>
     public static void AddBrokerOptions(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<TcpServerOptions>(

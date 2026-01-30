@@ -44,7 +44,6 @@ public sealed class CommitLogFactory(
         var flushInterval = TimeSpan.FromMilliseconds(topicOpt.FlushIntervalMs);
         var manager = topicSegmentRegistryFactory.GetOrCreate(topic, directory, baseOffset);
 
-        // Use the recovered high water mark from the manager, not the config baseOffset
         return new BinaryCommitLogAppender(segmentFactory, directory, manager.GetHighWaterMark(), flushInterval, manager);
     }
 

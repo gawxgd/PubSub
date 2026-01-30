@@ -17,7 +17,7 @@ using ILogger = LoggerLib.Domain.Port.ILogger;
 namespace BddE2eTests;
 
 [Binding]
-[CancelAfter(60000)] // 60 second timeout for all tests to prevent hanging
+[CancelAfter(60000)]
 public class TestBase(ScenarioContext scenarioContext)
 {
     private const string TestConfigFileName = "config.test.json";
@@ -169,20 +169,6 @@ public class TestBase(ScenarioContext scenarioContext)
         int position = 0;
         int batchIndex = 0;
 
-        // Batch format on disk (little-endian):
-        // - BaseOffset: 8 bytes (ulong)         - position 0
-        // - BatchLength: 4 bytes (uint)         - position 8  (size of everything AFTER first 12 bytes, excluding LastOffset & RecordBytesLength)
-        // - LastOffset: 8 bytes (ulong)         - position 12
-        // - RecordBytesLength: 4 bytes (uint)   - position 20
-        // - Magic: 1 byte                       - position 24
-        // - CRC: 4 bytes                        - position 25
-        // - Compressed: 1 byte                  - position 29
-        // - Timestamp: 8 bytes                  - position 30
-        // - Records: recordBytesLength bytes    - position 38
-        //
-        // BatchLength = 1 + 4 + 1 + 8 + recordBytesLength = 14 + recordBytesLength
-        // Total batch size = 8 + 4 + 8 + 4 + batchLength = 24 + batchLength
-
         while (position + 24 <= logData.Length)
         {
             try
@@ -192,18 +178,14 @@ public class TestBase(ScenarioContext scenarioContext)
                 var lastOffset = BitConverter.ToUInt64(logData, position + 12);
                 var recordBytesLength = BitConverter.ToUInt32(logData, position + 20);
 
-                // Sanity checks
-                if (batchLength == 0 || batchLength > 10_000_000) // Max 10MB per batch
+                if (batchLength == 0 || batchLength > 10_000_000)
                     break;
 
-                // Calculate record count (rough estimate based on lastOffset - baseOffset + 1)
                 var recordCount = (int)(lastOffset - baseOffset + 1);
 
                 batches.Add(new BatchInfo(batchIndex, baseOffset, lastOffset, batchLength, recordBytesLength,
                     recordCount));
 
-                // Move to next batch: 8 (baseOffset) + 4 (batchLength) + 8 (lastOffset) + 4 (recordBytesLength) + batchLength
-                // = 24 + batchLength
                 position += 24 + (int)batchLength;
                 batchIndex++;
             }
@@ -279,7 +261,6 @@ public class TestBase(ScenarioContext scenarioContext)
             return DefaultSchemaRegistryCompatibilityMode;
         }
 
-        // normalize to expected enum strings (BACKWARD/FORWARD/FULL/NONE)
         return mode.ToUpper(CultureInfo.InvariantCulture);
     }
 
@@ -304,7 +285,6 @@ public class TestBase(ScenarioContext scenarioContext)
             TestContext.Progress.WriteLine("[TestBase] MessageBroker stopped");
         }
 
-        // Cleanup schema registry SQLite DB
         if (!string.IsNullOrWhiteSpace(_schemaDbPath) && File.Exists(_schemaDbPath))
         {
             try
@@ -313,13 +293,12 @@ public class TestBase(ScenarioContext scenarioContext)
             }
             catch
             {
-                /* ignore cleanup errors */
+                
             }
 
             _schemaDbPath = null;
         }
 
-        // Cleanup commit log
         if (_commitLogDirectory != null && Directory.Exists(_commitLogDirectory))
         {
             try
@@ -328,7 +307,7 @@ public class TestBase(ScenarioContext scenarioContext)
             }
             catch
             {
-                /* ignore cleanup errors */
+                
             }
 
             _commitLogDirectory = null;
@@ -430,7 +409,7 @@ public class TestBase(ScenarioContext scenarioContext)
         {
             try
             {
-                // Any HTTP response (including 404) means the server is up and routing.
+
                 _ = await http.GetAsync("schema/id/0");
                 return;
             }

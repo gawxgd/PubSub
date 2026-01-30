@@ -17,14 +17,12 @@ public class TcpServerMultiClientE2ETests
         using var host = TestHostHelper.CreateTestHost(port);
         await host.StartAsync();
 
-        // Allow the server time to start listening
         await Task.Delay(300);
 
         const int clientCount = 3;
         var clients = new TcpClient[clientCount];
         var sendTasks = new List<Task<string>>();
 
-        // Connect all clients
         for (var i = 0; i < clientCount; i++)
         {
             clients[i] = new TcpClient();
@@ -34,13 +32,10 @@ public class TcpServerMultiClientE2ETests
             sendTasks.Add(Task.Run(() => SendAndReceiveAsync(clients[clientId], $"Hello from client {clientId}")));
         }
 
-        // Wait for all clients to complete
         var results = await Task.WhenAll(sendTasks);
 
-        // Verify all responses are correct
         for (var i = 0; i < clientCount; i++) results[i].Should().Be($"Hello from client {i}");
 
-        // Cleanup
         foreach (var client in clients)
             client.Dispose();
 

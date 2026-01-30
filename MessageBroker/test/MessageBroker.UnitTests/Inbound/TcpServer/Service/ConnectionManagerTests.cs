@@ -44,7 +44,6 @@ public class ConnectionManagerTests
         // Act
         manager.RegisterConnection(connectionType, socket, cts);
 
-        // Wait a bit for Task.Run to execute
         Thread.Sleep(100);
 
         // Assert
@@ -71,11 +70,11 @@ public class ConnectionManagerTests
 
         // Act
         var unregisterTask = manager.UnregisterConnectionAsync(1);
-        tcs.SetResult(); // Complete the task
+        tcs.SetResult();
         await unregisterTask;
 
         // Assert
-        // Note: Can't check cts.Token after dispose, but we can verify Remove was called
+
         repository.Received(1).Remove(1);
     }
 
@@ -126,22 +125,20 @@ public class ConnectionManagerTests
         // Act
         var unregisterTask = manager.UnregisterAllConnectionsAsync();
 
-        // Complete tasks to allow disconnect to finish
         tcs1.SetResult();
         tcs2.SetResult();
 
         await unregisterTask;
 
         // Assert
-        // Note: Can't check cts.Token after dispose, but we can verify RemoveAll was called
+
         repository.Received(1).RemoveAll();
     }
 
     private static Socket CreateMockSocket()
     {
         var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-        // We can't really create a connected socket easily in unit tests, 
-        // so we just return a basic socket. The ConnectionManager will use it.
+
         return socket;
     }
 }

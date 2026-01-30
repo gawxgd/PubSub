@@ -2,9 +2,6 @@ using System.Collections.Concurrent;
 
 namespace MessageBroker.Inbound.Adapter;
 
-/// <summary>
-/// Thread-safe in-memory metrics for broker -> subscriber deliveries (duplicates included).
-/// </summary>
 public sealed class SubscriberDeliveryMetrics : MessageBroker.Domain.Port.ISubscriberDeliveryMetrics
 {
     private long _totalSentBatches;
@@ -20,7 +17,6 @@ public sealed class SubscriberDeliveryMetrics : MessageBroker.Domain.Port.ISubsc
             topic = "unknown";
         }
 
-        // Defensive: avoid negative/overflowed counts if offsets are corrupted.
         var recordsInBatch = lastOffset >= batchBaseOffset
             ? checked((long)Math.Min(lastOffset - batchBaseOffset + 1, (ulong)long.MaxValue))
             : 0L;

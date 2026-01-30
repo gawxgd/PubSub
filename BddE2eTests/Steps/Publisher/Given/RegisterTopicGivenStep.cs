@@ -28,7 +28,6 @@ public class RegisterTopicGivenStep(ScenarioContext scenarioContext)
         var schemaId = await adminClient.RegisterSchemaAsync(topic, schemaJson);
         scenarioContext.Set(schemaId, ExpectedSchemaIdKey);
 
-        // Normalize JSON so comparisons are whitespace/format independent.
         var normalizedExpected = JsonSerializer.Serialize(JsonDocument.Parse(schemaJson).RootElement);
         scenarioContext.Set(normalizedExpected, ExpectedSchemaJsonKey);
     }

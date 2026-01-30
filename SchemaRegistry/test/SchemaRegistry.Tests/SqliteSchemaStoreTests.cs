@@ -32,10 +32,6 @@ public class SqliteSchemaStoreTests : IDisposable
         }
     }
 
-    // ============================================================
-    // SAVE + GET BY ID
-    // ============================================================
-
     [Fact]
     public async Task SaveAsync_ShouldPersistAndRetrieveById()
     {
@@ -59,10 +55,6 @@ public class SqliteSchemaStoreTests : IDisposable
         loaded.Version.Should().Be(1);
     }
 
-    // ============================================================
-    // VERSIONING PER TOPIC
-    // ============================================================
-
     [Fact]
     public async Task SaveAsync_ShouldIncrementVersionPerTopic()
     {
@@ -82,10 +74,6 @@ public class SqliteSchemaStoreTests : IDisposable
 
         second.Version.Should().Be(2);
     }
-
-    // ============================================================
-    // LATEST FOR TOPIC
-    // ============================================================
 
     [Fact]
     public async Task GetLatestForTopicAsync_ShouldReturnHighestVersion()
@@ -111,10 +99,6 @@ public class SqliteSchemaStoreTests : IDisposable
         result.Version.Should().Be(2);
     }
 
-    // ============================================================
-    // ALL VERSIONS FOR TOPIC
-    // ============================================================
-
     [Fact]
     public async Task GetAllForTopicAsync_ShouldReturnAllVersionsOrderedDesc()
     {
@@ -139,10 +123,6 @@ public class SqliteSchemaStoreTests : IDisposable
         all[1].Version.Should().Be(1);
     }
 
-    // ============================================================
-    // CHECKSUM LOOKUP
-    // ============================================================
-
     [Fact]
     public async Task GetByChecksumAsync_ShouldReturnMatchingSchema()
     {
@@ -159,10 +139,6 @@ public class SqliteSchemaStoreTests : IDisposable
         result!.Id.Should().Be(saved.Id);
     }
 
-    // ============================================================
-    // DURABILITY (SIMULATED RESTART)
-    // ============================================================
-
     [Fact]
     public async Task Data_ShouldPersist_AfterStoreRecreation()
     {
@@ -175,7 +151,6 @@ public class SqliteSchemaStoreTests : IDisposable
 
         var saved = await _store.SaveAsync(entity);
 
-        // simulate restart
         var newStore = new SqliteSchemaStore($"Data Source={_dbPath}");
 
         var loaded = await newStore.GetByIdAsync(saved.Id);

@@ -8,13 +8,13 @@ public class LogRecordBinaryWriter : ILogRecordWriter
 {
     public void WriteTo(LogRecord record, BinaryWriter bw, ulong batchBaseTimestamp)
     {
-        bw.Write((ulong)record.Offset); // ulong
+        bw.Write((ulong)record.Offset);
 
         var timestampDelta = record.Timestamp - batchBaseTimestamp;
         var totalSize = record.Payload.Length + sizeof(ulong);
 
-        bw.Write((uint)totalSize); // uint
-        bw.Write((ulong)timestampDelta); // ulong
+        bw.Write((uint)totalSize);
+        bw.Write((ulong)timestampDelta);
         bw.Write(record.Payload.Span);
     }
 }
