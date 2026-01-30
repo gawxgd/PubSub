@@ -16,13 +16,14 @@ A .NET publisher subscriber system.
 
 ## Running the demo
 
-The simplest way to run the demo is with Docker. From the repository root:
+From the root folder, run:
 
 ```bash
+cd PubSubDemo
 docker compose up -d
 ```
 
-This starts the **MessageBroker**, **Schema Registry**, **PubSubDemo** (Publisher + Subscriber), and the **Frontend**. Open **http://localhost:3000** to see the statistics dashboard (messages published/consumed, connections, topics). No other setup is required.
+This starts the **MessageBroker**, **Schema Registry**, **PubSubDemo** (Publisher + Subscriber), and the **Frontend**. Open **http://localhost:3000** to see the statistics dashboard (messages published/consumed, connections, topics).
 
 **Prerequisites:** [Docker](https://docs.docker.com/get-docker/) and Docker Compose.
 
@@ -96,13 +97,28 @@ To use the **Kafka** scenario instead, follow the comments in `PerformanceTests/
 
 ## Using the Publisher and Subscriber
 
-Add project references to **Publisher**, **Subscriber**, **LoggerLib**, and **Shared** (Publisher and Subscriber bring in MessageBroker and Shared transitively).
+### Referencing the projects
 
-Read configuration from `appsettings.json` (e.g. broker host, publisher port, subscriber port, max queue size, and Schema Registry base address and timeout) and optionally environment variables; use those values when building `PublisherOptions` and `SubscriberOptions`. The Publisher and Subscriber projects do not define a broker config class—you supply the values from your own configuration.
+Add project references to **Publisher**, **Subscriber**, **LoggerLib**, and **Shared**. Publisher and Subscriber reference MessageBroker and Shared transitively, so you do not need to reference those explicitly.
+
+```xml
+<ItemGroup>
+  <ProjectReference Include="path/to/Publisher/Publisher.csproj" />
+  <ProjectReference Include="path/to/Subscriber/Subscriber.csproj" />
+  <ProjectReference Include="path/to/LoggerLib/LoggerLib.csproj" />
+  <ProjectReference Include="path/to/Shared/Shared.csproj" />
+</ItemGroup>
+```
+
+Read configuration from `appsettings.json` (e.g. broker host, publisher port, subscriber port, max queue size, and Schema Registry base address and timeout) and optionally environment variables; use those values when building `PublisherOptions` and `SubscriberOptions`. For broker defaults you can use [MessageBroker/src/config.json](MessageBroker/src/config.json); otherwise edit that file to your needs.
 
 ### Publisher
 
-Create a schema registry client factory (`SchemaRegistryClientFactory` with `IHttpClientFactory` and `SchemaRegistryClientOptions`), then a `PublisherFactory<T>` for your message type. Build `PublisherOptions` with broker URI `messageBroker://{host}:{port}`, schema registry URI and timeout, topic, `MaxPublisherQueueSize`, `MaxSendAttempts`, `MaxRetryAttempts`, `BatchMaxBytes`, and `BatchMaxDelay`. Create the publisher with `publisherFactory.CreatePublisher(publisherOptions)`, then `await publisher.CreateConnection()` and `await publisher.PublishAsync(message, cancellationToken)`.
+1. Create a schema registry client factory: `SchemaRegistryClientFactory` with `IHttpClientFactory` and `SchemaRegistryClientOptions`.
+2. Create a `PublisherFactory<T>` for your message type.
+3. Build `PublisherOptions` with broker URI `messageBroker://{host}:{port}`, schema registry URI and timeout, topic, `MaxPublisherQueueSize`, `MaxSendAttempts`, `MaxRetryAttempts`, `BatchMaxBytes`, and `BatchMaxDelay`.
+4. Create the publisher with `publisherFactory.CreatePublisher(publisherOptions)`.
+5. Call `await publisher.CreateConnection()` then `await publisher.PublishAsync(message, cancellationToken)`.
 
 ```csharp
 var schemaRegistryClientFactory = new SchemaRegistryClientFactory(httpClientFactory, schemaRegistryOptions);
@@ -126,7 +142,11 @@ await publisher.PublishAsync(message, cancellationToken);
 
 ### Subscriber
 
-Create a `SubscriberFactory<T>` with the schema registry client (from `schemaRegistryClientFactory.Create()`). Build `SubscriberOptions` with `MessageBrokerConnectionUri` using the **subscriber** port (e.g. 9098), `SchemaRegistryConnectionUri`, Host, Port (subscriber port), Topic, `MinMessageLength: 0`, `MaxMessageLength: int.MaxValue`, `MaxQueueSize: 65536`, `PollInterval`, `SchemaRegistryTimeout`, and `MaxRetryAttempts: 3`. Create the subscriber with `subscriberFactory.CreateSubscriber(subscriberOptions, messageHandler)`, then `await subscriber.StartConnectionAsync()` and `await subscriber.StartMessageProcessingAsync()`.
+1. Create a schema registry client with `schemaRegistryClientFactory.Create()`.
+2. Create a `SubscriberFactory<T>` with that schema registry client.
+3. Build `SubscriberOptions` with `MessageBrokerConnectionUri` using the **subscriber** port (e.g. 9098), `SchemaRegistryConnectionUri`, Host, Port (subscriber port), Topic, `MinMessageLength: 0`, `MaxMessageLength: int.MaxValue`, `MaxQueueSize: 65536`, `PollInterval`, `SchemaRegistryTimeout`, and `MaxRetryAttempts: 3`.
+4. Create the subscriber with `subscriberFactory.CreateSubscriber(subscriberOptions, messageHandler)`.
+5. Call `await subscriber.StartConnectionAsync()` then `await subscriber.StartMessageProcessingAsync()`.
 
 ```csharp
 var schemaRegistryClient = schemaRegistryClientFactory.Create();
@@ -156,12 +176,7 @@ The broker exposes a **publisher** port (default 9096) and a **subscriber** port
 
 ## Configuring the broker
 
-By default the broker reads `config.json` from its working directory. You can override settings without changing the file:
-
-- **Environment variables** (prefix `MessageBrokerEnv_`): e.g. `MessageBrokerEnv_Server__PublisherPort`, `MessageBrokerEnv_Server__SubscriberPort`, `MessageBrokerEnv_Server__Address`, `MessageBrokerEnv_LoggerPort`. These take precedence over `config.json`.
-- **config.json** (in the broker working directory): top-level `LoggerPort` (HTTP statistics API, default 5001); section `Server` with `PublisherPort` (default 9096), `SubscriberPort` (default 9098), `Address` (bind address, default 127.0.0.1), and other TCP/commit-log options.
-
-Use non-default ports or bind address by setting the env vars or by editing `config.json` before starting the broker.
+You can use the defaults from [MessageBroker/src/config.json](MessageBroker/src/config.json) or change that file to use different ports or settings. If you edit the file, rebuild the broker project and then run Docker (or run the broker) so the new config is used.
 
 ## Running with Docker
 
