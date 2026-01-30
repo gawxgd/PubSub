@@ -57,7 +57,16 @@
 }
 
 .max-logs-input {
-  width: 80px;
+  width: 100px;
+}
+
+.max-logs-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
 }
 
 .clear-button {
@@ -238,4 +247,3 @@
 
 
 }
-

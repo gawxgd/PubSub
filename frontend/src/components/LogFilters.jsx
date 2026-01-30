@@ -37,15 +37,18 @@ const LogFilters = memo(function LogFilters({
                     <option key={source} value={source}>{source}</option>
                 ))}
             </select>
-            <input
-                type="number"
-                min="10"
-                max="1000"
-                value={maxLogs}
-                onChange={(e) => setMaxLogs(parseInt(e.target.value) || 100)}
-                className="max-logs-input"
-                title="Max logs to keep"
-            />
+            <label className="max-logs-label">
+                Max logs:
+                <input
+                    type="number"
+                    min="10"
+                    max="100000"
+                    value={maxLogs}
+                    onChange={(e) => setMaxLogs(parseInt(e.target.value) || 10000)}
+                    className="max-logs-input"
+                    title="Max logs to keep"
+                />
+            </label>
             <button onClick={onClear} className="clear-button">
                 Clear
             </button>

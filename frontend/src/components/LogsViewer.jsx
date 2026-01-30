@@ -9,7 +9,7 @@ function LogsViewer() {
   // Unique ID for this component instance (for debugging)
   const instanceId = useId()
 
-  const [maxLogs, setMaxLogs] = useState(100)
+  const [maxLogs, setMaxLogs] = useState(100000)
   const [filterLevel, setFilterLevel] = useState('all')
   const [filterSource, setFilterSource] = useState('all')
   const [isScrolledToBottom, setIsScrolledToBottom] = useState(true)
