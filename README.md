@@ -91,7 +91,11 @@ Optional environment variables:
 
 Reports are written under `PerformanceTests/reports/`.
 
-To use the **Kafka** scenario instead, follow the comments in `PerformanceTests/PerformanceTests.csproj`: rename the current entry program (e.g. `Program.cs` → `ProgramPubSub.cs`) and `ProgramKafka.cs` → `Program.cs`, then run again. Kafka and related services must be running for that scenario.
+To use the **Kafka** scenario instead, follow the comments in `PerformanceTests/PerformanceTests.csproj`: rename the current entry program (e.g. `Program.cs` → `ProgramPubSub.cs`) and `ProgramKafka.cs` → `Program.cs`, then run again. Kafka and related services must be running for that scenario. To start Kafka execute : 
+```bash
+cd PuerformanceTests
+docker compose up -d
+```
 
 ---
 
