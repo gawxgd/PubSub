@@ -110,15 +110,15 @@ Add project references to **Publisher**, **Subscriber**, **LoggerLib**, and **Sh
 </ItemGroup>
 ```
 
-Read configuration from `appsettings.json` (e.g. broker host, publisher port, subscriber port, max queue size, and Schema Registry base address and timeout) and optionally environment variables; use those values when building `PublisherOptions` and `SubscriberOptions`. For broker defaults you can use [MessageBroker/src/config.json](MessageBroker/src/config.json); otherwise edit that file to your needs.
-
 ### Publisher
 
-1. Create a schema registry client factory: `SchemaRegistryClientFactory` with `IHttpClientFactory` and `SchemaRegistryClientOptions`.
-2. Create a `PublisherFactory<T>` for your message type.
-3. Build `PublisherOptions` with broker URI `messageBroker://{host}:{port}`, schema registry URI and timeout, topic, `MaxPublisherQueueSize`, `MaxSendAttempts`, `MaxRetryAttempts`, `BatchMaxBytes`, and `BatchMaxDelay`.
-4. Create the publisher with `publisherFactory.CreatePublisher(publisherOptions)`.
-5. Call `await publisher.CreateConnection()` then `await publisher.PublishAsync(message, cancellationToken)`.
+1. Define your message type (a class that will be serialized with Avro). The schema is auto-registered in the Schema Registry when you publish.
+2. Create `IHttpClientFactory` (e.g. `SimpleHttpClientFactory` or from DI) and `SchemaRegistryClientOptions` (Schema Registry base address and timeout).
+3. Create a schema registry client factory: `SchemaRegistryClientFactory` with that `IHttpClientFactory` and `SchemaRegistryClientOptions`.
+4. Create a `PublisherFactory<T>` for your message type.
+5. Build `PublisherOptions` with broker URI `messageBroker://{host}:{port}`, schema registry URI and timeout, topic, `MaxPublisherQueueSize`, `MaxSendAttempts`, `MaxRetryAttempts`, `BatchMaxBytes`, and `BatchMaxDelay`.
+6. Create the publisher with `publisherFactory.CreatePublisher(publisherOptions)`.
+7. Call `await publisher.CreateConnection()` then `await publisher.PublishAsync(message, cancellationToken)`.
 
 ```csharp
 var schemaRegistryClientFactory = new SchemaRegistryClientFactory(httpClientFactory, schemaRegistryOptions);
@@ -142,11 +142,14 @@ await publisher.PublishAsync(message, cancellationToken);
 
 ### Subscriber
 
-1. Create a schema registry client with `schemaRegistryClientFactory.Create()`.
-2. Create a `SubscriberFactory<T>` with that schema registry client.
-3. Build `SubscriberOptions` with `MessageBrokerConnectionUri` using the **subscriber** port (e.g. 9098), `SchemaRegistryConnectionUri`, Host, Port (subscriber port), Topic, `MinMessageLength: 0`, `MaxMessageLength: int.MaxValue`, `MaxQueueSize: 65536`, `PollInterval`, `SchemaRegistryTimeout`, and `MaxRetryAttempts: 3`.
-4. Create the subscriber with `subscriberFactory.CreateSubscriber(subscriberOptions, messageHandler)`.
-5. Call `await subscriber.StartConnectionAsync()` then `await subscriber.StartMessageProcessingAsync()`.
+1. Use the same message type and schema as the publisher (the subscriber deserializes with Avro using the Schema Registry; the message type must match what the publisher sends).
+2. Ensure you have a schema registry client factory (same `SchemaRegistryClientFactory` as for the publisher, from `IHttpClientFactory` and `SchemaRegistryClientOptions`).
+3. Create a schema registry client with `schemaRegistryClientFactory.Create()`.
+4. Define a message handler: a `Func<T, Task>` that will be invoked for each received message (e.g. `async msg => { /* process msg */ }`).
+5. Create a `SubscriberFactory<T>` with that schema registry client.
+6. Build `SubscriberOptions` with `MessageBrokerConnectionUri` using the **subscriber** port (e.g. 9098), `SchemaRegistryConnectionUri`, Host, Port (subscriber port), Topic, `MinMessageLength: 0`, `MaxMessageLength: int.MaxValue`, `MaxQueueSize: 65536`, `PollInterval`, `SchemaRegistryTimeout`, and `MaxRetryAttempts: 3`.
+7. Create the subscriber with `subscriberFactory.CreateSubscriber(subscriberOptions, messageHandler)`.
+8. Call `await subscriber.StartConnectionAsync()` then `await subscriber.StartMessageProcessingAsync()`.
 
 ```csharp
 var schemaRegistryClient = schemaRegistryClientFactory.Create();
@@ -176,14 +179,13 @@ The broker exposes a **publisher** port (default 9096) and a **subscriber** port
 
 ## Configuring the broker
 
-You can use the defaults from [MessageBroker/src/config.json](MessageBroker/src/config.json) or change that file to use different ports or settings. If you edit the file, rebuild the broker project and then run Docker (or run the broker) so the new config is used.
+You can use the defaults from [MessageBroker/src/config.json](MessageBroker/src/config.json) or change that file to use different ports or settings. If you edit the file, rebuild the broker project and then run Docker so the new config is used.
 
 ## Running with Docker
 
-To run the **MessageBroker** and **Schema Registry** with default options (publisher port 9096, subscriber port 9098, HTTP stats on 5001):
+To run the **MessageBroker** and **Schema Registry**:
 
 ```bash
 docker compose up -d messagebroker schemaregistry
 ```
 
-Configure your app with broker host `localhost`, publisher port `9096`, subscriber port `9098`, and Schema Registry at `http://localhost:8081`. To use different ports, set the broker environment variables in `compose.yaml` (e.g. `MessageBrokerEnv_Server__PublisherPort`, `MessageBrokerEnv_Server__SubscriberPort`) and adjust your app and port mappings accordingly.
