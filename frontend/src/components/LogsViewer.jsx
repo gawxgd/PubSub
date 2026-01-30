@@ -13,7 +13,6 @@ function LogsViewer() {
   const [filterLevel, setFilterLevel] = useState('all')
   const [filterSource, setFilterSource] = useState('all')
   const [isScrolledToBottom, setIsScrolledToBottom] = useState(true)
-  const [showScrollButton, setShowScrollButton] = useState(false)
   // Key to force list remount on clear
   const [listKey, setListKey] = useState(0)
 
@@ -63,12 +62,6 @@ function LogsViewer() {
     return () => clearTimeout(timeoutId)
   }, [logs, isScrolledToBottom, checkIfScrolledToBottom])
 
-  const scrollToBottom = () => {
-    logsEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-    setIsScrolledToBottom(true)
-    setShowScrollButton(false)
-  }
-
   const handleClearLogs = () => {
     console.log(`[${instanceId}] CLEAR called - setting logs to empty array`)
     clearLogsFromHook()
@@ -104,15 +97,7 @@ function LogsViewer() {
 
   const uniqueSources = [...new Set(logs.map(log => log.source))].sort()
 
-  // Update scroll button visibility when filtered logs change
-  useEffect(() => {
-    if (logsContainerRef.current) {
-      const container = logsContainerRef.current
-      const threshold = 100
-      const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < threshold
-      setShowScrollButton(!isAtBottom && filteredLogs.length > 0)
-    }
-  }, [filteredLogs.length])
+
 
   return (
     <div className="logs-viewer" data-instance-id={instanceId}>
@@ -133,11 +118,7 @@ function LogsViewer() {
         </div>
       </div>
       <div className="logs-container" ref={logsContainerRef}>
-        {showScrollButton && (
-          <button className="scroll-to-bottom-button" onClick={scrollToBottom} title="Scroll to bottom">
-            ⬇️ Scroll to bottom
-          </button>
-        )}
+
         {filteredLogs.length === 0 ? (
           <div className="logs-empty">
             <p>No logs to display</p>
