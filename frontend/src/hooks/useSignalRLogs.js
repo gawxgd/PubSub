@@ -1,10 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import * as signalR from '@microsoft/signalr'
 
-/**
- * Custom hook for managing SignalR connection and receiving logs
- * Handles connection lifecycle, reconnection, and cleanup
- */
 export function useSignalRLogs(maxLogsRef) {
     const [logs, setLogs] = useState([])
     const [connectionStatus, setConnectionStatus] = useState('Disconnected')
