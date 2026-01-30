@@ -31,12 +31,13 @@ public class ConnectionManagerTests
         // Arrange
         var repository = Substitute.For<IConnectionRepository>();
         var commitLog = Substitute.For<ICommitLogFactory>();
-        var batchWriter = Substitute.For<ILogRecordBatchWriter>();
         var messageDeframer = Substitute.For<IMessageDeframer>();
         var messageFramer = Substitute.For<IMessageFramer>();
+        var subscriberDeliveryMetrics = Substitute.For<ISubscriberDeliveryMetrics>();
         var sendResponseUseCase = new SendPublishResponseUseCase(messageFramer);
         repository.GenerateConnectionId().Returns(42L);
-        var manager = new ConnectionManager(repository, commitLog, batchWriter, messageDeframer, sendResponseUseCase);
+        var manager = new ConnectionManager(repository, commitLog, subscriberDeliveryMetrics, messageDeframer,
+            sendResponseUseCase);
         var socket = CreateMockSocket();
         var cts = new CancellationTokenSource();
 
@@ -57,7 +58,7 @@ public class ConnectionManagerTests
         // Arrange
         var repository = Substitute.For<IConnectionRepository>();
         var commitLog = Substitute.For<ICommitLogFactory>();
-        var batchWriter = Substitute.For<ILogRecordBatchWriter>();
+        var subscriberDeliveryMetrics = Substitute.For<ISubscriberDeliveryMetrics>();
         var messageDeframer = Substitute.For<IMessageDeframer>();
         var messageFramer = Substitute.For<IMessageFramer>();
         var sendResponseUseCase = new SendPublishResponseUseCase(messageFramer);
@@ -65,7 +66,8 @@ public class ConnectionManagerTests
         var cts = new CancellationTokenSource();
         var connection = new Connection(1, "test", cts, tcs.Task, ConnectionType.Publisher);
         repository.Get(1).Returns(connection);
-        var manager = new ConnectionManager(repository, commitLog, batchWriter, messageDeframer, sendResponseUseCase);
+        var manager = new ConnectionManager(repository, commitLog, subscriberDeliveryMetrics, messageDeframer,
+            sendResponseUseCase);
 
         // Act
         var unregisterTask = manager.UnregisterConnectionAsync(1);
@@ -83,12 +85,13 @@ public class ConnectionManagerTests
         // Arrange
         var repository = Substitute.For<IConnectionRepository>();
         var commitLog = Substitute.For<ICommitLogFactory>();
-        var batchWriter = Substitute.For<ILogRecordBatchWriter>();
+        var subscriberDeliveryMetrics = Substitute.For<ISubscriberDeliveryMetrics>();
         var messageDeframer = Substitute.For<IMessageDeframer>();
         var messageFramer = Substitute.For<IMessageFramer>();
         var sendResponseUseCase = new SendPublishResponseUseCase(messageFramer);
         repository.Get(999).Returns((Connection?)null);
-        var manager = new ConnectionManager(repository, commitLog, batchWriter, messageDeframer, sendResponseUseCase);
+        var manager = new ConnectionManager(repository, commitLog, subscriberDeliveryMetrics, messageDeframer,
+            sendResponseUseCase);
 
         // Act
         var act = async () => await manager.UnregisterConnectionAsync(999);
@@ -104,7 +107,7 @@ public class ConnectionManagerTests
         // Arrange
         var repository = Substitute.For<IConnectionRepository>();
         var commitLog = Substitute.For<ICommitLogFactory>();
-        var batchWriter = Substitute.For<ILogRecordBatchWriter>();
+        var subscriberDeliveryMetrics = Substitute.For<ISubscriberDeliveryMetrics>();
         var messageDeframer = Substitute.For<IMessageDeframer>();
         var messageFramer = Substitute.For<IMessageFramer>();
         var sendResponseUseCase = new SendPublishResponseUseCase(messageFramer);
@@ -117,7 +120,8 @@ public class ConnectionManagerTests
         var conn2 = new Connection(2, "test2", cts2, tcs2.Task, ConnectionType.Publisher);
 
         repository.GetAll().Returns(new List<Connection> { conn1, conn2 });
-        var manager = new ConnectionManager(repository, commitLog, batchWriter, messageDeframer, sendResponseUseCase);
+        var manager = new ConnectionManager(repository, commitLog, subscriberDeliveryMetrics, messageDeframer,
+            sendResponseUseCase);
 
         // Act
         var unregisterTask = manager.UnregisterAllConnectionsAsync();
