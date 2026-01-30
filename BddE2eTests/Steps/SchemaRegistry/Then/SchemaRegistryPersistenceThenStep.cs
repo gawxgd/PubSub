@@ -23,7 +23,6 @@ public class SchemaRegistryPersistenceThenStep(ScenarioContext scenarioContext)
         var expectedId = scenarioContext.Get<int>(RegisterTopicGivenStep.ExpectedSchemaIdKey);
         var expectedSchemaJson = scenarioContext.Get<string>(RegisterTopicGivenStep.ExpectedSchemaJsonKey);
 
-        // Small retry to avoid flakiness right after restart.
         var loaded = await PollSchemaByIdAsync(adminClient, expectedId, timeout: TimeSpan.FromSeconds(5));
 
         Assert.That(loaded, Is.Not.Null, $"Expected schema id '{expectedId}' to exist after restart (topic '{topic}')");

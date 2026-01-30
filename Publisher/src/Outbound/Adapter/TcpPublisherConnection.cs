@@ -267,7 +267,6 @@ public sealed class TcpPublisherConnection(
 
     private async Task SendBatchAsync()
     {
-        // Check if there are any messages to send before building batch
         if (batchMessagesUseCase.Count == 0)
         {
             Logger.LogDebug("SendBatchAsync called but no messages to send");
@@ -327,7 +326,7 @@ public sealed class TcpPublisherConnection(
                     Logger.LogWarning("Connection completed (likely broker restart), attempting to reconnect...");
                     if (await ReconnectAsync())
                     {
-                        continue; // Retry sending with new connection
+                        continue;
                     }
                     break;
                 }
@@ -350,7 +349,6 @@ public sealed class TcpPublisherConnection(
                 {
                     break;
                 }
-                // Continue to retry with new connection
             }
             catch (SocketException ex) when (CanRetrySocketException(ex))
             {
@@ -359,7 +357,6 @@ public sealed class TcpPublisherConnection(
                 {
                     break;
                 }
-                // Continue to retry with new connection
             }
             catch (InvalidOperationException ex) when (ex.Message.Contains("PipeWriter"))
             {
@@ -368,7 +365,6 @@ public sealed class TcpPublisherConnection(
                 {
                     break;
                 }
-                // Continue to retry with new connection
             }
             catch (OperationCanceledException)
             {

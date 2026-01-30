@@ -94,13 +94,12 @@ public class LogRecordBinaryWriterTests
         var bw2 = new BinaryWriter(stream2);
 
         // Act
-        _writer.WriteTo(record1, bw1, 5000); // Delta = 0
-        _writer.WriteTo(record2, bw2, 5000); // Delta = 1000
+        _writer.WriteTo(record1, bw1, 5000);
+        _writer.WriteTo(record2, bw2, 5000);
         bw1.Flush();
         bw2.Flush();
 
         // Assert - Current implementation uses fixed ulong encoding for timestamp delta,
-        // so both records will be the same size. Verify records can be read back correctly.
         stream1.Length.Should().Be(stream2.Length, "both use fixed-size ulong encoding for timestamp delta");
         
         stream1.Position = 0;
@@ -115,7 +114,4 @@ public class LogRecordBinaryWriterTests
         AssertLogRecordsEqual(record2, readRecord2, "second record with larger delta should match");
     }
 }
-
-
-
 

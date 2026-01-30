@@ -70,8 +70,8 @@ public class SubscriberOptionsBuilder(SubscriberTestOptions options)
     public SubscriberOptions Build()
     {
         return new SubscriberOptions(
-            MessageBrokerConnectionUri: new Uri($"messageBroker://{_brokerHost}:{_brokerPort}"),
-            SchemaRegistryConnectionUri: new Uri($"http://{_schemaRegistryHost}:{_schemaRegistryPort}"),
+            MessageBrokerConnectionUri: new Uri($"messageBroker:
+            SchemaRegistryConnectionUri: new Uri($"http:
             Host: _brokerHost,
             Port: _brokerPort,
             Topic: _topic,

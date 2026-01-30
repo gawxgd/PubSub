@@ -31,7 +31,7 @@ public class SchemaRegistryClientBuilder(SchemaRegistryTestOptions options)
         return this;
     }
 
-    public Uri BuildUri() => new Uri($"http://{_host}:{_port}");
+    public Uri BuildUri() => new Uri($"http:
     
     public ISchemaRegistryClient Build()
     {

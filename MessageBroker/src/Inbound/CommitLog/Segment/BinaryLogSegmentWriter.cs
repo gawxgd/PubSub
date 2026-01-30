@@ -90,7 +90,7 @@ public sealed class BinaryLogSegmentWriter
     {
         return
             (ulong)_log.Length >=
-            _maxSegmentBytes; //ToDo we risk that the segment will be bigger because we dont accomodate the size of next batch
+            _maxSegmentBytes;
     }
 
     public async ValueTask AppendAsync(byte[] batch, ulong batchBaseOffset, ulong batchLastOffset,
@@ -109,15 +109,6 @@ public sealed class BinaryLogSegmentWriter
             await WriteIndexAsync(start, batchBaseOffset).ConfigureAwait(false);
             _bytesSinceLastIndex = 0;
         }
-
-        //ToDo handle timestamps
-        // var baseTs = batch.BaseTimestamp;
-        // if (_timeIndexIntervalMs > 0 &&
-        //     (_lastTimeIndexTimestamp == 0 || baseTs - _lastTimeIndexTimestamp >= _timeIndexIntervalMs))
-        // {
-        //     await WriteTimeIndexAsync(start, batch).ConfigureAwait(false);
-        //     _lastTimeIndexTimestamp = baseTs;
-        // }
 
         _segment = _segment with { NextOffset = batchBaseOffset + batchLastOffset };
     }

@@ -12,7 +12,7 @@ public sealed class SchemaRegistryAdminClient
     {
         _http = new HttpClient
         {
-            BaseAddress = new Uri($"http://{host}:{port}"),
+            BaseAddress = new Uri($"http:
             Timeout = timeout
         };
     }

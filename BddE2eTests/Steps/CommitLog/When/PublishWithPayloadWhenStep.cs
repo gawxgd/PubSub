@@ -17,9 +17,7 @@ public class PublishWithPayloadWhenStep(ScenarioContext scenarioContext)
         await TestContext.Progress.WriteLineAsync(
             $"[CommitLog When] Sending {messageCount} messages with {payloadSize}-byte payloads to topic '{topic}'...");
 
-        // Generate padding to reach the desired payload size
-        // The actual payload will be: "msg{i}:" + padding
-        var basePadding = new string('X', Math.Max(0, payloadSize - 10)); // Reserve space for "msg{i}:"
+        var basePadding = new string('X', Math.Max(0, payloadSize - 10));
 
         for (var i = 0; i < messageCount; i++)
         {
@@ -42,7 +40,6 @@ public class PublishWithPayloadWhenStep(ScenarioContext scenarioContext)
             await _context.Publisher.PublishAsync(evt);
         }
 
-        // Wait for all messages to be acknowledged
         await TestContext.Progress.WriteLineAsync(
             $"[CommitLog When] Waiting for {messageCount} messages to be acknowledged...");
 

@@ -94,8 +94,8 @@ public class PublisherOptionsBuilder(PublisherTestOptions options)
     public PublisherOptions Build()
     {
         return new PublisherOptions(
-            MessageBrokerConnectionUri: new Uri($"messageBroker://{_brokerHost}:{_brokerPort}"),
-            SchemaRegistryConnectionUri: new Uri($"http://{_schemaRegistryHost}:{_schemaRegistryPort}"),
+            MessageBrokerConnectionUri: new Uri($"messageBroker:
+            SchemaRegistryConnectionUri: new Uri($"http:
             SchemaRegistryTimeout: _schemaRegistryTimeout,
             Topic: _topic,
             MaxPublisherQueueSize: _maxPublisherQueueSize,

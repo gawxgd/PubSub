@@ -7,11 +7,6 @@ using Xunit;
 
 namespace SchemaRegistry.Tests
 {
-    /// <summary>
-    /// Tests for CompatibilityChecker:
-    /// ✅ Backward / Forward / Full compatibility
-    /// ✅ SchemaEquals for all Avro schema types
-    /// </summary>
     public class CompatibilityCheckerTests
     {
         private readonly CompatibilityChecker _checker = new();
@@ -19,8 +14,6 @@ namespace SchemaRegistry.Tests
 
         private const System.Reflection.BindingFlags PrivateInstance =
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
-
-        // ======== HELPERS =========
 
         private RecordSchema ParseRecordSchema(string json)
         {
@@ -48,10 +41,6 @@ namespace SchemaRegistry.Tests
           ]
         }
         """;
-
-        // ================================================================
-        // SECTION 1: COMPATIBILITY CHECKER (FORWARD / BACKWARD)
-        // ================================================================
 
         [Fact]
         public void Backward_AddingFieldWithDefault_IsCompatible()
@@ -212,10 +201,6 @@ namespace SchemaRegistry.Tests
             var result = _checker.IsForwardCompatible(ParseRecordSchema(newSchemaJson), ParseRecordSchema(BaseSchemaJson));
             result.Should().BeFalse();
         }
-
-        // ================================================================
-        // SECTION 2: SCHEMA EQUALITY TESTS
-        // ================================================================
 
         [Fact]
         public void SchemaEquals_PrimitiveSchemas_ShouldBeEqual_WhenSameType()

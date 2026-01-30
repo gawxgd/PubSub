@@ -21,14 +21,12 @@ namespace PerformanceTests.Scenarios;
 
 public static class MultiTopicLongRunScenario
 {
-    // --- per-run state  ---
     private static readonly ConcurrentDictionary<string, TopicState> StateByTopic = new();
 
     private static readonly ConcurrentDictionary<string, List<IPublisher<TestMessage>>> PublishersByTopic = new();
     private static readonly ConcurrentDictionary<string, List<ISubscriber<TestMessage>>> SubscribersByTopic = new();
     private static readonly ConcurrentDictionary<string, List<Task>> SubscriberProcessingTasksByTopic = new();
 
-    // throughput CSV
     private static CancellationTokenSource? _csvCts;
     private static Task? _csvTask;
 
@@ -105,7 +103,6 @@ public static class MultiTopicLongRunScenario
     private static string CleanTopicName(string topic)
         => topic.Replace("schema/topic/", "").Trim('/');
 
-    // --- CSV: throughput subskrybera ---
     public static void StartSubscriberThroughputCsv(string path)
     {
         _csvCts = new CancellationTokenSource();
@@ -203,9 +200,6 @@ public static class MultiTopicLongRunScenario
             var cleanTopicName = CleanTopicName(topicName);
             long messageCounter = 0L;
 
-            // =========================
-            // PUBLISHER SCENARIO
-            // =========================
             var publishScenario = Scenario.Create($"pub_{topicName}", async _ =>
             {
                 if (!PublishersByTopic.TryGetValue(topicName, out var publishers) || publishers.Count == 0)
@@ -241,7 +235,7 @@ public static class MultiTopicLongRunScenario
                 for (int i = 0; i < publishersPerTopic; i++)
                 {
                     var pubOptions = new PublisherOptions(
-                        MessageBrokerConnectionUri: new Uri($"messageBroker://{brokerHost}:{brokerPort}"),
+                        MessageBrokerConnectionUri: new Uri($"messageBroker:
                         SchemaRegistryConnectionUri: schemaRegistryBaseAddress,
                         SchemaRegistryTimeout: schemaRegistryTimeout,
                         Topic: cleanTopicName,
@@ -262,10 +256,6 @@ public static class MultiTopicLongRunScenario
             .WithWarmUpDuration(TimeSpan.FromSeconds(60))
             .WithLoadSimulations(
                 Simulation.Inject(rate: ratePerTopic, interval: TimeSpan.FromSeconds(1), during: TimeSpan.FromSeconds(durationSeconds))
-                //Simulation.Inject(rate: 500, interval: TimeSpan.FromSeconds(1), during: TimeSpan.FromMinutes(15)),
-                //Simulation.Inject(rate: 1000, interval: TimeSpan.FromSeconds(1), during: TimeSpan.FromMinutes(60)),
-                //Simulation.Inject(rate: 1500, interval: TimeSpan.FromSeconds(1), during: TimeSpan.FromMinutes(15)),
-                //Simulation.Inject(rate: 800, interval: TimeSpan.FromSeconds(1), during: TimeSpan.FromMinutes(60))
             )
             .WithClean(async _ =>
             {
@@ -278,9 +268,6 @@ public static class MultiTopicLongRunScenario
 
             scenarios.Add(publishScenario);
 
-            // =========================
-            // SUBSCRIBER SCENARIO 
-            // =========================
             var subscribeScenario = Scenario.Create($"sub_{topicName}", async ctx =>
             {
                 try
@@ -315,7 +302,7 @@ public static class MultiTopicLongRunScenario
                 for (int i = 0; i < subscribersPerTopic; i++)
                 {
                     var subOptions = new SubscriberOptions(
-                        MessageBrokerConnectionUri: new Uri($"messageBroker://{brokerHost}:{brokerSubscriberPort}"),
+                        MessageBrokerConnectionUri: new Uri($"messageBroker:
                         SchemaRegistryConnectionUri: schemaRegistryBaseAddress,
                         Host: brokerHost,
                         Port: brokerSubscriberPort,

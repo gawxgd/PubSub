@@ -22,7 +22,6 @@ public class SchemaRegistryService(
         ArgumentException.ThrowIfNullOrWhiteSpace(topic);
         ArgumentException.ThrowIfNullOrWhiteSpace(schemaJson);
         
-        // check if the schema is even a valid json
         try
         {
             _ = JsonDocument.Parse(schemaJson);
@@ -32,7 +31,6 @@ public class SchemaRegistryService(
             throw new SchemaValidationException("Schema is not a valid JSON document.", ex);
         }
         
-        // check if it's a valid avro schema
         try
         {
             var reader = new Chr.Avro.Representation.JsonSchemaReader();
@@ -45,7 +43,6 @@ public class SchemaRegistryService(
         
         var checksum = ComputeChecksum(schemaJson);
 
-        // Deduplicate within the same topic only
         var latest = await store.GetLatestForTopicAsync(topic);
         if (latest != null && latest.Checksum == checksum)
             return latest.Id;
@@ -53,7 +50,6 @@ public class SchemaRegistryService(
             !compatibility.IsCompatible(latest.SchemaJson, schemaJson, _compatMode))
             throw new SchemaCompatibilityException($"New schema is not {_compatMode}-compatible with latest for topic.");
 
-        // save the schema (store will assign id)
         var entity = new SchemaEntity
         {
             Topic = topic,
@@ -71,12 +67,10 @@ public class SchemaRegistryService(
         return store.GetLatestForTopicAsync(subject);
     }
 
-
     public Task<SchemaEntity?> GetSchemaByIdAsync(int id)
     {
         return store.GetByIdAsync(id);
     }
-
 
     public Task<IEnumerable<SchemaEntity>> GetVersionsAsync(string subject)
     {

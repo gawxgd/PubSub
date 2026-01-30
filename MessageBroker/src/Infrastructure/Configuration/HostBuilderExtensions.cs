@@ -5,7 +5,6 @@ using MessageBroker.Infrastructure.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 
-
 namespace MessageBroker.Infrastructure.Configuration;
 
 public static class HostBuilderExtensions
@@ -40,7 +39,6 @@ public static class HostBuilderExtensions
             })
             .ConfigureWebHostDefaults(webBuilder =>
             {
-                //ToDo change
                 var configBuilder = new ConfigurationBuilder()
                     .SetBasePath(AppContext.BaseDirectory)
                     .AddJsonFile(ConfigFileName, true, true)
@@ -50,7 +48,7 @@ public static class HostBuilderExtensions
                 var config = configBuilder.Build();
                 var loggerPort = config.GetValue<int>("LoggerPort", 5001);
 
-                webBuilder.UseUrls($"http://0.0.0.0:{loggerPort}");
+                webBuilder.UseUrls($"http:
                 webBuilder.Configure(app =>
                 {
                     app.UseCors();

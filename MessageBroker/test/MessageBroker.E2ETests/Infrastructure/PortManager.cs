@@ -4,13 +4,12 @@ namespace MessageBroker.E2ETests.Infrastructure;
 
 public static class PortManager
 {
-    private static int _currentPort = 15000; // Start from higher port range to avoid conflicts
+    private static int _currentPort = 15000;
 
     public static int GetNextPort()
     {
         var port = Interlocked.Increment(ref _currentPort);
         
-        // Ensure port is available
         while (!IsPortAvailable(port))
         {
             port = Interlocked.Increment(ref _currentPort);
@@ -30,7 +29,6 @@ public static class PortManager
         }
         catch
         {
-            // If we can't check, assume it's available
             return true;
         }
     }

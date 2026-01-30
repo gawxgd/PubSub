@@ -10,7 +10,6 @@ public class FileSchemaStore : ISchemaStore
     private readonly string _indexFile;
     private readonly object _lock = new();
     
-    // In-memory index for faster reads (loaded at startup)
     private List<SchemaEntity> _entities = new();
     
     public FileSchemaStore(string folder)
@@ -69,10 +68,8 @@ public class FileSchemaStore : ISchemaStore
     {
         lock (_lock)
         {
-            // assign global id
             var nextId = (_entities.Any() ? _entities.Max(e => e.Id) : 0) + 1;
 
-            // compute next version for subject
             var nextVersion = (_entities.Where(e => e.Topic.Equals(entity.Topic, StringComparison.OrdinalIgnoreCase))
                 .Any())
                 ? _entities.Where(e => e.Topic.Equals(entity.Topic, StringComparison.OrdinalIgnoreCase))
@@ -85,7 +82,6 @@ public class FileSchemaStore : ISchemaStore
             _entities.Add(entity);
             SaveIndex();
 
-            // also persist schema body to file for convenience
             var schemaFile = Path.Combine(_folder, $"{entity.Id}.schema.json");
             File.WriteAllText(schemaFile, entity.SchemaJson);
 

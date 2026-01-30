@@ -109,7 +109,6 @@ public class BinaryLogSegmentFactoryTests
             writer.Should().NotBeNull();
             writer.Should().BeOfType<BinaryLogSegmentWriter>();
 
-            // Cleanup
             writer.DisposeAsync().AsTask().Wait();
         }
         finally
@@ -150,7 +149,6 @@ public class BinaryLogSegmentFactoryTests
             // Assert
             writer.Should().NotBeNull();
 
-            // Cleanup
             writer.DisposeAsync().AsTask().Wait();
         }
         finally

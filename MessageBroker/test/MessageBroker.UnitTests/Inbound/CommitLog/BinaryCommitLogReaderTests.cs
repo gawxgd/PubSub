@@ -14,7 +14,6 @@ namespace MessageBroker.UnitTests.Inbound.CommitLog;
 
 public class BinaryCommitLogReaderTests
 {
-    //ToDo make better coverage
     private readonly ILogSegmentFactory _segmentFactory = Substitute.For<ILogSegmentFactory>();
     private readonly ITopicSegmentRegistry _registry = Substitute.For<ITopicSegmentRegistry>();
 
@@ -56,7 +55,6 @@ public class BinaryCommitLogReaderTests
     [Fact]
     public void ReadFromTimestamp_Should_Return_Whole_First_Batch()
     {
-        // Aktualna implementacja nie jest jeszcze dostępna i rzuca NotImplementedException
         var segment = new LogSegment("a.log", "a.index", "a.timeindex", 0, 0);
         _registry.GetActiveSegment().Returns(segment);
 

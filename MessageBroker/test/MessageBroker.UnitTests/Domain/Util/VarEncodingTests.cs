@@ -117,7 +117,7 @@ public class VarEncodingTests
         // Arrange
         var ms = new MemoryStream();
         using var writer = new BinaryWriter(ms, Encoding.UTF8, true);
-        uint value = 300; // Should use 2 bytes
+        uint value = 300;
 
         // Act
         writer.WriteVarUInt(value);
@@ -133,7 +133,7 @@ public class VarEncodingTests
         // Arrange
         var ms = new MemoryStream();
         using var writer = new BinaryWriter(ms, Encoding.UTF8, true);
-        ulong value = 300; // Should use 2 bytes
+        ulong value = 300;
 
         // Act
         writer.WriteVarULong(value);
@@ -148,7 +148,7 @@ public class VarEncodingTests
     {
         // Arrange
         var ms = new MemoryStream();
-        ms.WriteByte(0x80); // Continuation bit set, but no more bytes
+        ms.WriteByte(0x80);
         ms.Position = 0;
         using var reader = new BinaryReader(ms);
 
@@ -164,7 +164,7 @@ public class VarEncodingTests
     {
         // Arrange
         var ms = new MemoryStream();
-        ms.WriteByte(0x80); // Continuation bit set, but no more bytes
+        ms.WriteByte(0x80);
         ms.Position = 0;
         using var reader = new BinaryReader(ms);
 
@@ -178,7 +178,6 @@ public class VarEncodingTests
     [Fact]
     public void WriteVarUInt_Should_Match_Size_Calculation()
     {
-        // Test that actual written size matches calculated size for various values
         for (uint i = 0; i < 1000000; i += 1234)
         {
             var ms = new MemoryStream();
@@ -196,7 +195,6 @@ public class VarEncodingTests
     [Fact]
     public void WriteVarULong_Should_Match_Size_Calculation()
     {
-        // Test that actual written size matches calculated size for various values
         var testValues = new[] { 0ul, 127ul, 128ul, 16383ul, 16384ul, 
             2097151ul, 2097152ul, 268435455ul, 268435456ul, ulong.MaxValue };
             
@@ -214,9 +212,4 @@ public class VarEncodingTests
         }
     }
 }
-
-
-
-
-
 

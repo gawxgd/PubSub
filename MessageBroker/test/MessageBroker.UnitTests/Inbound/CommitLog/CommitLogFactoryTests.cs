@@ -28,7 +28,6 @@ public class CommitLogFactoryTests : IDisposable
         _segmentFactory = Substitute.For<ILogSegmentFactory>();
         _topicSegmentRegistryFactory = Substitute.For<ITopicSegmentRegistryFactory>();
 
-        // Setup segment factory to return valid segments
         _segmentFactory.CreateLogSegment(Arg.Any<string>(), Arg.Any<ulong>())
             .Returns(call => new MessageBroker.Domain.Entities.CommitLog.LogSegment(
                 Path.Combine(_testDirectory, "test.log"),
@@ -95,22 +94,6 @@ public class CommitLogFactoryTests : IDisposable
         appender1.Should().BeSameAs(appender2);
         _topicSegmentRegistryFactory.Received(1).GetOrCreate("test-topic", Arg.Any<string>(), Arg.Any<ulong>());
     }
-
-    // [Fact]
-    // public void Get_Should_Handle_Case_Insensitive_Topic_Names()
-    // {
-    //     // Arrange
-    //     var factory = CreateFactory("test-topic");
-    //
-    //     // Act
-    //     var appender1 = factory.Get("test-topic");
-    //     var appender2 = factory.Get("TEST-TOPIC");
-    //     var appender3 = factory.Get("Test-Topic");
-    //
-    //     // Assert
-    //     appender1.Should().BeSameAs(appender2);
-    //     appender2.Should().BeSameAs(appender3);
-    // }
 
     [Fact]
     public void Get_Should_Create_Appender_With_Custom_Directory()
@@ -330,7 +313,6 @@ public class CommitLogFactoryTests : IDisposable
             }
             catch
             {
-                // Cleanup best effort
             }
         }
     }

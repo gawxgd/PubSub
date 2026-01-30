@@ -18,14 +18,12 @@ namespace PerformanceTests.Scenarios;
 
 public static class KafkaMultiTopicLongRunScenario
 {
-    // ----- per-run state -----
     private static readonly ConcurrentDictionary<string, TopicState> StateByTopic = new();
     private static readonly ConcurrentDictionary<string, List<IProducer<Null, TestMessage>>> ProducersByTopic = new();
     private static readonly ConcurrentDictionary<string, List<IConsumer<Null, TestMessage>>> ConsumersByTopic = new();
     private static readonly ConcurrentDictionary<string, List<Task>> ConsumerTasksByTopic = new();
     private static readonly ConcurrentDictionary<string, CancellationTokenSource> ConsumerCtsByTopic = new();
 
-    // subscriber throughput CSV
     private static CancellationTokenSource? _csvCts;
     private static Task? _csvTask;
 
@@ -172,7 +170,6 @@ public static class KafkaMultiTopicLongRunScenario
         }
         catch (CreateTopicsException ex) when (ex.Results.All(r => r.Error.Code == ErrorCode.TopicAlreadyExists))
         {
-            // ok
         }
     }
 
@@ -206,7 +203,6 @@ public static class KafkaMultiTopicLongRunScenario
             var topicName = $"kafka-e2e-topic-{topicIndex:D2}";
             long messageCounter = 0L;
 
-            // --- PUB scenario ---
             var pub = Scenario.Create($"pub_{topicName}", async _ =>
             {
                 if (!ProducersByTopic.TryGetValue(topicName, out var producers) || producers.Count == 0)
@@ -278,7 +274,6 @@ public static class KafkaMultiTopicLongRunScenario
 
             scenarios.Add(pub);
 
-            // --- SUB scenario (sonda NBomber + uruchomione consumer tasks) ---
             var sub = Scenario.Create($"sub_{topicName}", async ctx =>
             {
                 try { await Task.Delay(1000, ctx.ScenarioCancellationToken); }
@@ -378,7 +373,6 @@ public static class KafkaMultiTopicLongRunScenario
             )
             .WithClean(async _ =>
             {
-                // stop consumers
                 if (ConsumerCtsByTopic.TryRemove(topicName, out var cts))
                 {
                     try { cts.Cancel(); } catch { }
@@ -388,7 +382,6 @@ public static class KafkaMultiTopicLongRunScenario
                 if (ConsumerTasksByTopic.TryRemove(topicName, out var tasks))
                     await Task.WhenAny(Task.WhenAll(tasks), Task.Delay(3000));
 
-                // snapshot + percentile file
                 var st = StateByTopic.GetOrAdd(topicName, _ => new TopicState(maxE2ESamplesPerTopic));
                 var samples = st.E2E.Snapshot();
                 samples.Sort();
@@ -452,7 +445,6 @@ public static class KafkaMultiTopicLongRunScenario
 
         File.WriteAllText(Path.Combine(reportsDir, $"e2e_global_{DateTime.Now:yyyyMMdd_HHmmss}.txt"), txt);
     }
-
 
     public sealed class KafkaJsonSerializer<T> : ISerializer<T>
     {

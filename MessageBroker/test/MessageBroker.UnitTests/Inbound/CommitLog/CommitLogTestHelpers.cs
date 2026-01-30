@@ -3,14 +3,8 @@ using MessageBroker.Domain.Entities.CommitLog;
 
 namespace MessageBroker.UnitTests.Inbound.CommitLog;
 
-/// <summary>
-/// Shared test helper methods for comparing commit log entities
-/// </summary>
 public static class CommitLogTestHelpers
 {
-    /// <summary>
-    /// Asserts that two LogRecords are equal by comparing all fields
-    /// </summary>
     public static void AssertLogRecordsEqual(LogRecord expected, LogRecord actual, string because = "")
     {
         actual.Offset.Should().Be(expected.Offset, $"{because} - offsets should match");
@@ -18,9 +12,6 @@ public static class CommitLogTestHelpers
         actual.Payload.ToArray().Should().BeEquivalentTo(expected.Payload.ToArray(), $"{because} - payloads should match");
     }
 
-    /// <summary>
-    /// Asserts that two LogRecordBatches are equal by comparing all fields and all records
-    /// </summary>
     public static void AssertBatchesEqual(LogRecordBatch expected, LogRecordBatch? actual, string because = "")
     {
         actual.Should().NotBeNull($"{because} - actual batch should not be null");
@@ -38,9 +29,6 @@ public static class CommitLogTestHelpers
         }
     }
 
-    /// <summary>
-    /// Asserts that a batch contains the expected records with correct offsets and payloads
-    /// </summary>
     public static void AssertBatchContainsRecords(
         LogRecordBatch? batch,
         ulong expectedBaseOffset,
@@ -58,9 +46,6 @@ public static class CommitLogTestHelpers
         }
     }
 
-    /// <summary>
-    /// Asserts that all records in a batch have sequential offsets starting from base offset
-    /// </summary>
     public static void AssertSequentialOffsets(LogRecordBatch? batch, string because = "")
     {
         batch.Should().NotBeNull($"{because} - batch should not be null");
@@ -73,9 +58,6 @@ public static class CommitLogTestHelpers
         }
     }
 
-    /// <summary>
-    /// Asserts that all records in a batch have timestamps within a reasonable range
-    /// </summary>
     public static void AssertTimestampsValid(LogRecordBatch? batch, string because = "")
     {
         batch.Should().NotBeNull($"{because} - batch should not be null");

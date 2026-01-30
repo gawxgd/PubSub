@@ -9,7 +9,7 @@ namespace MessageBroker.Inbound.Adapter;
 public class MessageDeframer : IMessageDeframer
 {
     private static readonly IAutoLogger Logger =
-        AutoLoggerFactory.CreateLogger<MessageDeframer>(LogSource.MessageBroker); //ToDo correct
+        AutoLoggerFactory.CreateLogger<MessageDeframer>(LogSource.MessageBroker);
 
     private const int LengthFieldSize = 4;
 

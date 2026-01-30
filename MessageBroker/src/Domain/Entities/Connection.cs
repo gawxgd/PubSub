@@ -53,7 +53,6 @@ public class Connection(
         }
         catch (OperationCanceledException ex)
         {
-            // Timeout - handler didn't complete in time
             Logger.LogWarning($"Connection with id {Id} disconnection timed out", ex);
         }
     }

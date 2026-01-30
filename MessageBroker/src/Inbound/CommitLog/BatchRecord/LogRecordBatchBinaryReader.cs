@@ -27,7 +27,7 @@ public class LogRecordBatchBinaryReader(ILogRecordReader logRecordReader, ICompr
             throw new InvalidDataException("Batch length cannot be zero, or bigger than Int64.MaxValue.");
         }
 
-        var lastOffset = br.ReadUInt64(); // Skip LastOffset, it's computed from records
+        var lastOffset = br.ReadUInt64();
 
         var recordBytesLength = br.ReadUInt32();
 
@@ -97,9 +97,6 @@ public class LogRecordBatchBinaryReader(ILogRecordReader logRecordReader, ICompr
         var lastOffset = br.ReadUInt64();
         var recordBytesLength = br.ReadUInt32();
 
-        // Total batch size = Header (20) + RecordBytesLength (4) + batchLength
-        // batchLength already includes: MagicNumber + CRC + CompressedFlag + Timestamp + RecordBytes
-        // But RecordBytesLength field (4 bytes) is NOT included in batchLength, so we need to add it
         var totalBatchSize = HeaderSize + sizeof(uint) + (int)batchLength;
 
         stream.Seek((long)batchStartPosition, SeekOrigin.Begin);

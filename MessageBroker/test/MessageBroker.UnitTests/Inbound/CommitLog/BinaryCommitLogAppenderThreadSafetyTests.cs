@@ -40,7 +40,6 @@ public class BinaryCommitLogAppenderThreadSafetyTests : IDisposable
         _segmentRegistry = Substitute.For<ITopicSegmentRegistry>();
         _capturedBatches = new ConcurrentBag<LogRecordBatch>();
         
-        // Create batch reader for deserialization
         var recordReader = new LogRecordBinaryReader();
         var compressor = new NoopCompressor();
         var encoding = Encoding.UTF8;
@@ -61,7 +60,6 @@ public class BinaryCommitLogAppenderThreadSafetyTests : IDisposable
 
         _segmentWriter.ShouldRoll().Returns(false);
 
-        // Capture all batches written by deserializing the byte arrays
         _segmentWriter.AppendAsync(Arg.Any<byte[]>(), Arg.Any<ulong>(), Arg.Any<ulong>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
@@ -89,7 +87,7 @@ public class BinaryCommitLogAppenderThreadSafetyTests : IDisposable
         }
 
         await Task.WhenAll(tasks);
-        await Task.Delay(300); // Wait for flush
+        await Task.Delay(300);
 
         // Assert
         var totalRecords = _capturedBatches.Sum(b => b.Records.Count);
@@ -112,17 +110,16 @@ public class BinaryCommitLogAppenderThreadSafetyTests : IDisposable
         }
 
         await Task.WhenAll(tasks);
-        await Task.Delay(300); // Wait for flush
+        await Task.Delay(300);
 
         // Assert
         var allOffsets = _capturedBatches
             .SelectMany(b => b.Records)
             .Select(r => r.Offset)
-            .ToHashSet(); // Use HashSet for uniqueness check
+            .ToHashSet();
 
         allOffsets.Should().HaveCount(taskCount, "each record should have unique offset");
 
-        // Verify offsets form a contiguous sequence from 0 to taskCount-1
         var expectedOffsets = Enumerable.Range(0, taskCount).Select(i => (ulong)i).ToHashSet();
         allOffsets.Should()
             .BeEquivalentTo(expectedOffsets, "offsets should be sequential from 0 to {0}", taskCount - 1);
@@ -150,7 +147,7 @@ public class BinaryCommitLogAppenderThreadSafetyTests : IDisposable
         });
 
         await Task.WhenAll(tasks);
-        await Task.Delay(300); // Wait for flushes
+        await Task.Delay(300);
 
         var duration = DateTime.UtcNow - startTime;
 
@@ -177,7 +174,7 @@ public class BinaryCommitLogAppenderThreadSafetyTests : IDisposable
             .Do(_ =>
             {
                 rollCount++;
-                Thread.Sleep(10); // Simulate slow disposal
+                Thread.Sleep(10);
             });
 
         var appender = CreateAppender(flushInterval: TimeSpan.FromMilliseconds(50));
@@ -192,7 +189,7 @@ public class BinaryCommitLogAppenderThreadSafetyTests : IDisposable
         }
 
         await Task.WhenAll(tasks);
-        await Task.Delay(500); // Wait for all flushes and rolls
+        await Task.Delay(500);
 
         // Assert
         var totalRecords = _capturedBatches.Sum(b => b.Records.Count);
@@ -220,7 +217,6 @@ public class BinaryCommitLogAppenderThreadSafetyTests : IDisposable
                     allPayloads.Add(payload);
                     await appender.AppendAsync(CreateBatchBytes(new byte[] { payload }));
 
-                    // Add some randomness to increase chance of race conditions
                     if (i % 5 == 0)
                     {
                         await Task.Delay(1);
@@ -230,7 +226,7 @@ public class BinaryCommitLogAppenderThreadSafetyTests : IDisposable
         }).ToArray();
 
         await Task.WhenAll(producerTasks);
-        await Task.Delay(300); // Wait for all flushes
+        await Task.Delay(300);
 
         // Assert
         var totalRecords = _capturedBatches.Sum(b => b.Records.Count);
@@ -252,7 +248,7 @@ public class BinaryCommitLogAppenderThreadSafetyTests : IDisposable
         // Arrange - Slow flush, fast appends
         var slowFlushDelay = TimeSpan.FromMilliseconds(500);
         var appender = CreateAppender(flushInterval: slowFlushDelay);
-        var taskCount = 20; // More than channel capacity
+        var taskCount = 20;
 
         // Act
         var appendTasks = Enumerable.Range(0, taskCount)
@@ -266,7 +262,7 @@ public class BinaryCommitLogAppenderThreadSafetyTests : IDisposable
 
         // Assert
         completed.Should().Be(completionTask, "should not deadlock under channel pressure");
-        await Task.Delay(slowFlushDelay + TimeSpan.FromMilliseconds(100)); // Wait for flush
+        await Task.Delay(slowFlushDelay + TimeSpan.FromMilliseconds(100));
 
         var totalRecords = _capturedBatches.Sum(b => b.Records.Count);
         totalRecords.Should().Be(taskCount);
@@ -285,7 +281,7 @@ public class BinaryCommitLogAppenderThreadSafetyTests : IDisposable
             await appender.AppendAsync(CreateBatchBytes(new byte[] { (byte)i }));
         }
 
-        await Task.Delay(300); // Wait for flush
+        await Task.Delay(300);
 
         // Assert
         var records = _capturedBatches
@@ -325,13 +321,13 @@ public class BinaryCommitLogAppenderThreadSafetyTests : IDisposable
                 for (int j = 0; j < 10; j++)
                 {
                     await appender.AppendAsync(CreateBatchBytes(new byte[] { (byte)(i + 100) }));
-                    await Task.Delay(10); // Slow producer
+                    await Task.Delay(10);
                 }
             })
         );
 
         await Task.WhenAll(fastProducers.Concat(slowProducers));
-        await Task.Delay(500); // Wait for all flushes
+        await Task.Delay(500);
 
         // Assert
         var totalRecords = _capturedBatches.Sum(b => b.Records.Count);
@@ -358,16 +354,13 @@ public class BinaryCommitLogAppenderThreadSafetyTests : IDisposable
                 }
                 catch (ObjectDisposedException)
                 {
-                    // Expected for some appends after dispose
                 }
             }));
         }
 
-        // Wait a bit then dispose while appends are happening
         await Task.Delay(50);
         await appender.DisposeAsync();
 
-        // Wait for all tasks to complete
         await Task.WhenAll(appendTasks);
 
         // Assert - Some records should have been written before dispose
@@ -377,14 +370,13 @@ public class BinaryCommitLogAppenderThreadSafetyTests : IDisposable
 
     private byte[] CreateBatchBytes(params byte[][] payloads)
     {
-        // Create a LogRecordBatch with the given payloads
         var records = new List<LogRecord>();
         var currentTime = (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         
         for (int i = 0; i < payloads.Length; i++)
         {
             records.Add(new LogRecord(
-                0, // Offset will be assigned by AssignOffsetsUseCase
+                0,
                 currentTime + (ulong)i,
                 payloads[i]
             ));
@@ -392,12 +384,11 @@ public class BinaryCommitLogAppenderThreadSafetyTests : IDisposable
 
         var batch = new LogRecordBatch(
             CommitLogMagicNumbers.LogRecordBatchMagicNumber,
-            0, // Base offset will be assigned
+            0,
             records,
-            false // Not compressed
+            false
         );
 
-        // Serialize the batch
         using var ms = new MemoryStream();
         var recordWriter = new LogRecordBinaryReader();
         var compressor = new NoopCompressor();
@@ -430,7 +421,6 @@ public class BinaryCommitLogAppenderThreadSafetyTests : IDisposable
             }
             catch
             {
-                // Cleanup best effort
             }
         }
     }

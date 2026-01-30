@@ -139,7 +139,6 @@ public sealed class SqliteSchemaStore : ISchemaStore
 
         using var transaction = connection.BeginTransaction();
 
-        // next version for topic
         var versionCmd = connection.CreateCommand();
         versionCmd.Transaction = transaction;
         versionCmd.CommandText = """

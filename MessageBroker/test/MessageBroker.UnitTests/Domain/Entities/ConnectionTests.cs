@@ -46,7 +46,7 @@ public class ConnectionTests
 
         // Act
         var disconnectTask = connection.DisconnectAsync();
-        tcs.SetResult(); // Complete the task
+        tcs.SetResult();
         await disconnectTask;
 
         // Assert
@@ -105,7 +105,7 @@ public class ConnectionTests
 
         // Act
         await connection.DisconnectAsync();
-        await connection.DisconnectAsync(); // Call again
+        await connection.DisconnectAsync();
 
         // Assert - should not throw
         cts.Token.IsCancellationRequested.Should().BeTrue();
@@ -135,7 +135,7 @@ public class ConnectionTests
 
         // Act
         connection.Dispose();
-        connection.Dispose(); // Call again
+        connection.Dispose();
 
         // Assert - should not throw
         var act = () => cts.Token.Register(() => { });

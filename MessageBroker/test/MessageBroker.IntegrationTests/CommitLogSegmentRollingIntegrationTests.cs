@@ -32,7 +32,7 @@ public class CommitLogSegmentRollingIntegrationTests : IDisposable
         services.Configure<CommitLogOptions>(o =>
         {
             o.Directory = _dir;
-            o.MaxSegmentBytes = 2_000; // very small to force many segments
+            o.MaxSegmentBytes = 2_000;
             o.IndexIntervalBytes = 64;
             o.TimeIndexIntervalMs = 5;
             o.ReaderLogBufferSize = 64 * 1024;
@@ -49,7 +49,6 @@ public class CommitLogSegmentRollingIntegrationTests : IDisposable
     [Fact]
     public async Task Should_Create_Multiple_Segments_And_Preserve_Offset_Continuity()
     {
-        //ToDo add method to handle reading many batches
         var factory = _sp.GetRequiredService<ICommitLogFactory>();
         var app = factory.GetAppender("roll");
 
@@ -65,7 +64,6 @@ public class CommitLogSegmentRollingIntegrationTests : IDisposable
         logs.Count.Should().BeGreaterThan(1);
 
         var reader = factory.GetReader("roll");
-        // Read all batches since each AppendAsync creates one batch
         var allOffsets = new List<ulong>();
         for (ulong offset = 0; offset < 1000; offset++)
         {

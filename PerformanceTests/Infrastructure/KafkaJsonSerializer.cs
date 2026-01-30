@@ -4,14 +4,11 @@ using Confluent.Kafka;
 
 namespace PerformanceTests.Infrastructure;
 
-/// <summary>
-/// Simple JSON serializer for Kafka using System.Text.Json
-/// </summary>
 public class KafkaJsonSerializer<T> : ISerializer<T>
 {
     private static readonly JsonSerializerOptions Options = new()
     {
-        PropertyNamingPolicy = null, // Use original property names (PascalCase)
+        PropertyNamingPolicy = null,
         WriteIndented = false
     };
 
@@ -32,15 +29,12 @@ public class KafkaJsonSerializer<T> : ISerializer<T>
     }
 }
 
-/// <summary>
-/// Simple JSON deserializer for Kafka using System.Text.Json
-/// </summary>
 public class KafkaJsonDeserializer<T> : IDeserializer<T>
 {
     private static readonly JsonSerializerOptions Options = new()
     {
-        PropertyNamingPolicy = null, // Use original property names (PascalCase)
-        PropertyNameCaseInsensitive = true // Allow case-insensitive matching
+        PropertyNamingPolicy = null,
+        PropertyNameCaseInsensitive = true
     };
 
     public T Deserialize(ReadOnlySpan<byte> data, bool isNull, SerializationContext context)

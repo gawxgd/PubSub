@@ -51,10 +51,6 @@ namespace SchemaRegistry.Tests
             _service = new SchemaRegistryService(_store.Object, _compatibility.Object, options);
         }
 
-        // ============================================================
-        // BASIC VALIDATION
-        // ============================================================
-
         [Theory]
         [InlineData(null)]
         [InlineData("")]
@@ -87,10 +83,6 @@ namespace SchemaRegistry.Tests
             await act.Should().ThrowAsync<ArgumentException>().WithMessage("*schemaJson*");
         }
 
-        // ============================================================
-        // DEDUPLICATION
-        // ============================================================
-
         [Fact]
         public async Task RegisterSchemaAsync_ShouldReturnExistingId_WhenChecksumMatches()
         {
@@ -100,8 +92,8 @@ namespace SchemaRegistry.Tests
             string? savedChecksum = null;
 
             _store.SetupSequence(s => s.GetLatestForTopicAsync(Topic))
-                .ReturnsAsync((SchemaEntity?)null) // 1st call: no previous schema -> will Save
-                .ReturnsAsync(() => new SchemaEntity // 2nd call: latest has checksum from first save
+                .ReturnsAsync((SchemaEntity?)null)
+                .ReturnsAsync(() => new SchemaEntity
                 {
                     Id = 42,
                     Topic = Topic,
@@ -112,7 +104,7 @@ namespace SchemaRegistry.Tests
             _store.Setup(s => s.SaveAsync(It.IsAny<SchemaEntity>()))
                 .ReturnsAsync((SchemaEntity e) =>
                 {
-                    savedChecksum = e.Checksum; // checksum computed by production code
+                    savedChecksum = e.Checksum;
                     e.Id = 42;
                     return e;
                 });
@@ -162,16 +154,12 @@ namespace SchemaRegistry.Tests
             // Assert
             checksumFromOtherTopic.Should().NotBeNullOrEmpty();
             checksumFromTopic.Should().NotBeNullOrEmpty();
-            checksumFromTopic.Should().Be(checksumFromOtherTopic); // same schema => same checksum
+            checksumFromTopic.Should().Be(checksumFromOtherTopic);
 
             idOther.Should().Be(10);
             idTopic.Should().Be(100);
             _store.Verify(s => s.SaveAsync(It.IsAny<SchemaEntity>()), Times.Exactly(2));
         }
-
-        // ============================================================
-        // COMPATIBILITY VALIDATION
-        // ============================================================
 
         [Fact]
         public async Task RegisterSchemaAsync_ShouldThrow_WhenBackwardIncompatible()
@@ -241,10 +229,6 @@ namespace SchemaRegistry.Tests
             _store.Verify(s => s.SaveAsync(It.IsAny<SchemaEntity>()), Times.Once);
         }
 
-        // ============================================================
-        // COMPATIBILITY MODES
-        // ============================================================
-
         [Theory]
         [InlineData(CompatibilityMode.Backward)]
         [InlineData(CompatibilityMode.Forward)]
@@ -273,10 +257,6 @@ namespace SchemaRegistry.Tests
             id.Should().Be(1);
             _compatibility.Verify(c => c.IsCompatible(oldSchema, newSchema, expectedMode), Times.Once);
         }
-
-        // ============================================================
-        // SIMPLE GETTERS
-        // ============================================================
 
         [Fact]
         public async Task GetLatestSchemaAsync_ShouldDelegateToStore()

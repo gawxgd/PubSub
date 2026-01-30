@@ -69,9 +69,9 @@ public class CommitLogCancellationTests : IDisposable
         var task1 = appender.AppendAsync(CreateBatchBytes(new byte[] { 1 }));
         var task2 = appender.AppendAsync(CreateBatchBytes(new byte[] { 2 }));
 
-        await Task.Delay(50); // Let it start processing
+        await Task.Delay(50);
         await cts.CancelAsync();
-        await appender.DisposeAsync(); // Dispose which triggers cancellation
+        await appender.DisposeAsync();
 
         // Assert - Should complete without hanging
         await Task.WhenAny(
@@ -100,7 +100,7 @@ public class CommitLogCancellationTests : IDisposable
         await appender.DisposeAsync();
 
         var flushCountBeforeDelay = flushCount;
-        await Task.Delay(300); // Wait longer than flush interval
+        await Task.Delay(300);
         var flushCountAfterDelay = flushCount;
 
         // Assert
@@ -140,7 +140,7 @@ public class CommitLogCancellationTests : IDisposable
 
         // Act
         await appender.AppendAsync(CreateBatchBytes(new byte[] { 1 }));
-        await Task.Delay(100); // Wait for flush
+        await Task.Delay(100);
         await appender.DisposeAsync();
 
         // Assert
@@ -167,7 +167,6 @@ public class CommitLogCancellationTests : IDisposable
                 }
                 catch (ObjectDisposedException)
                 {
-                    // Expected
                 }
             }));
         }
@@ -213,11 +212,10 @@ public class CommitLogCancellationTests : IDisposable
 
         // Act
         await appender.AppendAsync(CreateBatchBytes(new byte[] { 1 }));
-        await slowAppendStarted.Task; // Wait for append to start
+        await slowAppendStarted.Task;
         
-        // Dispose in background to allow cancellation to happen
         var disposeTask = Task.Run(async () => await appender.DisposeAsync());
-        await Task.Delay(200); // Give time for cancellation to propagate
+        await Task.Delay(200);
         
         // Assert
         var cancelled = await Task.WhenAny(
@@ -228,7 +226,7 @@ public class CommitLogCancellationTests : IDisposable
         cancelled.Should().Be(cancellationDetected.Task,
             "cancellation should be propagated to segment writer");
             
-        await disposeTask; // Wait for dispose to complete
+        await disposeTask;
     }
 
     [Fact]
@@ -261,11 +259,11 @@ public class CommitLogCancellationTests : IDisposable
 
         // Act
         await appender.AppendAsync(CreateBatchBytes(new byte[] { 1 }));
-        await Task.Delay(75); // First flush happens
+        await Task.Delay(75);
 
         var flushCountBeforeDispose = flushCount;
         await appender.DisposeAsync();
-        await Task.Delay(200); // Wait for multiple flush intervals
+        await Task.Delay(200);
 
         var flushCountAfterDispose = flushCount;
 
@@ -286,7 +284,7 @@ public class CommitLogCancellationTests : IDisposable
             .Do(async _ =>
             {
                 rollStarted = true;
-                await Task.Delay(100); // Slow disposal
+                await Task.Delay(100);
             });
 
         var appender = CreateAppender(flushInterval: TimeSpan.FromMilliseconds(50));
@@ -296,8 +294,8 @@ public class CommitLogCancellationTests : IDisposable
 
         // Act
         await appender.AppendAsync(CreateBatchBytes(new byte[] { 1 }));
-        await Task.Delay(75); // Wait for flush and roll to start
-        await appender.DisposeAsync(); // Cancel during roll
+        await Task.Delay(75);
+        await appender.DisposeAsync();
 
         // Assert
         rollStarted.Should().BeTrue("segment roll should have started");
@@ -322,7 +320,7 @@ public class CommitLogCancellationTests : IDisposable
         await appender.AppendAsync(CreateBatchBytes(new byte[] { 2 }));
         await appender.AppendAsync(CreateBatchBytes(new byte[] { 3 }));
 
-        await Task.Delay(150); // Wait for flush
+        await Task.Delay(150);
         await appender.DisposeAsync();
 
         // Assert - All 3 batches should be written
@@ -367,9 +365,8 @@ public class CommitLogCancellationTests : IDisposable
         await longFlushStarted.Task;
         await Task.Delay(100);
         
-        // Dispose, which should trigger cancellation
         var disposeTask = appender.DisposeAsync();
-        await Task.Delay(200); // Wait for cancellation to propagate
+        await Task.Delay(200);
         await disposeTask;
 
         // Assert
@@ -429,7 +426,6 @@ public class CommitLogCancellationTests : IDisposable
             }
             catch
             {
-                // Cleanup best effort
             }
         }
     }

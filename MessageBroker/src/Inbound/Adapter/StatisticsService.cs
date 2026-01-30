@@ -28,7 +28,6 @@ public class StatisticsService(
         var publisherConnections = connections.Count(c => c.ConnectionType == ConnectionType.Publisher);
         var subscriberConnections = connections.Count(c => c.ConnectionType == ConnectionType.Subscriber);
         
-        // Get statistics for known topics
         var topics = new List<TopicStatistics>();
         
         foreach (var topic in _knownTopics)
@@ -46,7 +45,6 @@ public class StatisticsService(
             }
             catch
             {
-                // Topic might not exist yet
                 topics.Add(new TopicStatistics
                 {
                     Name = topic,
@@ -56,11 +54,9 @@ public class StatisticsService(
             }
         }
         
-        // Messages published = sum of message counts across all configured topics
         var totalPublished = topics.Sum(t => t.MessageCount);
         var messagesPublished = (int)Math.Min(totalPublished, int.MaxValue);
         
-        // Messages consumed = records sent from broker to subscribers (duplicates included)
         var messagesConsumed = (int)Math.Min(subscriberDeliveryMetrics.GetTotalSentRecords(), int.MaxValue);
         
         return new Statistics

@@ -182,7 +182,7 @@ public class CommitLogExtremeValueTests
         var writer = new LogRecordBatchBinaryWriter(_recordWriter, _compressor, _encoding);
         var reader = new LogRecordBatchBinaryReader(_recordReader, _compressor, _encoding);
         
-        var largePayload = new byte[1024 * 1024]; // 1MB
+        var largePayload = new byte[1024 * 1024];
         new Random(42).NextBytes(largePayload);
         
         var records = new List<LogRecord>
@@ -386,7 +386,6 @@ public class CommitLogExtremeValueTests
         var recordCount = 5000;
         var records = new List<LogRecord>();
         
-        // Create repetitive data that compresses well
         var repetitivePayload = new byte[100];
         Array.Fill(repetitivePayload, (byte)'A');
         
@@ -399,7 +398,7 @@ public class CommitLogExtremeValueTests
             CommitLogMagicNumbers.LogRecordBatchMagicNumber,
             0,
             records,
-            true // compressed
+            true
         );
         
         var stream = new MemoryStream();
@@ -450,9 +449,4 @@ public class CommitLogExtremeValueTests
         readBatch.Records.ElementAt(3).Offset.Should().Be(ulong.MaxValue - 1);
     }
 }
-
-
-
-
-
 

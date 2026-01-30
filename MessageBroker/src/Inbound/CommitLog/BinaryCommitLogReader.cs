@@ -60,7 +60,6 @@ public sealed class BinaryCommitLogReader : ICommitLogReader
         return record;
     }
 
-
     public LogRecordBatch? ReadRecordBatch(ulong baseOffset)
     {
         return ReadFromSegment(
@@ -77,20 +76,8 @@ public sealed class BinaryCommitLogReader : ICommitLogReader
             "Read batch bytes");
     }
 
-
     public IEnumerable<LogRecord> ReadFromTimestamp(ulong timestamp)
     {
-        // RefreshSegmentReader();
-        // using var enumerator = _activeSegmentReader!.ReadFromTimestamp(timestamp).GetEnumerator();
-        // if (!enumerator.MoveNext()) yield break;
-        // var batch = enumerator.Current;
-        // foreach (var record in batch.Records)
-        // {
-        //     if (record.Timestamp >= timestamp)
-        //     {
-        //         yield return record;
-        //     }
-        // }
         throw new NotImplementedException();
     }
 
@@ -129,7 +116,6 @@ public sealed class BinaryCommitLogReader : ICommitLogReader
 
         return result;
     }
-
 
     private ILogSegmentReader GetOrCreateSegmentReader(LogSegment segment)
     {

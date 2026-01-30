@@ -125,7 +125,6 @@ public class HandleClientConnectionUseCase(
         }
     }
 
-
     private async Task CleanupAsync(CancellationToken cancellationToken)
     {
         try

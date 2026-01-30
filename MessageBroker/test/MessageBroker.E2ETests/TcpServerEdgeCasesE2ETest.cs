@@ -22,18 +22,14 @@ public class TcpServerEdgeCasesE2ETests
         using var client = new TcpClient();
         await client.ConnectAsync(HostAddress, port);
 
-        // Send partial data
         var stream = client.GetStream();
         await stream.WriteAsync(Encoding.UTF8.GetBytes("Hello"));
         await stream.FlushAsync();
 
-        // Abruptly close without proper shutdown
         client.Close();
 
-        // Server should handle this gracefully
         await Task.Delay(500);
 
-        // Server should still be running and accept new connections
         using var newClient = new TcpClient();
         await newClient.ConnectAsync(HostAddress, port);
         newClient.Connected.Should().BeTrue();
@@ -54,13 +50,11 @@ public class TcpServerEdgeCasesE2ETests
 
         var stream = client.GetStream();
 
-        // Send empty buffer
         await stream.WriteAsync(new byte[0]);
         await stream.FlushAsync();
 
         await Task.Delay(500);
 
-        // Client should still be connected
         client.Connected.Should().BeTrue();
 
         await host.StopAsync();
@@ -79,14 +73,12 @@ public class TcpServerEdgeCasesE2ETests
 
         var stream = client.GetStream();
 
-        // Send 1MB message
         var largeData = new byte[1024 * 1024];
         new Random().NextBytes(largeData);
 
         await stream.WriteAsync(largeData);
         await stream.FlushAsync();
 
-        // Try to receive echo (might be chunked)
         var buffer = new byte[1024 * 1024];
         var totalReceived = 0;
         var startTime = DateTime.UtcNow;
@@ -127,7 +119,6 @@ public class TcpServerEdgeCasesE2ETests
         var messageCount = 100;
         var messages = new List<string>();
 
-        // Send many messages rapidly without waiting
         for (var i = 0; i < messageCount; i++)
         {
             var msg = $"Message-{i}";
@@ -139,7 +130,6 @@ public class TcpServerEdgeCasesE2ETests
 
         await Task.Delay(1000);
 
-        // Server should handle all messages without crashing
         client.Connected.Should().BeTrue();
 
         await host.StopAsync();
@@ -156,13 +146,10 @@ public class TcpServerEdgeCasesE2ETests
         using var idleClient = new TcpClient();
         await idleClient.ConnectAsync(HostAddress, port);
 
-        // Just sit there doing nothing
         await Task.Delay(2000);
 
-        // Should still be connected
         idleClient.Connected.Should().BeTrue();
 
-        // Other clients should still work
         using var activeClient = new TcpClient();
         await activeClient.ConnectAsync(HostAddress, port);
 
@@ -189,11 +176,10 @@ public class TcpServerEdgeCasesE2ETests
         await Task.Delay(500);
 
         var clients = new List<TcpClient>();
-        var connectionCount = 100; // Stress test
+        var connectionCount = 100;
 
         try
         {
-            // Connect many clients simultaneously
             var connectionTasks = Enumerable.Range(0, connectionCount)
                 .Select(async i =>
                 {
@@ -232,7 +218,6 @@ public class TcpServerEdgeCasesE2ETests
 
         var stream = client.GetStream();
 
-        // Binary data with nulls
         var binaryData = new byte[] { 0x00, 0xFF, 0x00, 0x01, 0x00, 0x7F };
 
         await stream.WriteAsync(binaryData);
@@ -260,15 +245,12 @@ public class TcpServerEdgeCasesE2ETests
 
         var stream = client.GetStream();
 
-        // Send message
         var message = "Test message";
         await stream.WriteAsync(Encoding.UTF8.GetBytes(message));
         await stream.FlushAsync();
 
-        // Deliberately delay reading
         await Task.Delay(2000);
 
-        // Now read
         var buffer = new byte[1024];
         var bytesRead = await stream.ReadAsync(buffer);
         var response = Encoding.UTF8.GetString(buffer, 0, bytesRead);
@@ -286,17 +268,14 @@ public class TcpServerEdgeCasesE2ETests
         await host.StartAsync();
         await Task.Delay(500);
 
-        // Start shutdown
         var shutdownTask = host.StopAsync();
 
-        // Try to connect during shutdown
         var exception = await Record.ExceptionAsync(async () =>
         {
             using var client = new TcpClient();
             await client.ConnectAsync(HostAddress, port);
         });
 
-        // Either connects and works, or fails gracefully (no crash)
         if (exception != null)
         {
             exception.Should().BeOfType<SocketException>("Connection during shutdown should fail with SocketException");
@@ -316,18 +295,13 @@ public class TcpServerEdgeCasesE2ETests
         using var client = new TcpClient();
         await client.ConnectAsync(HostAddress, port);
 
-        // Send data
         var stream = client.GetStream();
         await stream.WriteAsync(Encoding.UTF8.GetBytes("Hello"));
         await stream.FlushAsync();
 
-        // Close write side only
         client.Client.Shutdown(SocketShutdown.Send);
 
         await Task.Delay(500);
-
-        // Server should handle half-closed connection
-        // Typically server will close the connection
 
         await host.StopAsync();
     }
@@ -344,7 +318,7 @@ public class TcpServerEdgeCasesE2ETests
 
         var exception = await Record.ExceptionAsync(async () =>
         {
-            await client.ConnectAsync(HostAddress, port + 1); // Wrong port
+            await client.ConnectAsync(HostAddress, port + 1);
         });
 
         exception.Should().BeOfType<SocketException>();
@@ -362,7 +336,6 @@ public class TcpServerEdgeCasesE2ETests
 
         using var client = new TcpClient();
 
-        // Set aggressive timeout
         client.SendTimeout = 100;
         client.ReceiveTimeout = 100;
 
@@ -372,7 +345,6 @@ public class TcpServerEdgeCasesE2ETests
         await stream.WriteAsync(Encoding.UTF8.GetBytes("Test"));
         await stream.FlushAsync();
 
-        // Server should still handle it
         await Task.Delay(500);
 
         await host.StopAsync();
@@ -389,18 +361,14 @@ public class TcpServerEdgeCasesE2ETests
         var publisher = new TcpPublisher(HostAddress, port, 1000, 3, 5);
         await publisher.CreateConnection();
 
-        // Send some messages
         await publisher.PublishAsync(Encoding.UTF8.GetBytes("Test message 1"));
         await publisher.PublishAsync(Encoding.UTF8.GetBytes("Test message 2"));
         await Task.Delay(100);
 
-        // Abruptly dispose publisher
         await publisher.DisposeAsync();
 
-        // Server should handle this gracefully
         await Task.Delay(500);
 
-        // Server should still be running and accept new connections
         await using var newPublisher = new TcpPublisher(HostAddress, port, 1000, 3, 5);
         await newPublisher.CreateConnection();
         await newPublisher.PublishAsync(Encoding.UTF8.GetBytes("New publisher message"));
@@ -420,14 +388,12 @@ public class TcpServerEdgeCasesE2ETests
         await using var publisher = new TcpPublisher(HostAddress, port, 10000, 3, 5);
         await publisher.CreateConnection();
 
-        // Send large message (1MB)
         var largeData = new byte[1024 * 1024];
         new Random().NextBytes(largeData);
 
         await publisher.PublishAsync(largeData);
-        await Task.Delay(2000); // Allow processing time
+        await Task.Delay(2000);
 
-        // Publisher should still be functional
         await publisher.PublishAsync(Encoding.UTF8.GetBytes("Small message after large"));
         await Task.Delay(100);
 
@@ -447,16 +413,14 @@ public class TcpServerEdgeCasesE2ETests
 
         var messageCount = 200;
 
-        // Send many messages rapidly without waiting
         for (var i = 0; i < messageCount; i++)
         {
             var msg = Encoding.UTF8.GetBytes($"Rapid message {i}");
             await publisher.PublishAsync(msg);
         }
 
-        await Task.Delay(2000); // Allow processing time
+        await Task.Delay(2000);
 
-        // Publisher should still be functional
         await publisher.PublishAsync(Encoding.UTF8.GetBytes("Final message"));
         await Task.Delay(100);
 
@@ -471,17 +435,14 @@ public class TcpServerEdgeCasesE2ETests
         await host.StartAsync();
         await Task.Delay(500);
 
-        // Start shutdown
         var shutdownTask = host.StopAsync();
 
-        // Try to connect publisher during shutdown
         var exception = await Record.ExceptionAsync(async () =>
         {
             await using var publisher = new TcpPublisher(HostAddress, port, 1000, 3, 5);
             await publisher.CreateConnection();
         });
 
-        // Either connects and works, or fails gracefully (no crash)
         if (exception != null)
         {
             exception.Should()
@@ -502,13 +463,11 @@ public class TcpServerEdgeCasesE2ETests
         await using var publisher = new TcpPublisher(HostAddress, port, 1000, 3, 5);
         await publisher.CreateConnection();
 
-        // Binary data with nulls
         var binaryData = new byte[] { 0x00, 0xFF, 0x00, 0x01, 0x00, 0x7F };
 
         await publisher.PublishAsync(binaryData);
         await Task.Delay(500);
 
-        // Publisher should still be functional
         await publisher.PublishAsync(Encoding.UTF8.GetBytes("Text message after binary"));
         await Task.Delay(100);
 
@@ -520,7 +479,6 @@ public class TcpServerEdgeCasesE2ETests
     {
         var port = PortManager.GetNextPort();
 
-        // Start server
         using var host = TestHostHelper.CreateTestHost(port);
         await host.StartAsync();
         await Task.Delay(500);
@@ -530,17 +488,14 @@ public class TcpServerEdgeCasesE2ETests
         await publisher.PublishAsync(Encoding.UTF8.GetBytes("Before restart"));
         await Task.Delay(100);
 
-        // Stop server
         await host.StopAsync();
         await Task.Delay(1000);
 
-        // Start new server on same port
         using var newHost = TestHostHelper.CreateTestHost(port);
         await newHost.StartAsync();
         await Task.Delay(500);
 
-        // Publisher should reconnect automatically
-        await Task.Delay(2000); // Allow reconnection time
+        await Task.Delay(2000);
         await publisher.PublishAsync(Encoding.UTF8.GetBytes("After restart"));
         await Task.Delay(100);
 

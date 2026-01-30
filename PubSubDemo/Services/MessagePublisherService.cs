@@ -3,9 +3,6 @@ using PubSubDemo.Configuration;
 
 namespace PubSubDemo.Services;
 
-/// <summary>
-/// Background service that publishes demo messages to the broker.
-/// </summary>
 public sealed class MessagePublisherService<T> : IAsyncDisposable
 {
     private readonly (string Topic, IPublisher<T> Publisher)[] _publishers;
@@ -29,23 +26,18 @@ public sealed class MessagePublisherService<T> : IAsyncDisposable
         _cts = new CancellationTokenSource();
     }
 
-    /// <summary>
-    /// Starts the publishing service.
-    /// </summary>
     public async Task StartAsync(CancellationToken cancellationToken = default)
     {
         Console.WriteLine("Starting Message Publisher Service...");
 
         try
         {
-            // Connect to the broker (one connection per topic publisher)
             foreach (var (topic, publisher) in _publishers)
             {
                 await publisher.CreateConnection();
                 Console.WriteLine($"Connected to message broker successfully for topic '{topic}'!");
             }
 
-            // Start publishing messages
             _publishTask = Task.Run(() => PublishMessagesAsync(_cts.Token), cancellationToken);
         }
         catch (Publisher.Outbound.Exceptions.PublisherException ex)
@@ -60,9 +52,6 @@ public sealed class MessagePublisherService<T> : IAsyncDisposable
         }
     }
 
-    /// <summary>
-    /// Stops the publishing service.
-    /// </summary>
     public async Task StopAsync()
     {
         Console.WriteLine("\nStopping Message Publisher Service...");
@@ -77,7 +66,6 @@ public sealed class MessagePublisherService<T> : IAsyncDisposable
             }
             catch (OperationCanceledException)
             {
-                // Expected during shutdown
             }
         }
 
@@ -95,9 +83,7 @@ public sealed class MessagePublisherService<T> : IAsyncDisposable
                 var publisherIndex = messageNumber % _publishers.Length;
                 var (topic, publisher) = _publishers[publisherIndex];
 
-                // Create a demo message with reasonable content length
                 var content = $"{_options.MessagePrefix} message #{messageNumber}";
-                // Ensure content is not too long (max 500 chars to avoid serialization issues)
                 if (content.Length > 500)
                 {
                     content = content.Substring(0, 500);
@@ -112,7 +98,6 @@ public sealed class MessagePublisherService<T> : IAsyncDisposable
                     MessageType = GetRandomMessageType()
                 };
 
-                // Publish to broker (publisher handles serialization)
                 try
                 {
                     await publisher.PublishAsync((T)(object)message);
@@ -126,10 +111,9 @@ public sealed class MessagePublisherService<T> : IAsyncDisposable
                     {
                         Console.WriteLine($"   Inner: {publishEx.InnerException.Message}");
                     }
-                    throw; // Re-throw to be caught by outer catch
+                    throw;
                 }
 
-                // Console output with status
                 if (messageNumber % 10 == 0 || messageNumber <= 5)
                 {
                     Console.WriteLine($"\n✅ Published message #{messageNumber}: {message.Content} (Type: {message.MessageType})");
@@ -140,10 +124,8 @@ public sealed class MessagePublisherService<T> : IAsyncDisposable
                         $"\r[{DateTime.Now:HH:mm:ss}] Sent: {_messagesSent} | Failed: {_messagesFailed} | Last: {message.MessageType,-15}");
                 }
 
-                // Wait before sending next message
                 await Task.Delay(_options.MessageInterval, cancellationToken);
 
-                // Occasionally send a batch
                 if (messageNumber % 50 == 0)
                 {
                     await SendBatchAsync(topic, publisher, messageNumber, cancellationToken);
@@ -151,7 +133,6 @@ public sealed class MessagePublisherService<T> : IAsyncDisposable
             }
             catch (OperationCanceledException)
             {
-                // Expected during shutdown
                 break;
             }
             catch (Exception ex)
@@ -163,7 +144,6 @@ public sealed class MessagePublisherService<T> : IAsyncDisposable
                     Console.WriteLine($"   Inner: {ex.InnerException.Message}");
                 }
 
-                // Wait a bit before retrying, but don't wait too long
                 var delayMs = (int)Math.Min(5000, 1000 * Math.Min(_messagesFailed, 5));
                 await Task.Delay(delayMs, cancellationToken);
             }
@@ -179,7 +159,6 @@ public sealed class MessagePublisherService<T> : IAsyncDisposable
             try
             {
                 var batchContent = $"BATCH message #{i + 1}/{_options.BatchSize}";
-                // Ensure content is not too long
                 if (batchContent.Length > 500)
                 {
                     batchContent = batchContent.Substring(0, 500);
@@ -228,14 +207,10 @@ public sealed class MessagePublisherService<T> : IAsyncDisposable
     }
 }
 
-/// <summary>
-/// Demo message structure.
-/// </summary>
 public sealed class DemoMessage
 {
     public DemoMessage()
     {
-        // Required for new() constraint
     }
 
     public int Id { get; set; }

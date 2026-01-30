@@ -81,7 +81,6 @@ public class AssignOffsetsUseCase
         );
     }
 
-
     private void AssignRecordOffset(ulong currentOffset, Span<byte> batchBytes)
     {
         BinaryPrimitives.WriteUInt64LittleEndian(
@@ -115,7 +114,6 @@ public class AssignOffsetsUseCase
             throw new InvalidDataException($"Batch CRC mismatch: expected {storedCrc}, got {computedCrc}");
         }
     }
-
 
     private void RecalculateAndUpdateCrc(Span<byte> batchBytes)
     {

@@ -1,4 +1,3 @@
-// MessageBroker.E2ETests/TcpServerChaosTests.cs
 
 using System.Net.Sockets;
 using System.Text;
@@ -26,7 +25,6 @@ public class TcpServerChaosTests
 
         try
         {
-            // Create chaos with random client behaviors
             var chaosTasks = Enumerable.Range(0, 20).Select(async i =>
             {
                 try
@@ -39,22 +37,22 @@ public class TcpServerChaosTests
 
                     switch (behavior)
                     {
-                        case 0: // Send and disconnect immediately
+                        case 0:
                             await client.GetStream().WriteAsync(new byte[] { 1, 2, 3 });
                             client.Close();
                             break;
 
-                        case 1: // Send random data
+                        case 1:
                             var data = new byte[random.Next(1, 1000)];
                             random.NextBytes(data);
                             await client.GetStream().WriteAsync(data);
                             break;
 
-                        case 2: // Just connect and wait
+                        case 2:
                             await Task.Delay(random.Next(100, 1000));
                             break;
 
-                        case 3: // Rapid fire messages
+                        case 3:
                             for (var j = 0; j < random.Next(5, 20); j++)
                             {
                                 await client.GetStream().WriteAsync(new[] { (byte)j });
@@ -62,7 +60,7 @@ public class TcpServerChaosTests
 
                             break;
 
-                        case 4: // Half close
+                        case 4:
                             await client.GetStream().WriteAsync(new byte[] { 99 });
                             client.Client.Shutdown(SocketShutdown.Send);
                             break;
@@ -78,7 +76,6 @@ public class TcpServerChaosTests
 
             await Task.WhenAll(chaosTasks);
 
-            // Server should survive chaos
             using var testClient = new TcpClient();
             await testClient.ConnectAsync(hostAddress, port);
             testClient.Connected.Should().BeTrue("Server should survive chaos and accept new connections");
@@ -109,7 +106,6 @@ public class TcpServerChaosTests
 
         try
         {
-            // Create chaos with random publisher behaviors
             var chaosTasks = Enumerable.Range(0, 10).Select(async i =>
             {
                 try
@@ -122,18 +118,18 @@ public class TcpServerChaosTests
 
                     switch (behavior)
                     {
-                        case 0: // Send and disconnect immediately
+                        case 0:
                             await publisher.PublishAsync(Encoding.UTF8.GetBytes($"Quick message {i}"));
                             await publisher.DisposeAsync();
                             break;
 
-                        case 1: // Send random data
+                        case 1:
                             var data = new byte[random.Next(1, 1000)];
                             random.NextBytes(data);
                             await publisher.PublishAsync(data);
                             break;
 
-                        case 2: // Send many messages rapidly
+                        case 2:
                             for (var j = 0; j < random.Next(5, 20); j++)
                             {
                                 var message = Encoding.UTF8.GetBytes($"Rapid message {i}-{j}");
@@ -142,18 +138,18 @@ public class TcpServerChaosTests
 
                             break;
 
-                        case 3: // Send large messages
+                        case 3:
                             var largeData = new byte[random.Next(1000, 10000)];
                             random.NextBytes(largeData);
                             await publisher.PublishAsync(largeData);
                             break;
 
-                        case 4: // Send binary data
+                        case 4:
                             var binaryData = new byte[] { 0x00, 0xFF, 0x00, 0x01, 0x00, 0x7F };
                             await publisher.PublishAsync(binaryData);
                             break;
 
-                        case 5: // Just connect and wait
+                        case 5:
                             await Task.Delay(random.Next(100, 1000));
                             break;
                     }
@@ -168,7 +164,6 @@ public class TcpServerChaosTests
 
             await Task.WhenAll(chaosTasks);
 
-            // Server should survive chaos
             await using var testPublisher = new TcpPublisher(hostAddress, port, 1000, 3, 5);
             await testPublisher.CreateConnection();
             await testPublisher.PublishAsync(Encoding.UTF8.GetBytes("Test after chaos"));
@@ -184,7 +179,6 @@ public class TcpServerChaosTests
                 }
                 catch
                 {
-                    // Ignore disposal errors in chaos test
                 }
             }
         }
@@ -206,7 +200,6 @@ public class TcpServerChaosTests
 
         try
         {
-            // Create connection storm - many publishers connecting/disconnecting rapidly
             for (var i = 0; i < 50; i++)
             {
                 var publisherId = i;
@@ -218,14 +211,12 @@ public class TcpServerChaosTests
                         await publisher.CreateConnection();
                         publishers.Add(publisher);
 
-                        // Send some messages
                         for (var j = 0; j < 5; j++)
                         {
                             var message = Encoding.UTF8.GetBytes($"Storm message {publisherId}-{j}");
                             await publisher.PublishAsync(message);
                         }
 
-                        // Randomly disconnect some publishers
                         if (Random.Shared.Next(2) == 0)
                         {
                             await publisher.DisposeAsync();
@@ -233,15 +224,13 @@ public class TcpServerChaosTests
                     }
                     catch
                     {
-                        // Ignore connection errors in storm test
                     }
                 }));
             }
 
             await Task.WhenAll(tasks);
-            await Task.Delay(2000); // Allow processing time
+            await Task.Delay(2000);
 
-            // Server should still be functional
             await using var testPublisher = new TcpPublisher(hostAddress, port, 1000, 3, 5);
             await testPublisher.CreateConnection();
             await testPublisher.PublishAsync(Encoding.UTF8.GetBytes("Test after storm"));
@@ -257,7 +246,6 @@ public class TcpServerChaosTests
                 }
                 catch
                 {
-                    // Ignore disposal errors
                 }
             }
         }
@@ -279,7 +267,6 @@ public class TcpServerChaosTests
 
         try
         {
-            // Create multiple publishers flooding the server with messages
             for (var i = 0; i < 10; i++)
             {
                 var publisher = new TcpPublisher(hostAddress, port, 10000, 3, 5);
@@ -289,13 +276,11 @@ public class TcpServerChaosTests
                 var publisherId = i;
                 tasks.Add(Task.Run(async () =>
                 {
-                    // Each publisher sends many messages
                     for (var j = 0; j < 100; j++)
                     {
                         var message = Encoding.UTF8.GetBytes($"Flood message {publisherId}-{j}");
                         await publisher.PublishAsync(message);
 
-                        // Small random delay to create realistic chaos
                         if (Random.Shared.Next(10) == 0)
                         {
                             await Task.Delay(Random.Shared.Next(1, 10));
@@ -305,9 +290,8 @@ public class TcpServerChaosTests
             }
 
             await Task.WhenAll(tasks);
-            await Task.Delay(3000); // Allow processing time
+            await Task.Delay(3000);
 
-            // Server should still be functional
             await using var testPublisher = new TcpPublisher(hostAddress, port, 1000, 3, 5);
             await testPublisher.CreateConnection();
             await testPublisher.PublishAsync(Encoding.UTF8.GetBytes("Test after flood"));
@@ -323,7 +307,6 @@ public class TcpServerChaosTests
                 }
                 catch
                 {
-                    // Ignore disposal errors
                 }
             }
         }

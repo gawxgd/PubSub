@@ -16,7 +16,6 @@ using Subscriber.Configuration.Options;
 using Subscriber.Outbound.Exceptions;
 using LoggerLib.Outbound.Adapter;
 
-// Initialize logger
 var logger = new LoggerLib.Outbound.Adapter.ConsoleLogger();
 AutoLoggerFactory.Initialize(logger);
 
@@ -25,7 +24,6 @@ Console.WriteLine("║   PubSub Full Demo - Publisher & Subscriber ║");
 Console.WriteLine("╚════════════════════════════════════════════╝");
 Console.WriteLine();
 
-// Load configuration
 var configuration = new ConfigurationBuilder()
     .SetBasePath(Directory.GetCurrentDirectory())
     .AddJsonFile("appsettings.json", false, true)
@@ -37,7 +35,7 @@ var brokerOptions = configuration.GetSection("Broker").Get<BrokerOptions>() ?? n
 var demoOptions = configuration.GetSection("Demo").Get<DemoOptions>() ?? new DemoOptions();
 var schemaRegistryUrl = configuration.GetSection("SchemaRegistry:BaseAddress").Value 
     ?? Environment.GetEnvironmentVariable("PUBSUB_SchemaRegistry__BaseAddress") 
-    ?? "http://localhost:8081";
+    ?? "http:
 var schemaRegistryTimeout = configuration.GetSection("SchemaRegistry:Timeout").Value != null
     ? TimeSpan.Parse(configuration.GetSection("SchemaRegistry:Timeout").Value!)
     : TimeSpan.FromSeconds(10);
@@ -56,17 +54,13 @@ Console.WriteLine($"   Base Address: {schemaRegistryOptions.BaseAddress}");
 Console.WriteLine($"   Timeout: {schemaRegistryOptions.Timeout}");
 Console.WriteLine();
 
-// Calculate effective batch settings for display
-// Use larger batches to avoid issues with batch length reading
-// Minimum batch size should be at least 4KB to ensure proper batching
 var batchMaxBytes = demoOptions.BatchMaxBytes > 0 
     ? Math.Min(Math.Max(demoOptions.BatchMaxBytes, 4096), 1048576) 
-    : 16384; // Default to 16KB for more reliable batching
+    : 16384;
 var batchMaxDelay = demoOptions.BatchMaxDelay > TimeSpan.Zero 
     ? TimeSpan.FromMilliseconds(Math.Min(Math.Max(demoOptions.BatchMaxDelay.TotalMilliseconds, 100), 30000))
-    : TimeSpan.FromMilliseconds(1000); // Default to 1 second
+    : TimeSpan.FromMilliseconds(1000);
 
-// Ensure batch delay is at least 100ms to allow messages to accumulate
 if (batchMaxDelay.TotalMilliseconds < 100)
 {
     batchMaxDelay = TimeSpan.FromMilliseconds(100);
@@ -82,7 +76,6 @@ Console.WriteLine($"   Batch Max Bytes: {demoOptions.BatchMaxBytes} (effective: 
 Console.WriteLine($"   Batch Max Delay: {demoOptions.BatchMaxDelay} (effective: {batchMaxDelay.TotalMilliseconds}ms)");
 Console.WriteLine();
 
-// Setup cancellation
 using var cts = new CancellationTokenSource();
 Console.CancelKeyPress += (sender, eventArgs) =>
 {
@@ -109,18 +102,15 @@ Console.WriteLine($"Using topics: {string.Join(", ", topicsToUse)}\n");
 
 try
 {
-    // Create HttpClientFactory for SchemaRegistry
     httpClientFactory = new SimpleHttpClientFactory();
     var schemaRegistryClientFactory = new SchemaRegistryClientFactory(httpClientFactory, schemaRegistryOptions);
     
-    // Create PublisherFactory
     var publisherFactory = new PublisherFactory<DemoMessage>(schemaRegistryClientFactory);
     
-    // Create one publisher per topic (PublisherFactory binds topic into serializer)
     var publishers = topicsToUse.Select(t =>
     {
         var publisherOptions = new PublisherOptions(
-            MessageBrokerConnectionUri: new Uri($"messageBroker://{brokerOptions.Host}:{brokerOptions.Port}"),
+            MessageBrokerConnectionUri: new Uri($"messageBroker:
             SchemaRegistryConnectionUri: schemaRegistryOptions.BaseAddress,
             SchemaRegistryTimeout: schemaRegistryOptions.Timeout,
             Topic: t,
@@ -132,16 +122,13 @@ try
         return (Topic: t, Publisher: publisherFactory.CreatePublisher(publisherOptions));
     }).ToArray();
 
-    // Create publishing service (round-robin across topics)
     publisherService = new MessagePublisherService<DemoMessage>(publishers, demoOptions);
     
-    // Create SubscriberFactory
     var schemaRegistryClient = schemaRegistryClientFactory.Create();
     var subscriberFactory = new SubscriberFactory<DemoMessage>(schemaRegistryClient);
     
-    // Create subscriber options
     var subscriberOptions = new SubscriberOptions(
-        MessageBrokerConnectionUri: new Uri($"messageBroker://{brokerOptions.Host}:{brokerOptions.SubscriberPort}"),
+        MessageBrokerConnectionUri: new Uri($"messageBroker:
         SchemaRegistryConnectionUri: schemaRegistryOptions.BaseAddress,
         Host: brokerOptions.Host,
         Port: brokerOptions.SubscriberPort,
@@ -154,7 +141,6 @@ try
         MaxRetryAttempts: 3
     );
 
-    // Define the subscriber callback externally
     static async Task SubscriberMessageHandler(DemoMessage message)
     {
         var timestamp = DateTimeOffset.FromUnixTimeMilliseconds(message.Timestamp).ToString("yyyy-MM-dd HH:mm:ss");
@@ -162,31 +148,19 @@ try
         await Task.CompletedTask;
     }
 
-    // Create subscriber
     var subscriber = subscriberFactory.CreateSubscriber(subscriberOptions, SubscriberMessageHandler);
 
-    
-    // IMPORTANT: If you see "Invalid magic number" or "Batch length cannot be zero" errors,
-    // it's because Subscriber uses BitConverter instead of BinaryPrimitives to read batch length.
-    // This causes incorrect batch length reading and wrong data offset.
-    // Fix needed in: Subscriber/src/Outbound/Adapter/TcpSubscriberConnection.cs line 159
-    // Change: BitConverter.ToUInt32 -> BinaryPrimitives.ReadUInt32LittleEndian
-    // Also fix lines 158 and 160 for baseOffset and lastOffset
-    
-    // Start everything
     Console.WriteLine("Uruchamianie Publisher i Subscriber...\n");
     
     try
     {
-        // MessagePublisherService.StartAsync() already calls CreateConnection() internally
         await publisherService.StartAsync(cts.Token);
         await subscriber.StartConnectionAsync();
         await subscriber.StartMessageProcessingAsync();
         
-        Console.WriteLine("Wszystko działa! Sprawdź frontend na http://localhost:3000");
+        Console.WriteLine("Wszystko działa! Sprawdź frontend na http:
         Console.WriteLine("   Naciśnij Ctrl+C aby zatrzymać.\n");
         
-        // Wait for cancellation
         await Task.Delay(Timeout.Infinite, cts.Token);
     }
     catch (PublisherException ex)
@@ -214,7 +188,6 @@ catch (OperationCanceledException)
 }
 finally
 {
-    // Cleanup
     if (publisherService is IAsyncDisposable serviceDisposable)
     {
         await serviceDisposable.DisposeAsync();

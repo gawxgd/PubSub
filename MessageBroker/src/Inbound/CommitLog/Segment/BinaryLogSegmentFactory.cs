@@ -21,7 +21,6 @@ public sealed class BinaryLogSegmentFactory(
 {
     public ILogSegmentWriter CreateWriter(LogSegment segment)
     {
-        // ToDo add options validation
         var opt = options.Value;
         return new BinaryLogSegmentWriter(
             offsetIndexWriter,

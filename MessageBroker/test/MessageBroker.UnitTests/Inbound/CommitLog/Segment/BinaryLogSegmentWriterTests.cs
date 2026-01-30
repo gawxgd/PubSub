@@ -84,7 +84,6 @@ public class BinaryLogSegmentWriterTests : IDisposable
         // Assert
         File.Exists(segment.LogPath).Should().BeTrue();
 
-        // Read back and verify the data
         await using var reader = CreateReader(segment);
         var readBatch = reader.ReadBatch(0);
 
@@ -112,7 +111,6 @@ public class BinaryLogSegmentWriterTests : IDisposable
         var segment = CreateSegment();
         var writer = CreateWriter(segment, maxSegmentBytes: 100);
 
-        // Create a batch with large payload to exceed maxSegmentBytes
         var largePayload = new byte[200];
         Random.Shared.NextBytes(largePayload);
         var batch = new LogRecordBatch(
@@ -130,7 +128,6 @@ public class BinaryLogSegmentWriterTests : IDisposable
         // Assert
         shouldRoll.Should().BeTrue("log file size exceeds max segment bytes (100)");
 
-        // Verify data can still be read
         await writer.DisposeAsync();
         await using var reader = CreateReader(segment);
         var readBatch = reader.ReadBatch(0);
@@ -156,14 +153,12 @@ public class BinaryLogSegmentWriterTests : IDisposable
         var indexData = await File.ReadAllBytesAsync(segment.IndexFilePath);
         indexData.Length.Should().Be(16, "index entry is 8 bytes for relative offset + 8 bytes for position");
 
-        // Verify index format: relative offset (8 bytes) + file position (8 bytes)
         var relativeOffset = BinaryPrimitives.ReadUInt64BigEndian(indexData.AsSpan(0, 8));
         var filePosition = BinaryPrimitives.ReadUInt64BigEndian(indexData.AsSpan(8, 8));
 
         relativeOffset.Should().Be(5UL, "batch base offset (105) - segment base offset (100) = 5");
         filePosition.Should().Be(0UL, "batch was written at position 0");
 
-        // Verify data can be read back
         await using var reader = CreateReader(segment);
         var readBatch = reader.ReadBatch(105);
 
@@ -194,7 +189,6 @@ public class BinaryLogSegmentWriterTests : IDisposable
         timestamp.Should().Be(1000UL, "base timestamp from test batch");
         filePosition.Should().Be(0UL, "batch was written at position 0");
 
-        // Verify data can be read back
         await using var reader = CreateReader(segment);
         var readBatch = reader.ReadBatch(52);
 
@@ -219,7 +213,6 @@ public class BinaryLogSegmentWriterTests : IDisposable
         var indexData = await File.ReadAllBytesAsync(segment.IndexFilePath);
         indexData.Length.Should().Be(0, "index should not be written when interval not reached");
 
-        // Verify data can still be read back
         await using var reader = CreateReader(segment);
         var readBatch = reader.ReadBatch(0);
 
@@ -231,7 +224,7 @@ public class BinaryLogSegmentWriterTests : IDisposable
     {
         // Arrange
         var segment = CreateSegment();
-        var writer = CreateWriter(segment, indexIntervalBytes: 30); // Lower threshold so batch2 triggers second index
+        var writer = CreateWriter(segment, indexIntervalBytes: 30);
         var batch1 = CreateTestBatch(baseOffset: 0, recordCount: 1);
         var batch2 = CreateTestBatch(baseOffset: 1, recordCount: 1);
         var batch1Bytes = SerializeBatch(batch1);
@@ -246,7 +239,6 @@ public class BinaryLogSegmentWriterTests : IDisposable
         var indexData = await File.ReadAllBytesAsync(segment.IndexFilePath);
         indexData.Length.Should().Be(32, "two index entries should be written (16 bytes each)");
 
-        // Verify both batches can be read back
         await using var reader = CreateReader(segment);
         var readBatch1 = reader.ReadBatch(0);
         var readBatch2 = reader.ReadBatch(1);
@@ -304,7 +296,6 @@ public class BinaryLogSegmentWriterTests : IDisposable
         File.Exists(segment.IndexFilePath).Should().BeTrue();
         File.Exists(segment.TimeIndexFilePath).Should().BeTrue();
 
-        // Should be able to read files and data after disposal
         await using var reader = CreateReader(segment);
         var readBatch = reader.ReadBatch(0);
 
@@ -371,13 +362,11 @@ public class BinaryLogSegmentWriterTests : IDisposable
         var indexData = await File.ReadAllBytesAsync(segment.IndexFilePath);
         indexData.Length.Should().Be(16, "two index entries should be written");
 
-        // First index entry
         var firstRelativeOffset = BinaryPrimitives.ReadUInt64BigEndian(indexData.AsSpan(0, 8));
         var firstPosition = BinaryPrimitives.ReadUInt64BigEndian(indexData.AsSpan(8, 8));
         firstRelativeOffset.Should().Be(0UL, "first batch has relative offset 0");
         firstPosition.Should().Be(0UL, "first batch starts at position 0");
 
-        // Verify both batches can be read using the index
         await using var reader = CreateReader(segment);
         var readBatch0 = reader.ReadBatch(0);
         var readBatch1 = reader.ReadBatch(1);
@@ -394,13 +383,11 @@ public class BinaryLogSegmentWriterTests : IDisposable
         var writer = CreateWriter(segment, timeIndexIntervalMs: 500);
 
         // Act
-        // First batch at timestamp 1000
-        var batch0 = CreateTestBatch(baseOffset: 0, recordCount: 1); // Timestamp 1000
+        var batch0 = CreateTestBatch(baseOffset: 0, recordCount: 1);
         var batch0Bytes = SerializeBatch(batch0);
         await writer.AppendAsync(batch0Bytes, batch0.BaseOffset, (ulong)batch0.Records.Count, CancellationToken.None);
 
-        // Second batch at timestamp 1001 (delta = 1ms < 500ms) - should not write time index
-        var batch1 = CreateTestBatch(baseOffset: 1, recordCount: 1); // Timestamp 1001
+        var batch1 = CreateTestBatch(baseOffset: 1, recordCount: 1);
         var batch1Bytes = SerializeBatch(batch1);
         await writer.AppendAsync(batch1Bytes, batch1.BaseOffset, (ulong)batch1.Records.Count, CancellationToken.None);
 
@@ -410,7 +397,6 @@ public class BinaryLogSegmentWriterTests : IDisposable
         var timeIndexData = await File.ReadAllBytesAsync(segment.TimeIndexFilePath);
         timeIndexData.Length.Should().Be(16, "only one time index entry (first batch) should be written");
 
-        // Verify both batches can be read back
         await using var reader = CreateReader(segment);
         var readBatch0 = reader.ReadBatch(0);
         var readBatch1 = reader.ReadBatch(1);
@@ -469,14 +455,14 @@ public class BinaryLogSegmentWriterTests : IDisposable
     private LogRecordBatch CreateTestBatch(
         ulong baseOffset = 0,
         int recordCount = 1,
-        int payloadSize = 1 // default small
+        int payloadSize = 1
     )
     {
         var records = new List<LogRecord>();
         for (int i = 0; i < recordCount; i++)
         {
             var payload = new byte[payloadSize];
-            Random.Shared.NextBytes(payload); // fill with random data
+            Random.Shared.NextBytes(payload);
             records.Add(new LogRecord(
                 baseOffset + (ulong)i,
                 1000 + (ulong)i,
@@ -492,14 +478,12 @@ public class BinaryLogSegmentWriterTests : IDisposable
         );
     }
 
-
     public void Dispose()
     {
         try
         {
             if (Directory.Exists(_testDirectory))
             {
-                // Ensure all files are closed before deletion
                 GC.Collect();
                 GC.WaitForPendingFinalizers();
 
@@ -508,7 +492,6 @@ public class BinaryLogSegmentWriterTests : IDisposable
         }
         catch
         {
-            // Cleanup best effort - test environment will clean up eventually
         }
     }
 }

@@ -53,7 +53,6 @@ public class LogRecordBatchBinaryWriter(ILogRecordWriter recordIo, ICompressor c
                CrcSize
                + CompressedFlagSize
                + TimestampSize
-               // + RecordPayloadLengthSize ToDo verify
                + sizeof(byte) * recordBytesLength;
     }
 
@@ -62,7 +61,7 @@ public class LogRecordBatchBinaryWriter(ILogRecordWriter recordIo, ICompressor c
     {
         using var batchRecordWriter = new BinaryWriter(stream, encoding, true);
 
-        batchRecordWriter.Write((ulong)recordBatch.BaseOffset); //ToDo delte offset
+        batchRecordWriter.Write((ulong)recordBatch.BaseOffset);
         batchRecordWriter.Write((uint)batchLength);
         batchRecordWriter.Write((ulong)recordBatch.LastOffset);
         batchRecordWriter.Write((uint)recordBytesLength);

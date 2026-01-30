@@ -45,7 +45,6 @@ public class SubscriberOffsetPositionsThenStep(ScenarioContext scenarioContext)
                 }
             }
 
-            // Wait briefly to ensure no additional unique messages arrive
             using var additionalCts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
             try
             {
@@ -69,7 +68,6 @@ public class SubscriberOffsetPositionsThenStep(ScenarioContext scenarioContext)
             }
             catch (OperationCanceledException)
             {
-                // Expected - no additional messages received
                 await TestContext.Progress.WriteLineAsync(
                     $"[Then Step] Verified: subscriber '{subscriberName}' received only '{expectedMessage}' " +
                     $"(total messages including duplicates: {allReceivedMessages.Count})");
@@ -123,7 +121,6 @@ public class SubscriberOffsetPositionsThenStep(ScenarioContext scenarioContext)
                 }
             }
 
-            // Verify all expected messages were received in order
             for (var i = 0; i < expectedMessages.Count; i++)
             {
                 Assert.That(receivedUniqueMessages[i], Is.EqualTo(expectedMessages[i]),
