@@ -42,7 +42,7 @@ const LogFilters = memo(function LogFilters({
                 <input
                     type="number"
                     min="10"
-                    max="100000"
+                    max="500000"
                     value={maxLogs}
                     onChange={(e) => setMaxLogs(parseInt(e.target.value) || 10000)}
                     className="max-logs-input"
